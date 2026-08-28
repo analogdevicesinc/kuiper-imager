@@ -18,4 +18,8 @@ option(KUIPER_IMAGER_GUI "Build the Qt Widgets GUI front-end" ON)
 add_subdirectory(src/core)
 add_subdirectory(src/cli)
 
+if(KUIPER_IMAGER_GUI)
+    add_subdirectory(src/gui)
+endif()
+
 message(STATUS "kuiper-imager ${PROJECT_VERSION} | GUI: ${KUIPER_IMAGER_GUI}")
