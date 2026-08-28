@@ -21,10 +21,60 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "KUIPER_IMAGER_GUI": "OFF"
       }
+    },
+    {
+      "name": "ci-base",
+      "hidden": true,
+      "description": "Shared CI settings. Everything OS-specific belongs in the ci-<os> presets below, so the workflow stays identical across the matrix.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-ci",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KUIPER_IMAGER_GUI": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "ci-linux",
+      "inherits": "ci-base",
+      "displayName": "CI — Linux (Ninja, Release)",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "ci-macos",
+      "inherits": "ci-base",
+      "displayName": "CI — macOS (Ninja, Release)",
+      "description": "Not yet exercised by CI. The macOS device backend is a stub; enable the matrix row when the port lands.",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0"
+      }
+    },
+    {
+      "name": "ci-windows",
+      "inherits": "ci-base",
+      "displayName": "CI — Windows (Ninja, Release, MSVC)",
+      "description": "Not yet exercised by CI. Ninja + MSVC requires the developer command prompt environment (e.g. ilammy/msvc-dev-cmd) to be sourced before configuring.",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     }
   ],
   "buildPresets": [
     { "name": "dev", "configurePreset": "dev" },
-    { "name": "cli-only", "configurePreset": "cli-only" }
+    { "name": "cli-only", "configurePreset": "cli-only" },
+    { "name": "ci-linux", "configurePreset": "ci-linux" },
+    { "name": "ci-macos", "configurePreset": "ci-macos" },
+    { "name": "ci-windows", "configurePreset": "ci-windows" }
   ]
 }
