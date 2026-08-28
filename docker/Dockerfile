@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip python3-venv \
         libgl1-mesa-dev libxkbcommon-dev libfontconfig1 libdbus-1-3 \
         libglib2.0-0 \
+        libarchive-dev \
+        libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Qt 6.8 via aqtinstall — same tool CI uses (jurplel/install-qt-action wraps it),
