@@ -1,0 +1,9 @@
+#include "kuiper/Version.hpp"
+
+namespace kuiper {
+
+const char* version() noexcept {
+    return "@PROJECT_VERSION@";
+}
+
+}  // namespace kuiper

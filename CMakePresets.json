@@ -1,0 +1,30 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 22, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "dev",
+      "displayName": "Dev (Ninja, Debug, GUI on)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "KUIPER_IMAGER_GUI": "ON"
+      }
+    },
+    {
+      "name": "cli-only",
+      "displayName": "CLI only (no Qt Widgets/GUI)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-cli",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "KUIPER_IMAGER_GUI": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev", "configurePreset": "dev" },
+    { "name": "cli-only", "configurePreset": "cli-only" }
+  ]
+}

@@ -1,0 +1,16 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: kuiper-imager-dev
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_QPA_PLATFORM=${QT_QPA_PLATFORM:-xcb}
+    stdin_open: true
+    tty: true
