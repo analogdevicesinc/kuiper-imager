@@ -19,6 +19,7 @@ add_library(kuiper STATIC
     src/error.cpp
     src/DriveService.cpp
     src/Layout.cpp
+    src/ConfigurationService.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
     ${KUIPER_PLATFORM_SOURCES})
 
