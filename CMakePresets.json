@@ -23,6 +23,18 @@
       }
     },
     {
+      "name": "deb-linux",
+      "displayName": "Debian package (distro Qt, CLI only)",
+      "description": "Builds kli against the distro's Qt (6.4+) with CPack DEB packaging enabled. Distinct from ci-linux, which builds against aqtinstall Qt 6.8. Intended for the debian:12 packaging container.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-deb",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KUIPER_IMAGER_GUI": "OFF",
+        "KUIPER_IMAGER_PACKAGE": "ON"
+      }
+    },
+    {
       "name": "ci-base",
       "hidden": true,
       "description": "Shared CI settings. Everything OS-specific belongs in the ci-<os> presets below, so the workflow stays identical across the matrix.",
@@ -73,6 +85,7 @@
   "buildPresets": [
     { "name": "dev", "configurePreset": "dev" },
     { "name": "cli-only", "configurePreset": "cli-only" },
+    { "name": "deb-linux", "configurePreset": "deb-linux" },
     { "name": "ci-linux", "configurePreset": "ci-linux" },
     { "name": "ci-macos", "configurePreset": "ci-macos" },
     { "name": "ci-windows", "configurePreset": "ci-windows" }

@@ -68,3 +68,56 @@ jobs:
             build-ci/src/gui/kuiper-imager
           if-no-files-found: error
           retention-days: 14
+
+  package-deb:
+    name: package (deb, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    container: debian:12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build + packaging dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            git \
+            ca-certificates \
+            qt6-base-dev \
+            libarchive-dev \
+            libssl-dev \
+            libcurl4-openssl-dev \
+            dpkg-dev \
+            lintian
+
+      - name: Configure
+        run: cmake --preset deb-linux
+
+      - name: Build
+        run: cmake --build --preset deb-linux
+
+      - name: Smoke test (kli version)
+        run: ./build-deb/src/cli/kli version
+
+      - name: Package (cpack -G DEB)
+        working-directory: build-deb
+        run: cpack -G DEB
+
+      - name: Lint package (lintian)
+        run: lintian build-deb/*.deb || true
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v7
+        with:
+          name: kuiper-imager-cli-deb-${{ matrix.arch }}
+          path: build-deb/*.deb
+          if-no-files-found: error
+          retention-days: 14
