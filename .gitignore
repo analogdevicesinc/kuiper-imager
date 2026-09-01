@@ -5,6 +5,8 @@
 
 CMakeUserPresets.json
 
+/docs/_build/
+
 .vscode/
 .idea/
 *.user
