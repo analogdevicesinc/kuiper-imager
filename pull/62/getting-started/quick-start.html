@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta content="Go from nothing to a bootable Kuiper SD card with the guided fetch → flash → configure workflow" name="description" />
+
+    <title>Quick Start &#8212; Kuiper Imager  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=fb8972a4" />
+    <script async="async" src="../_static/app.umd.js?v=8c78863f"></script>
+    <link rel="icon" href="../_static/icon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="CLI Overview" href="../using-the-cli/cli-overview.html" />
+    <link rel="prev" title="Installation" href="installation.html" />
+   
+  
+  
+  
+  <meta name="repository" content="kuiper-imager">
+  <meta name="version" content="latest">
+  
+    <meta name="page_source_suffix" content=".rst">
+  
+  
+  
+
+
+<style>
+  body {
+    
+  }
+
+  body.dark {
+    
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body:not(.light) {
+      
+    }
+  }
+</style>
+  </head>
+  
+    <body>
+  
+  <input type="checkbox" id="input-show-toc">
+  <input type="checkbox" id="input-show-localtoc">
+  <input type="checkbox" id="input-show-repotoc">
+
+  
+  <div class="search-area">
+    <form action="" method="get">
+      <input type="text" name="q" aria-labelledby="search-documentation" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="search" placeholder="Search"/>
+      <button class="icon"></button>
+    </form>
+  </div>
+  
+
+  <header>
+    <div id="left">
+      <label id="show-sidebar" class="icon" for="input-show-toc" title="Show/hide index"></label>
+    </div>
+    <div id="right">
+      <span>
+        <a id="logo-org" href="https://developer.analog.com/" aria-label="Analog Devices Inc. landing page"></a>
+        <div class="vertical-divider"></div>
+        
+        <label id="show-repotoc" for="input-show-repotoc" title="Show/hide docs">Documentation</label>
+        
+        <a id="logo" href="../index.html">
+          <div>Kuiper Imager</div>
+        </a>
+      </span>
+      <span class="reverse">
+        <label id="show-localtoc" class="icon" for="input-show-localtoc" title="Show/hide contents"></label>
+      </span>
+    </div>
+  </header>
+
+
+  <div class="repotoc-tree overlay">
+    <root/>
+
+  </div>
+    <div class="localtoc">
+      <div class="tocwrapper">
+        <div class="header localtoc-header">
+          <a id="scroll-up" href="#top-anchor" title="Back to top"></a>
+        </div>
+        <nav>
+          <ul>
+<li><a class="reference internal" href="#">Quick Start</a><ul>
+<li><a class="reference internal" href="#fetch-an-image">1. Fetch an image</a></li>
+<li><a class="reference internal" href="#flash-it-to-a-drive">2. Flash it to a drive</a></li>
+<li><a class="reference internal" href="#configure-boot-files">3. Configure boot files</a></li>
+</ul>
+</li>
+</ul>
+
+        </nav>
+      </div>
+    </div>
+
+  
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+    <a id="logo" href="../index.html">
+      <img class="only-light" src="../_static/logo_light.png"/>
+      <img class="only-dark" src="../_static/logo_dark.png"/>
+    </a><input id="input-switch-toc" type="checkbox">
+<label id="show-repotoc" for="input-switch-toc">
+All content
+</label>
+<label id="show-toc" for="input-switch-toc">
+Content on this topic
+</label>
+<div class="repotoc-tree">
+  <root/>
+
+</div>
+<div class="toc-tree">
+  <p class="caption" role="heading">
+  <span class="caption-text">Getting Started</span>
+</p>
+
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Start</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Using the CLI</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/cli-overview.html">CLI Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/fetch.html">Fetch: List and Download Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/flash.html">Flash: Write an Image to a Drive</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/configure.html">Configure: Set Up Boot Files</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">How It Works</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/core-library.html">Core Library (libkuiper)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/flash-pipeline.html">The Flash Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/platform-backends.html">Platform Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/releases-and-sources.html">Releases and Sources</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Development</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/development.html">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/roadmap.html">Roadmap</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Reference</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+
+</div>
+        </div>
+      </div>
+
+  <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper" id="top-anchor">
+          <div class="body-header">
+  <nav class="breadcrumb empty"><ol></ol></nav>
+</div>
+          <div class="body" role="main">
+            
+  <section id="quick-start">
+<span id="id1"></span><h1>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h1>
+<p>Kuiper Imager turns a blank SD card into a bootable Analog Devices system in
+three steps. The tool <em>suggests</em> this order — each command ends with a <code class="docutils literal notranslate"><span class="pre">Next:</span></code>
+hint toward the following one — but the steps are independent, not enforced: you
+can flash an image you already have, or reconfigure a card without reflashing.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Fetch ─▶ Flash ─▶ Configure ─▶ Bootable SD card
+         ▲                       (Raspberry Pi: skip Configure)
+   Local image ┘
+</pre></div>
+</div>
+<p>Everything below uses the <code class="docutils literal notranslate"><span class="pre">kli</span></code> CLI on Linux. <code class="docutils literal notranslate"><span class="pre">flash</span></code> and <code class="docutils literal notranslate"><span class="pre">configure</span></code> write
+to raw devices, so they run under <code class="docutils literal notranslate"><span class="pre">sudo</span></code>. See <a class="reference internal" href="../using-the-cli/cli-overview.html#cli-overview"><span class="std std-ref">CLI Overview</span></a> for the
+conventions shared by every command.</p>
+<hr class="docutils" />
+<section id="fetch-an-image">
+<h2>1. Fetch an image<a class="headerlink" href="#fetch-an-image" title="Link to this heading"></a></h2>
+<p>List the available Kuiper 2.0 CI builds, then download one by its identifier:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kli<span class="w"> </span>list-releases<span class="w"> </span>--unstable
+kli<span class="w"> </span>fetch<span class="w"> </span>--image<span class="w"> </span>gh:9607528144<span class="w"> </span>--output<span class="w"> </span>./kuiper.zip
+</pre></div>
+</div>
+<p>Copy the <code class="docutils literal notranslate"><span class="pre">IDENTIFIER</span></code> of the row you want into <code class="docutils literal notranslate"><span class="pre">--image</span></code>. Downloading needs a
+GitHub token — see <a class="reference internal" href="../using-the-cli/fetch.html#fetch"><span class="std std-ref">Fetch: List and Download Releases</span></a>. Already have an image file? Skip straight to
+step 2.</p>
+</section>
+<hr class="docutils" />
+<section id="flash-it-to-a-drive">
+<h2>2. Flash it to a drive<a class="headerlink" href="#flash-it-to-a-drive" title="Link to this heading"></a></h2>
+<p>Identify the target drive, then flash the image onto it:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kli<span class="w"> </span>list-drives
+sudo<span class="w"> </span>kli<span class="w"> </span>flash<span class="w"> </span>--image<span class="w"> </span>./kuiper.zip<span class="w"> </span>--drive<span class="w"> </span>/dev/sda
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">flash</span></code> erases the drive, so it confirms before writing and verifies the result
+by reading it back. The image may be raw or compressed. See <a class="reference internal" href="../using-the-cli/flash.html#flash"><span class="std std-ref">Flash: Write an Image to a Drive</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="configure-boot-files">
+<h2>3. Configure boot files<a class="headerlink" href="#configure-boot-files" title="Link to this heading"></a></h2>
+<p>Pick the project for your hardware, then configure the card:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kli<span class="w"> </span>list-projects<span class="w"> </span>--drive<span class="w"> </span>/dev/sda
+sudo<span class="w"> </span>kli<span class="w"> </span>configure<span class="w"> </span>--drive<span class="w"> </span>/dev/sda<span class="w"> </span>--project<span class="w"> </span>ad9081<span class="w"> </span>--board<span class="w"> </span>vck190
+</pre></div>
+</div>
+<p>This copies the correct kernel and boot files for your eval-board and carrier
+combination — the most error-prone manual step, done for you. <strong>Raspberry Pi
+cards boot without this step and can skip it.</strong> See <a class="reference internal" href="../using-the-cli/configure.html#configure"><span class="std std-ref">Configure: Set Up Boot Files</span></a>.</p>
+<p>The card is now bootable.</p>
+</section>
+</section>
+
+
+          </div>
+              <div class="related">
+                &nbsp;
+    <a href="installation.html" title="Previous document (Alt+Shift+LeftArrow)" class="prev">Installation</a>
+    <a href="../using-the-cli/cli-overview.html" title="Next document (Alt+Shift+RightArrow)" class="next">CLI Overview</a>
+              </div>
+          
+        </div>
+      </div>
+  </div>
+
+  <label id="cancel-area-show-toc" for="input-show-toc"></label>
+  <label id="cancel-area-show-localtoc" for="input-show-localtoc"></label>
+    <footer>
+      &#169;2025, Analog Devices, Inc.
+      
+      |
+      Made with <a href="https://www.sphinx-doc.org/">Sphinx</a>
+      &amp; <a href="https://github.com/analogdevicesinc/doctools">Doctools</a>
+      
+    </footer>
+  </body>
+</html>
