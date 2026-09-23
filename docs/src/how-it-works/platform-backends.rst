@@ -48,15 +48,10 @@ grouped into three areas:
   so verification reads media, not cache.
 - ``rereadPartTable`` — ask the kernel to re-read the table (best-effort).
 
-**Topology queries** (read-only lookups over the block tree)
-
-- ``parentDisk(node)`` — the whole disk that owns a partition node, or empty if
-  the node is already a whole disk.
-- ``mountpointOf(node)`` — current mountpoint, or empty if not mounted.
-
-These read-only lookups shell out to ``util-linux`` from *inside* the backend
-rather than from the portable services — the funnel invariant applies even to
-lookups that never open a device, so no platform assumption leaks upward.
+The preloader safety check needs no separate topology methods: it derives the
+owning drive and the target's mount state directly from ``listDrives()`` — the
+drive that lists a partition is its owner, and each partition row already carries
+its own mountpoint — so no ``/dev/Xp1`` string surgery leaks into the contract.
 
 ----
 

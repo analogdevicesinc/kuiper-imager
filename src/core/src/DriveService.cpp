@@ -524,35 +524,43 @@ Result<FlashSummary> DriveService::writePreloader(
     if (!srcSize) return std::unexpected(srcSize.error());
     const std::uint64_t preloaderSize = *srcSize;
 
-    // A partition is a plausible live filesystem, so refuse a mounted one; this
-    // also closes the openForWrite -> EBUSY -> unmountAll -> overwrite hazard.
+    // A partition is a plausible live filesystem, so refuse a mounted one; also
+    // refuse anything that is not a removable data disk. Data-driven off one
+    // enumeration: the drive that lists this partition is its owner, and that
+    // partition row carries its own mountpoint. This also closes the
+    // openForWrite -> EBUSY -> unmountAll -> overwrite hazard.
     if (!options.force) {
-        auto mnt = backend_->mountpointOf(partitionDevice);
-        if (!mnt) return std::unexpected(mnt.error());
-        if (!mnt->empty()) {
+        auto list = backend_->listDrives();
+        if (!list) return std::unexpected(list.error());
+
+        const Drive* ownerDrive = nullptr;
+        const Partition* part = nullptr;
+        for (const auto& dv : *list) {
+            for (const auto& p : dv.partitions) {
+                if (p.node == partitionDevice) {
+                    ownerDrive = &dv;
+                    part = &p;
+                    break;
+                }
+            }
+            if (part) break;
+        }
+
+        if (!part) {  // not in the enumeration => unknown target, refuse
             return Err(ErrorCode::PermissionDenied,
-                       "Target partition is mounted at " + *mnt +
+                       "Refusing to write to an unknown disk: " + partitionDevice,
+                       "Pass --force only if you are certain");
+        }
+        if (!part->mountpoint.empty()) {
+            return Err(ErrorCode::PermissionDenied,
+                       "Target partition is mounted at " + part->mountpoint +
                            "; refusing to overwrite: " + partitionDevice,
                        "Unmount it first, or pass --force if you are certain.");
         }
-
-        // Keyed off the owning disk: partitions don't appear in listDrives.
-        auto disk = backend_->parentDisk(partitionDevice);
-        if (!disk) return std::unexpected(disk.error());
-        const std::string owner = disk->empty() ? partitionDevice : *disk;
-        auto list = backend_->listDrives();
-        if (!list) return std::unexpected(list.error());
-        const Drive* found = nullptr;
-        for (const auto& dv : *list) {
-            if (dv.node == owner) {
-                found = &dv;
-                break;
-            }
-        }
-        if (!found || !found->isRemovable || found->isSystem) {
+        if (!ownerDrive->isRemovable || ownerDrive->isSystem) {
             return Err(ErrorCode::PermissionDenied,
                        "Refusing to write to a non-removable/system disk: " +
-                           owner,
+                           ownerDrive->node,
                        "Pass --force only if you are certain");
         }
     }

@@ -34,13 +34,6 @@ public:
     Result<void> flushAndSync() override { return unsupported(); }
     Result<void> rereadPartTable() override { return {}; }
 
-    Result<std::string> parentDisk(const std::string&) override {
-        return std::unexpected(unsupported().error());
-    }
-    Result<std::string> mountpointOf(const std::string&) override {
-        return std::unexpected(unsupported().error());
-    }
-
 private:
     static Result<void> unsupported() {
         return Err(ErrorCode::UnsupportedPlatform,

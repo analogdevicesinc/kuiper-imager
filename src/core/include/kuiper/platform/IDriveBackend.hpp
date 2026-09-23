@@ -76,15 +76,6 @@ public:
 
     // Ask the kernel to re-read the partition table (best-effort; never fatal).
     virtual Result<void> rereadPartTable() = 0;
-
-    // --- Topology queries (used by DriveService for the preloader write) ------
-
-    // Whole disk that owns a partition node, e.g. "/dev/mmcblk0p1" =>
-    // "/dev/mmcblk0". Empty result if `node` is already a whole disk.
-    virtual Result<std::string> parentDisk(const std::string& node) = 0;
-
-    // Current mountpoint of a node, or empty if it is not mounted.
-    virtual Result<std::string> mountpointOf(const std::string& node) = 0;
 };
 
 // Factory: returns the IDriveBackend for the host platform. Defined per-OS so
