@@ -1,3 +1,19 @@
 <?xml version='1.0' encoding='utf-8'?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/development/contributing.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/development/development.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/development/roadmap.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/getting-started/installation.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/getting-started/quick-start.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/how-it-works/architecture.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/how-it-works/core-library.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/how-it-works/flash-pipeline.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/how-it-works/platform-backends.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/how-it-works/releases-and-sources.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/reference/troubleshooting.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/using-the-cli/cli-overview.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/using-the-cli/configure.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/using-the-cli/fetch.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://analogdevicesinc.github.io/kuiper-imager/using-the-cli/flash.html</loc><lastmod>2026-09-23</lastmod></url>
 </urlset>
