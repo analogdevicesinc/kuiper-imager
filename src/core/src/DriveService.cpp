@@ -351,10 +351,9 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
     FlashTimings timings;
     const auto tStart = Clock::now();
 
-    // Re-enumerate; never trust cached metadata. --force bypasses the presence and
-    // removable/system checks (loop devices, power users); the backend still
-    // refuses anything that isn't a block device.
-    if (!options.force) {
+    // Two-tier target guard; always enumerate so the system check runs even under
+    // --force. See docs: flash (safety model).
+    {
         auto list = backend_->listDrives();
         if (!list) return std::unexpected(list.error());
         const Drive* found = nullptr;
@@ -364,16 +363,25 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
                 break;
             }
         }
-        if (!found) {
+        if (found) {
+            if (found->isSystem) {  // tier 1: never bypassable
+                return Err(ErrorCode::PermissionDenied,
+                           "Refusing to flash the system disk (hosts the "
+                           "running OS): " + driveNode,
+                           "This guard cannot be overridden. Reimage from other "
+                           "boot media.");
+            }
+            if (!found->isRemovable && !options.force) {  // tier 2: advisory
+                return Err(ErrorCode::PermissionDenied,
+                           "Refusing to flash a non-removable drive: " +
+                               driveNode,
+                           "Pass --force if you are sure (internal SD reader, "
+                           "loop device)");
+            }
+        } else if (!options.force) {
             return Err(ErrorCode::DeviceRemoved,
                        "Drive not found: " + driveNode,
                        "Run 'kli list-drives'; use --force for loop devices");
-        }
-        if (!found->isRemovable || found->isSystem) {
-            return Err(ErrorCode::PermissionDenied,
-                       "Refusing to flash a non-removable/system drive: " +
-                           driveNode,
-                       "Pass --force only if you are certain");
         }
     }
 
@@ -524,12 +532,9 @@ Result<FlashSummary> DriveService::writePreloader(
     if (!srcSize) return std::unexpected(srcSize.error());
     const std::uint64_t preloaderSize = *srcSize;
 
-    // A partition is a plausible live filesystem, so refuse a mounted one; also
-    // refuse anything that is not a removable data disk. Data-driven off one
-    // enumeration: the drive that lists this partition is its owner, and that
-    // partition row carries its own mountpoint. This also closes the
-    // openForWrite -> EBUSY -> unmountAll -> overwrite hazard.
-    if (!options.force) {
+    // Same two-tier guard as flash(), on the partition's owning drive; the drive
+    // that lists a partition is its owner. See docs: flash (safety model).
+    {
         auto list = backend_->listDrives();
         if (!list) return std::unexpected(list.error());
 
@@ -546,21 +551,34 @@ Result<FlashSummary> DriveService::writePreloader(
             if (part) break;
         }
 
-        if (!part) {  // not in the enumeration => unknown target, refuse
+        if (part) {
+            if (ownerDrive->isSystem) {  // tier 1: never bypassable
+                return Err(ErrorCode::PermissionDenied,
+                           "Refusing to write to the system disk (hosts the "
+                           "running OS): " + ownerDrive->node,
+                           "This guard cannot be overridden. Reimage from other "
+                           "boot media.");
+            }
+            if (!options.force) {
+                if (!part->mountpoint.empty()) {
+                    return Err(ErrorCode::PermissionDenied,
+                               "Target partition is mounted at " +
+                                   part->mountpoint + "; refusing to overwrite: " +
+                                   partitionDevice,
+                               "Unmount it first, or pass --force if you are "
+                               "certain.");
+                }
+                if (!ownerDrive->isRemovable) {
+                    return Err(ErrorCode::PermissionDenied,
+                               "Refusing to write to a non-removable disk: " +
+                                   ownerDrive->node,
+                               "Pass --force if you are sure (internal SD "
+                               "reader)");
+                }
+            }
+        } else if (!options.force) {
             return Err(ErrorCode::PermissionDenied,
                        "Refusing to write to an unknown disk: " + partitionDevice,
-                       "Pass --force only if you are certain");
-        }
-        if (!part->mountpoint.empty()) {
-            return Err(ErrorCode::PermissionDenied,
-                       "Target partition is mounted at " + part->mountpoint +
-                           "; refusing to overwrite: " + partitionDevice,
-                       "Unmount it first, or pass --force if you are certain.");
-        }
-        if (!ownerDrive->isRemovable || ownerDrive->isSystem) {
-            return Err(ErrorCode::PermissionDenied,
-                       "Refusing to write to a non-removable/system disk: " +
-                           ownerDrive->node,
                        "Pass --force only if you are certain");
         }
     }

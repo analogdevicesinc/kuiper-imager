@@ -46,7 +46,8 @@ void printUsage() {
         "  -i, --image <file>   Local image: raw .img or .zip/.xz/.zst/.gz/.bz2\n"
         "  -d, --drive <dev>    Target whole drive, e.g. /dev/sdX\n"
         "  -y, --yes            Skip the confirmation prompt\n"
-        "      --force          Allow non-removable drives (e.g. /dev/loopN)\n"
+        "      --force          Bypass the removable-drive heuristic (internal\n"
+        "                       SD readers, /dev/loopN). Never the system-disk guard.\n"
         "      --no-verify      Skip the read-back verify (~half the wall time);\n"
         "                       the partition table is still written last & checked\n"
         "      --timings        Print a per-phase wall-clock breakdown\n\n"
@@ -71,7 +72,8 @@ void printUsage() {
         "  -p, --project <name> Eval board / project name (see list-projects)\n"
         "      --board <carrier> Carrier board the project targets\n"
         "      --dry-run        Show the copy plan without touching the card\n"
-        "      --force          Allow a non-removable bootloader target (intel)\n\n"
+        "      --force          Bypass the removable/mounted-target heuristic for\n"
+        "                       the bootloader partition (intel). Never the system disk.\n\n"
         "Flashing and intel preloader writes require root; run with sudo.\n");
 }
 
