@@ -47,33 +47,6 @@ void sleepBetweenRetries() {
     nanosleep(&ts, nullptr);
 }
 
-// Result of a short util-linux invocation (findmnt/lsblk) for topology queries.
-struct CmdResult {
-    bool ran = false;  // false => process failed to start/finish
-    int code = 1;
-    QString out;  // trimmed stdout
-    QString err;  // trimmed stderr
-};
-
-// Run a util-linux tool and capture its output. Read-only; no device access.
-CmdResult runTool(const QString& program, const QStringList& args) {
-    QProcess proc;
-    proc.start(program, args);
-    if (!proc.waitForStarted(3000) || !proc.waitForFinished(5000) ||
-        proc.exitStatus() != QProcess::NormalExit) {
-        return {};
-    }
-    CmdResult r;
-    r.ran = true;
-    r.code = proc.exitCode();
-    r.out = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-    r.err = QString::fromUtf8(proc.readAllStandardError()).trimmed();
-    return r;
-}
-
-// First non-empty line of a tool's output (findmnt/lsblk emit one row here).
-QString firstLine(const QString& s) { return s.split('\n').first().trimmed(); }
-
 // Trailing integer of a partition node name, e.g. "/dev/mmcblk0p3" => 3,
 // "/dev/sdb1" => 1. Zero if the name ends in no digit. This is only a display
 // hint (the partition role comes from inspection, never from this number).
@@ -535,34 +508,6 @@ public:
     Result<void> rereadPartTable() override {
         ::ioctl(fd_, BLKRRPART);  // best effort; harmless if it fails
         return {};
-    }
-
-    Result<std::string> parentDisk(const std::string& node) override {
-        const auto r = runTool(
-            "lsblk", {"-n", "-o", "PKNAME", QString::fromStdString(node)});
-        if (!r.ran) {
-            return Err(ErrorCode::Unknown, "Failed to run 'lsblk'",
-                       "Is util-linux installed?");
-        }
-        if (r.code != 0) {
-            return Err(ErrorCode::NotFound,
-                       "Cannot determine parent disk of: " + node,
-                       r.err.toStdString());
-        }
-        const QString pk = firstLine(r.out);
-        if (pk.isEmpty()) return std::string{};  // already a whole disk
-        return "/dev/" + pk.toStdString();
-    }
-
-    Result<std::string> mountpointOf(const std::string& node) override {
-        const auto r = runTool("findmnt", {"-n", "-o", "TARGET", "--source",
-                                           QString::fromStdString(node)});
-        if (!r.ran) {
-            return Err(ErrorCode::Unknown, "Failed to run 'findmnt'",
-                       "Is util-linux installed?");
-        }
-        // Exit 1 with empty output means "not mounted" — not an error.
-        return firstLine(r.out).toStdString();
     }
 
 private:
