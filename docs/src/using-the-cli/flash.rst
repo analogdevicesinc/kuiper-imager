@@ -56,10 +56,9 @@ Options
      - Skip the confirmation prompt. Use in scripts, once you are certain of the
        target.
    * - ``--force``
-     - Bypass the removable/system-drive guard (for example to write a
-       ``/dev/loopN`` loop device). The backend still refuses anything that
-       isn't a block device. This is the guard that stops you erasing the wrong
-       disk — use it deliberately.
+     - Bypass the *removable-drive* heuristic — for an internal SD reader or a
+       ``/dev/loopN`` device (see the safety model below). It does **not** bypass
+       the system-disk guard. Use deliberately.
    * - ``--no-verify``
      - Skip the full read-back verification (~half the wall-clock time). The
        partition table is *still* written last and checked, so a failed flash
@@ -80,8 +79,20 @@ prove that what is *on the card* matches the image. It is on by default.
 Equally important, the partition table is always written **last**, after the body
 is on media and verified. This means a flash that is cancelled, fails, or has
 verification turned off never leaves a card that *looks* bootable but isn't — an
-interrupted flash yields an inert card, not a corrupt one. ``flash`` also
-re-enumerates the drive up front (never trusting cached metadata), refuses
-non-removable/system drives unless ``--force``, unmounts everything on the
-target, and wipes stale signatures so a smaller image can't leave a ghost
-partition table behind. See :ref:`flash-pipeline` for the complete step-by-step.
+interrupted flash yields an inert card, not a corrupt one.
+
+``flash`` re-enumerates the drive up front (never trusting cached metadata) and
+applies a **two-tier target guard**:
+
+- **System disk** — a disk that hosts the running OS (see how this is detected in
+  :ref:`platform-backends`). Refused **always**; ``--force`` does not override it,
+  because erasing the live OS is never intended.
+- **Non-removable disk** — refused unless ``--force``. This is a heuristic guard
+  (an internal SD reader looks non-removable), so ``--force`` is the escape hatch
+  for it and for loop devices. The backend still refuses anything that isn't a
+  block device.
+
+It then unmounts everything on the target and wipes stale signatures so a smaller
+image can't leave a ghost partition table behind. The same guard protects the
+Intel preloader write in :ref:`configure`. See :ref:`flash-pipeline` for the
+complete step-by-step.

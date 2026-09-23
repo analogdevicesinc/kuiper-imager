@@ -10,6 +10,7 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/swap.h>
+#include <sys/sysmacros.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -23,6 +24,7 @@
 #include <vector>
 
 #include <QByteArray>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -72,6 +74,55 @@ Partition parsePartition(const QJsonObject& obj) {
     // mounted.
     p.mountpoint = obj.value("mountpoint").toString().toStdString();
     return p;
+}
+
+// Mountpoints that mean the node holds part of the running OS. See docs:
+// platform-backends (system vs removable).
+bool isCriticalMount(const QString& mp) {
+    if (mp == "/" || mp == "[SWAP]") return true;
+    for (const char* root : {"/boot", "/usr", "/var", "/etc"}) {
+        const QString r = QLatin1String(root);
+        if (mp == r || mp.startsWith(r + '/')) return true;
+    }
+    return false;
+}
+
+// Recursively: does any node in this disk's subtree host the running OS?
+// Critical mountpoint, or a MAJ:MIN match against the device backing "/"
+// (rootDev, empty to skip). See docs: platform-backends (system vs removable).
+bool subtreeIsSystem(const QJsonObject& node, const QString& rootDev) {
+    if (isCriticalMount(node.value("mountpoint").toString())) return true;
+    if (!rootDev.isEmpty() && node.value("maj:min").toString() == rootDev) {
+        return true;
+    }
+    for (const auto& c : node.value("children").toArray()) {
+        if (subtreeIsSystem(c.toObject(), rootDev)) return true;
+    }
+    return false;
+}
+
+// Best-effort "can the user pull this media?" heuristic (advisory; --force
+// overrides). See docs: platform-backends (system vs removable).
+bool computeRemovable(const QJsonObject& obj) {
+    if (obj.value("rm").toBool() || obj.value("hotplug").toBool()) return true;
+    const QString tran = obj.value("tran").toString();
+    if (tran == "usb") return true;
+    if (tran == "mmc") {
+        const QString base = obj.value("name").toString().section('/', -1);
+        QFile f("/sys/block/" + base + "/device/type");
+        if (f.open(QIODevice::ReadOnly)) {
+            if (QString::fromLatin1(f.readAll()).trimmed() == "SD") return true;
+        }
+    }
+    return false;
+}
+
+// The device backing "/" as "maj:min" (matching lsblk's MAJ:MIN column), or
+// empty if it cannot be determined. Feeds subtreeIsSystem().
+QString rootDeviceId() {
+    struct stat st{};
+    if (::stat("/", &st) != 0) return {};
+    return QString("%1:%2").arg(major(st.st_dev)).arg(minor(st.st_dev));
 }
 
 // Map a POSIX I/O errno onto the domain error vocabulary.
@@ -139,12 +190,14 @@ public:
     ~LinuxDriveBackend() override { close(); }
 
     Result<DriveList> listDrives() override {
-        // -b bytes, -J JSON, -p full paths. No -d: we want the children[] tree
-        // so each drive carries its partitions. -o restricts columns to what we
-        // consume (FSTYPE/LABEL/MOUNTPOINT are read from the partition rows).
+        // -b bytes, -J JSON, -p full paths. No -d: the children[] tree carries
+        // both the partitions and the holders (LVM/LUKS/RAID) the system check
+        // walks. Columns are only what we consume. See docs: platform-backends.
         QProcess proc;
-        proc.start("lsblk", {"-b", "-J", "-p", "-o",
-                             "NAME,SIZE,MODEL,RM,TYPE,RO,FSTYPE,LABEL,MOUNTPOINT"});
+        proc.start("lsblk",
+                   {"-b", "-J", "-p", "-o",
+                    "NAME,SIZE,MODEL,RM,HOTPLUG,TRAN,TYPE,RO,FSTYPE,LABEL,"
+                    "MOUNTPOINT,MAJ:MIN"});
         if (!proc.waitForStarted(3000)) {
             return Err(ErrorCode::Unknown,
                        "Failed to start 'lsblk'",
@@ -166,6 +219,8 @@ public:
                        parseErr.errorString().toStdString());
         }
 
+        const QString rootDev = rootDeviceId();  // "maj:min" of the disk under /
+
         DriveList drives;
         for (const auto& v : doc.object().value("blockdevices").toArray()) {
             const auto obj = v.toObject();
@@ -183,8 +238,8 @@ public:
             drive.description =
                 obj.value("model").toString().trimmed().toStdString();
             drive.sizeBytes = obj.value("size").toVariant().toULongLong();
-            drive.isRemovable = obj.value("rm").toBool();
-            drive.isSystem = !drive.isRemovable;
+            drive.isRemovable = computeRemovable(obj);
+            drive.isSystem = subtreeIsSystem(obj, rootDev);
 
             // Top-level partitions only. Kuiper cards use a simple partition
             // table (no extended/logical partitions), so we do not recurse into

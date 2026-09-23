@@ -26,7 +26,9 @@ grouped into three areas:
 **Enumeration and mounting**
 
 - ``listDrives()`` — one platform call returning every whole disk with its
-  partitions filled in; removable, non-system disks are the flash candidates.
+  partitions filled in, each tagged ``isSystem`` and ``isRemovable`` (derived
+  independently — see the Linux backend below). Non-system disks are the flash
+  candidates.
 - ``mount(partition)`` — mount a partition and return an RAII
   :ref:`MountedPartition <core-library>` handle. If the partition is already
   mounted the handle *borrows* it (and leaves it alone on destruction);
@@ -73,14 +75,34 @@ The Linux backend enumerates with ``lsblk`` and does raw I/O with direct
 syscalls. A few of its behaviors are load-bearing and worth knowing.
 
 **Enumeration.** ``lsblk -b -J -p`` gives byte sizes, JSON, and full device
-paths. Columns are restricted to what the tool actually consumes. The backend
-reads the ``children`` array to attach partitions to each disk but **does not
+paths. Columns are restricted to what the tool consumes. When attaching
+partitions to a disk the backend reads the ``children`` array but **does not
 recurse** into nested children: Kuiper cards use a simple partition table, and
-recursing would pull in LVM/LUKS/RAID mapper nodes that are not partitions of
-the drive. Only ``type == "disk"`` nodes are candidates; loop, ram, zram, and
-optical nodes are skipped. Every partition ``node`` is taken **verbatim** from
-``lsblk`` — never composed by string surgery — which is the whole point of
-enumerating instead of guessing (see the two-card bug in :ref:`core-library`).
+recursing would pull LVM/LUKS/RAID mapper nodes into the partition list where
+they don't belong. (The *system* check below is separate and does walk the full
+tree.) Only ``type == "disk"`` nodes are candidates; loop, ram, zram, and optical
+nodes are skipped. Every partition ``node`` is taken **verbatim** from ``lsblk``
+— never composed by string surgery — the whole point of enumerating instead of
+guessing (see the two-card bug in :ref:`core-library`).
+
+**System vs removable.** Each disk carries two facts, derived **independently**
+— inferring one from the other ("non-removable means system") is wrong both ways:
+a built-in SD reader reads as non-removable, and a USB-booted OS lives on
+removable media.
+
+*isSystem* — "does this disk host the **running** OS?" — is the safety-critical
+signal, and a system disk is **never** a flash candidate (see
+:ref:`the flash safety model <flash>`). A disk is system if any node in its full
+subtree (a partition, or a mapper stacked above one via LVM/LUKS/RAID) is mounted
+at ``/``, under ``/boot`` / ``/usr`` / ``/var`` / ``/etc``, or is swap — **or**
+its ``MAJ:MIN`` matches the device backing ``/`` (from ``stat("/")``; skipped if
+that fails). The walk recurses, so a root behind stacked LVM/LUKS is still found.
+
+*isRemovable* — "can the user pull this media?" — is advisory only; a false
+negative is overridable with ``--force``. ``RM`` alone is unreliable (``0`` for a
+card in a built-in reader), so a disk counts as removable if ``RM`` or
+``HOTPLUG`` is set, the transport is USB, or it is an SD card in an MMC slot
+(``/sys/block/<dev>/device/type`` is ``SD``, not soldered-eMMC ``MMC``).
 
 **O_DIRECT and alignment.** Devices are opened ``O_DIRECT`` where possible, so
 reads and writes bypass the page cache and go straight to media — which is what
