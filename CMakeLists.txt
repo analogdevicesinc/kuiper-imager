@@ -15,6 +15,7 @@ endif()
 
 option(KUIPER_IMAGER_GUI "Build the Qt Widgets GUI front-end" ON)
 option(KUIPER_IMAGER_PACKAGE "Enable CPack packaging config (.deb)" OFF)
+option(KUIPER_IMAGER_TESTS "Build the doctest test suite" OFF)
 
 add_subdirectory(src/core)
 add_subdirectory(src/cli)
@@ -23,7 +24,12 @@ if(KUIPER_IMAGER_GUI)
     add_subdirectory(src/gui)
 endif()
 
-message(STATUS "kuiper-imager ${PROJECT_VERSION} | GUI: ${KUIPER_IMAGER_GUI}")
+if(KUIPER_IMAGER_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
+message(STATUS "kuiper-imager ${PROJECT_VERSION} | GUI: ${KUIPER_IMAGER_GUI} | Tests: ${KUIPER_IMAGER_TESTS}")
 
 if(KUIPER_IMAGER_PACKAGE)
     set(CPACK_PACKAGE_NAME "kuiper-imager-cli")
