@@ -304,6 +304,97 @@ Result<std::uint64_t> statSource(const fs::path& path) {
     return size;
 }
 
+// Which kind of node a raw write targets. Selects the not-found error code and
+// the wording, and gates the mount check (only partitions carry a mountpoint).
+enum class TargetKind { WholeDrive, Partition };
+
+// The pure two-tier write-target decision, shared by flash() and
+// writePreloader(). `owner` is the drive that will be written (or that owns
+// `part`), or null if `node` was not found in the enumeration; `part` is set
+// only for a Partition target. No I/O — unit-testable in isolation. See docs:
+// flash (safety model).
+Result<void> classifyWriteTarget(TargetKind kind, const std::string& node,
+                                 const Drive* owner, const Partition* part,
+                                 bool force) {
+    if (!owner) {
+        if (force) return {};  // power-user escape hatch (e.g. loop devices)
+        if (kind == TargetKind::WholeDrive) {
+            return Err(ErrorCode::DeviceRemoved, "Drive not found: " + node,
+                       "Run 'kli list-drives'; use --force for loop devices");
+        }
+        return Err(ErrorCode::PermissionDenied,
+                   "Refusing to write to an unknown disk: " + node,
+                   "Pass --force only if you are certain");
+    }
+
+    // Tier 1: never bypassable — the disk hosting the running OS.
+    if (owner->isSystem) {
+        const std::string what =
+            kind == TargetKind::WholeDrive
+                ? "Refusing to flash the system disk (hosts the running OS): "
+                : "Refusing to write to the system disk (hosts the running OS): ";
+        return Err(ErrorCode::PermissionDenied, what + owner->node,
+                   "This guard cannot be overridden. Reimage from other boot "
+                   "media.");
+    }
+
+    // Tier 2: advisory — bypassable with --force.
+    if (!force) {
+        if (kind == TargetKind::Partition && part &&
+            !part->mountpoint.empty()) {
+            return Err(ErrorCode::PermissionDenied,
+                       "Target partition is mounted at " + part->mountpoint +
+                           "; refusing to overwrite: " + node,
+                       "Unmount it first, or pass --force if you are certain.");
+        }
+        if (!owner->isRemovable) {
+            if (kind == TargetKind::WholeDrive) {
+                return Err(ErrorCode::PermissionDenied,
+                           "Refusing to flash a non-removable drive: " + node,
+                           "Pass --force if you are sure (internal SD reader, "
+                           "loop device)");
+            }
+            return Err(ErrorCode::PermissionDenied,
+                       "Refusing to write to a non-removable disk: " +
+                           owner->node,
+                       "Pass --force if you are sure (internal SD reader)");
+        }
+    }
+    return {};
+}
+
+// Enumerate, locate `node` as a whole drive or a partition (the drive that lists
+// a partition is its owner), then apply the shared two-tier guard. Always
+// enumerates so the tier-1 system check runs even under --force.
+Result<void> guardWriteTarget(IDriveBackend& backend, TargetKind kind,
+                              const std::string& node, bool force) {
+    auto list = backend.listDrives();
+    if (!list) return std::unexpected(list.error());
+
+    const Drive* owner = nullptr;
+    const Partition* part = nullptr;
+    if (kind == TargetKind::WholeDrive) {
+        for (const auto& d : *list) {
+            if (d.node == node) {
+                owner = &d;
+                break;
+            }
+        }
+    } else {
+        for (const auto& d : *list) {
+            for (const auto& p : d.partitions) {
+                if (p.node == node) {
+                    owner = &d;
+                    part = &p;
+                    break;
+                }
+            }
+            if (part) break;
+        }
+    }
+    return classifyWriteTarget(kind, node, owner, part, force);
+}
+
 }  // namespace
 
 DriveService::DriveService() : backend_(makeDriveBackend()) {}
@@ -345,36 +436,10 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
 
     // Two-tier target guard; always enumerate so the system check runs even under
     // --force. See docs: flash (safety model).
-    {
-        auto list = backend_->listDrives();
-        if (!list) return std::unexpected(list.error());
-        const Drive* found = nullptr;
-        for (const auto& d : *list) {
-            if (d.node == driveNode) {
-                found = &d;
-                break;
-            }
-        }
-        if (found) {
-            if (found->isSystem) {  // tier 1: never bypassable
-                return Err(ErrorCode::PermissionDenied,
-                           "Refusing to flash the system disk (hosts the "
-                           "running OS): " + driveNode,
-                           "This guard cannot be overridden. Reimage from other "
-                           "boot media.");
-            }
-            if (!found->isRemovable && !options.force) {  // tier 2: advisory
-                return Err(ErrorCode::PermissionDenied,
-                           "Refusing to flash a non-removable drive: " +
-                               driveNode,
-                           "Pass --force if you are sure (internal SD reader, "
-                           "loop device)");
-            }
-        } else if (!options.force) {
-            return Err(ErrorCode::DeviceRemoved,
-                       "Drive not found: " + driveNode,
-                       "Run 'kli list-drives'; use --force for loop devices");
-        }
+    if (auto g = guardWriteTarget(*backend_, TargetKind::WholeDrive, driveNode,
+                                  options.force);
+        !g) {
+        return std::unexpected(g.error());
     }
 
     fs::path img(imagePath);
@@ -523,53 +588,10 @@ Result<FlashSummary> DriveService::writePreloader(
 
     // Same two-tier guard as flash(), on the partition's owning drive; the drive
     // that lists a partition is its owner. See docs: flash (safety model).
-    {
-        auto list = backend_->listDrives();
-        if (!list) return std::unexpected(list.error());
-
-        const Drive* ownerDrive = nullptr;
-        const Partition* part = nullptr;
-        for (const auto& dv : *list) {
-            for (const auto& p : dv.partitions) {
-                if (p.node == partitionDevice) {
-                    ownerDrive = &dv;
-                    part = &p;
-                    break;
-                }
-            }
-            if (part) break;
-        }
-
-        if (part) {
-            if (ownerDrive->isSystem) {  // tier 1: never bypassable
-                return Err(ErrorCode::PermissionDenied,
-                           "Refusing to write to the system disk (hosts the "
-                           "running OS): " + ownerDrive->node,
-                           "This guard cannot be overridden. Reimage from other "
-                           "boot media.");
-            }
-            if (!options.force) {
-                if (!part->mountpoint.empty()) {
-                    return Err(ErrorCode::PermissionDenied,
-                               "Target partition is mounted at " +
-                                   part->mountpoint + "; refusing to overwrite: " +
-                                   partitionDevice,
-                               "Unmount it first, or pass --force if you are "
-                               "certain.");
-                }
-                if (!ownerDrive->isRemovable) {
-                    return Err(ErrorCode::PermissionDenied,
-                               "Refusing to write to a non-removable disk: " +
-                                   ownerDrive->node,
-                               "Pass --force if you are sure (internal SD "
-                               "reader)");
-                }
-            }
-        } else if (!options.force) {
-            return Err(ErrorCode::PermissionDenied,
-                       "Refusing to write to an unknown disk: " + partitionDevice,
-                       "Pass --force only if you are certain");
-        }
+    if (auto g = guardWriteTarget(*backend_, TargetKind::Partition,
+                                  partitionDevice, options.force);
+        !g) {
+        return std::unexpected(g.error());
     }
 
     report(Progress::Phase::Preparing, "Preparing partition");
