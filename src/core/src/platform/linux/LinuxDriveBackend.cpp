@@ -185,10 +185,247 @@ private:
     std::size_t n_ = 0;
 };
 
+// One open raw-device session: owns the fd and the aligned staging/bounce
+// buffers, and closes the fd on destruction. Constructed by the backend's
+// openForWrite/openForRead once the exclusive open has succeeded; init() caches
+// the geometry and allocates the buffers. See docs: platform-backends.
+class LinuxRawDevice final : public IRawDevice {
+public:
+    LinuxRawDevice(int fd, bool direct) : fd_(fd), direct_(direct) {}
+
+    ~LinuxRawDevice() override {
+        if (fd_ >= 0) {
+            ::close(fd_);  // do not retry on EINTR (Linux closes the fd anyway)
+        }
+    }
+
+    LinuxRawDevice(const LinuxRawDevice&) = delete;
+    LinuxRawDevice& operator=(const LinuxRawDevice&) = delete;
+
+    // Cache block size + capacity and allocate the aligned I/O buffers. Called
+    // once, right after construction, before any I/O.
+    Result<void> init() {
+        int ssz = 0;
+        if (::ioctl(fd_, BLKSSZGET, &ssz) != 0 || ssz <= 0) {
+            ssz = 512;  // conservative default
+        }
+        blockSize_ = static_cast<unsigned>(ssz);
+        alignment_ = std::max<unsigned>(blockSize_, 4096u);
+
+        std::uint64_t bytes = 0;
+        devSize_ = (::ioctl(fd_, BLKGETSIZE64, &bytes) == 0) ? bytes : 0;
+
+        wbuf_ = AlignedBuf(kAlignBuf, alignment_);
+        rbuf_ = AlignedBuf(kAlignBuf, alignment_);
+        if (!wbuf_ || !rbuf_) {
+            return Err(ErrorCode::Unknown, "Out of memory (aligned I/O buffers)");
+        }
+        // Without O_DIRECT, drop cached pages so reads hit the media (harmless
+        // for the write path).
+        if (!direct_) ::posix_fadvise(fd_, 0, 0, POSIX_FADV_DONTNEED);
+        return {};
+    }
+
+    Result<void> seek(std::uint64_t offset) override {
+        if (auto r = flushTail(); !r) return r;  // commit any staged write bytes
+        rpos_ = 0;                               // discard read-ahead
+        rlen_ = 0;
+        offset_ = static_cast<off_t>(offset);
+        return {};
+    }
+
+    Result<void> write(std::span<const std::byte> data) override {
+        const std::byte* p = data.data();
+        std::size_t left = data.size();
+        while (left > 0) {
+            const std::size_t space = kAlignBuf - wfill_;
+            const std::size_t n = std::min(left, space);
+            std::memcpy(wbuf_.get() + wfill_, p, n);
+            wfill_ += n;
+            p += n;
+            left -= n;
+            if (wfill_ == kAlignBuf) {
+                if (auto r = flushFull(); !r) return r;
+            }
+        }
+        return {};
+    }
+
+    Result<std::size_t> read(std::span<std::byte> buffer) override {
+        std::byte* out = buffer.data();
+        const std::size_t want = buffer.size();
+        std::size_t total = 0;
+        while (total < want) {
+            if (rlen_ == 0) {
+                if (devSize_ != 0 &&
+                    static_cast<std::uint64_t>(offset_) >= devSize_) {
+                    break;  // EOF
+                }
+                const std::uint64_t avail =
+                    devSize_ ? devSize_ - static_cast<std::uint64_t>(offset_)
+                             : kAlignBuf;
+                const std::size_t toRead = static_cast<std::size_t>(
+                    std::min<std::uint64_t>(kAlignBuf, avail));
+                auto n = preadAligned(rbuf_.get(), toRead, offset_);
+                if (!n) return std::unexpected(n.error());
+                if (*n == 0) break;  // EOF
+                offset_ += static_cast<off_t>(*n);
+                rpos_ = 0;
+                rlen_ = *n;
+            }
+            const std::size_t take = std::min(rlen_, want - total);
+            std::memcpy(out + total, rbuf_.get() + rpos_, take);
+            rpos_ += take;
+            rlen_ -= take;
+            total += take;
+        }
+        return total;
+    }
+
+    Result<std::uint64_t> deviceSize() override {
+        if (devSize_ != 0) return devSize_;
+        std::uint64_t bytes = 0;
+        if (::ioctl(fd_, BLKGETSIZE64, &bytes) != 0) {
+            return ioError(errno, "Cannot query device size (BLKGETSIZE64)");
+        }
+        devSize_ = bytes;
+        return bytes;
+    }
+
+    Result<void> wipeSignatures() override {
+        if (devSize_ == 0) {
+            if (auto s = deviceSize(); !s) return std::unexpected(s.error());
+        }
+
+        AlignedBuf zeros(static_cast<std::size_t>(kMiB), alignment_);
+        if (!zeros) {
+            return Err(ErrorCode::Unknown, "Out of memory (aligned wipe buffer)");
+        }
+        std::memset(zeros.get(), 0, static_cast<std::size_t>(kMiB));
+
+        // Ranges are block-aligned (0, kMiB multiples, and devSize_ which the
+        // kernel reports as a multiple of the logical block size), so each
+        // pwrite stays O_DIRECT-legal.
+        auto zeroRange = [&](std::uint64_t begin,
+                             std::uint64_t end) -> Result<void> {
+            std::uint64_t off = begin;
+            while (off < end) {
+                const std::size_t chunk = static_cast<std::size_t>(
+                    std::min<std::uint64_t>(end - off, kMiB));
+                if (auto r = pwriteAll(zeros.get(), chunk,
+                                       static_cast<off_t>(off));
+                    !r) {
+                    return r;
+                }
+                off += chunk;
+            }
+            return {};
+        };
+
+        const std::uint64_t head = std::min<std::uint64_t>(kWipeHead, devSize_);
+        if (auto r = zeroRange(0, head); !r) return r;
+        if (devSize_ > kWipeTail) {
+            const std::uint64_t tailBegin =
+                std::max<std::uint64_t>(head, devSize_ - kWipeTail);
+            if (auto r = zeroRange(tailBegin, devSize_); !r) return r;
+        }
+        ::fdatasync(fd_);  // make sure the wipe reaches media
+        return {};
+    }
+
+    Result<void> flushAndSync() override {
+        if (auto r = flushTail(); !r) return r;  // commit the staged tail first
+        if (::fsync(fd_) != 0) {
+            return ioError(errno, "fsync failed");
+        }
+        ::ioctl(fd_, BLKFLSBUF);  // drop the bdev page cache (best effort)
+        // Belt-and-suspenders for the buffered fallback: force the verify pass
+        // to re-read from media. Harmless (a no-op cost) under O_DIRECT.
+        ::posix_fadvise(fd_, 0, 0, POSIX_FADV_DONTNEED);
+        return {};
+    }
+
+    Result<void> rereadPartTable() override {
+        ::ioctl(fd_, BLKRRPART);  // best effort; harmless if it fails
+        return {};
+    }
+
+private:
+    std::size_t roundUpToBlock(std::size_t x) const {
+        return (x + blockSize_ - 1) / blockSize_ * blockSize_;
+    }
+
+    // Write a full, block-aligned staging buffer at the current offset.
+    Result<void> flushFull() {
+        if (auto r = pwriteAll(wbuf_.get(), wfill_, offset_); !r) return r;
+        offset_ += static_cast<off_t>(wfill_);
+        wfill_ = 0;
+        return {};
+    }
+
+    // Write the partial staging remainder, zero-padded up to a block so the
+    // transfer stays O_DIRECT-legal. Advances the logical offset by the real
+    // (unpadded) byte count; the next write must seek() first.
+    Result<void> flushTail() {
+        if (wfill_ == 0) return {};
+        const std::size_t padded = roundUpToBlock(wfill_);
+        std::memset(wbuf_.get() + wfill_, 0, padded - wfill_);
+        if (auto r = pwriteAll(wbuf_.get(), padded, offset_); !r) return r;
+        offset_ += static_cast<off_t>(wfill_);
+        wfill_ = 0;
+        return {};
+    }
+
+    Result<void> pwriteAll(const std::byte* buf, std::size_t len, off_t off) {
+        std::size_t done = 0;
+        while (done < len) {
+            const ssize_t n = ::pwrite(fd_, buf + done, len - done, off + done);
+            if (n < 0) {
+                if (errno == EINTR) continue;
+                return ioError(errno, "Write to device failed");
+            }
+            if (n == 0) {
+                return Err(ErrorCode::Unknown, "Write returned zero bytes");
+            }
+            done += static_cast<std::size_t>(n);
+        }
+        return {};
+    }
+
+    // pread `len` (block-aligned) bytes into an aligned buffer at `off`. Block
+    // devices only short-read at EOF, so a partial return ends the fill.
+    Result<std::size_t> preadAligned(std::byte* buf, std::size_t len,
+                                     off_t off) {
+        std::size_t done = 0;
+        while (done < len) {
+            const ssize_t n = ::pread(fd_, buf + done, len - done, off + done);
+            if (n < 0) {
+                if (errno == EINTR) continue;
+                return ioError(errno, "Read from device failed");
+            }
+            if (n == 0) break;  // EOF
+            done += static_cast<std::size_t>(n);
+        }
+        return done;
+    }
+
+    int fd_ = -1;
+    bool direct_ = false;
+    unsigned blockSize_ = 512;
+    unsigned alignment_ = 4096;
+    std::uint64_t devSize_ = 0;
+    off_t offset_ = 0;
+
+    AlignedBuf wbuf_;        // write staging (aligned)
+    std::size_t wfill_ = 0;  // bytes currently staged in wbuf_
+
+    AlignedBuf rbuf_;        // read bounce / read-ahead (aligned)
+    std::size_t rpos_ = 0;   // start of unread data in rbuf_
+    std::size_t rlen_ = 0;   // bytes of unread data in rbuf_
+};
+
 class LinuxDriveBackend final : public IDriveBackend {
 public:
-    ~LinuxDriveBackend() override { close(); }
-
     Result<DriveList> listDrives() override {
         // -b bytes, -J JSON, -p full paths. No -d: the children[] tree carries
         // both the partitions and the holders (LVM/LUKS/RAID) the system check
@@ -352,8 +589,8 @@ public:
         return {};
     }
 
-    Result<void> openForWrite(const std::string& node) override {
-        close();
+    Result<std::unique_ptr<IRawDevice>> openForWrite(
+        const std::string& node) override {
         bool tryDirect = true;
         for (int attempt = 0; attempt < kOpenRetries; ++attempt) {
             const int flags =
@@ -367,13 +604,7 @@ public:
                                "Not a block device: " + node,
                                "--drive must point at a disk like /dev/sdX");
                 }
-                fd_ = fd;
-                direct_ = tryDirect;
-                if (auto r = initGeometry(); !r) {
-                    close();
-                    return r;
-                }
-                return {};
+                return makeDevice(fd, tryDirect);
             }
             // O_DIRECT unsupported on this target (e.g. some file-backed loops):
             // fall back to buffered and retry this attempt.
@@ -394,23 +625,15 @@ public:
                    "Close programs using it, or unmount it manually");
     }
 
-    Result<void> openForRead(const std::string& node) override {
-        close();
+    Result<std::unique_ptr<IRawDevice>> openForRead(
+        const std::string& node) override {
         bool tryDirect = true;
         for (int attempt = 0; attempt < kOpenRetries; ++attempt) {
             const int flags =
                 O_RDONLY | O_EXCL | O_CLOEXEC | (tryDirect ? O_DIRECT : 0);
             int fd = ::open(node.c_str(), flags);
             if (fd >= 0) {
-                fd_ = fd;
-                direct_ = tryDirect;
-                if (auto r = initGeometry(); !r) {
-                    close();
-                    return r;
-                }
-                // Without O_DIRECT, drop cached pages so reads hit the media.
-                if (!direct_) ::posix_fadvise(fd_, 0, 0, POSIX_FADV_DONTNEED);
-                return {};
+                return makeDevice(fd, tryDirect);
             }
             if (errno == EINVAL && tryDirect) {
                 tryDirect = false;
@@ -426,243 +649,14 @@ public:
         return Err(ErrorCode::DeviceBusy, "Device stayed busy for verify: " + node);
     }
 
-    void close() override {
-        if (fd_ >= 0) {
-            ::close(fd_);  // do not retry on EINTR (Linux closes the fd anyway)
-            fd_ = -1;
-        }
-        offset_ = 0;
-        wfill_ = 0;
-        rpos_ = 0;
-        rlen_ = 0;
-        devSize_ = 0;
-        direct_ = false;
-        wbuf_ = AlignedBuf{};
-        rbuf_ = AlignedBuf{};
-    }
-
-    Result<void> seek(std::uint64_t offset) override {
-        if (auto r = flushTail(); !r) return r;  // commit any staged write bytes
-        rpos_ = 0;                               // discard read-ahead
-        rlen_ = 0;
-        offset_ = static_cast<off_t>(offset);
-        return {};
-    }
-
-    Result<void> write(std::span<const std::byte> data) override {
-        const std::byte* p = data.data();
-        std::size_t left = data.size();
-        while (left > 0) {
-            const std::size_t space = kAlignBuf - wfill_;
-            const std::size_t n = std::min(left, space);
-            std::memcpy(wbuf_.get() + wfill_, p, n);
-            wfill_ += n;
-            p += n;
-            left -= n;
-            if (wfill_ == kAlignBuf) {
-                if (auto r = flushFull(); !r) return r;
-            }
-        }
-        return {};
-    }
-
-    Result<std::size_t> read(std::span<std::byte> buffer) override {
-        std::byte* out = buffer.data();
-        const std::size_t want = buffer.size();
-        std::size_t total = 0;
-        while (total < want) {
-            if (rlen_ == 0) {
-                if (devSize_ != 0 &&
-                    static_cast<std::uint64_t>(offset_) >= devSize_) {
-                    break;  // EOF
-                }
-                const std::uint64_t avail =
-                    devSize_ ? devSize_ - static_cast<std::uint64_t>(offset_)
-                             : kAlignBuf;
-                const std::size_t toRead = static_cast<std::size_t>(
-                    std::min<std::uint64_t>(kAlignBuf, avail));
-                auto n = preadAligned(rbuf_.get(), toRead, offset_);
-                if (!n) return std::unexpected(n.error());
-                if (*n == 0) break;  // EOF
-                offset_ += static_cast<off_t>(*n);
-                rpos_ = 0;
-                rlen_ = *n;
-            }
-            const std::size_t take = std::min(rlen_, want - total);
-            std::memcpy(out + total, rbuf_.get() + rpos_, take);
-            rpos_ += take;
-            rlen_ -= take;
-            total += take;
-        }
-        return total;
-    }
-
-    Result<std::uint64_t> deviceSize() override {
-        if (devSize_ != 0) return devSize_;
-        std::uint64_t bytes = 0;
-        if (::ioctl(fd_, BLKGETSIZE64, &bytes) != 0) {
-            return ioError(errno, "Cannot query device size (BLKGETSIZE64)");
-        }
-        devSize_ = bytes;
-        return bytes;
-    }
-
-    Result<void> wipeSignatures() override {
-        if (devSize_ == 0) {
-            if (auto s = deviceSize(); !s) return std::unexpected(s.error());
-        }
-
-        AlignedBuf zeros(static_cast<std::size_t>(kMiB), alignment_);
-        if (!zeros) {
-            return Err(ErrorCode::Unknown, "Out of memory (aligned wipe buffer)");
-        }
-        std::memset(zeros.get(), 0, static_cast<std::size_t>(kMiB));
-
-        // Ranges are block-aligned (0, kMiB multiples, and devSize_ which the
-        // kernel reports as a multiple of the logical block size), so each
-        // pwrite stays O_DIRECT-legal.
-        auto zeroRange = [&](std::uint64_t begin,
-                             std::uint64_t end) -> Result<void> {
-            std::uint64_t off = begin;
-            while (off < end) {
-                const std::size_t chunk = static_cast<std::size_t>(
-                    std::min<std::uint64_t>(end - off, kMiB));
-                if (auto r = pwriteAll(zeros.get(), chunk,
-                                       static_cast<off_t>(off));
-                    !r) {
-                    return r;
-                }
-                off += chunk;
-            }
-            return {};
-        };
-
-        const std::uint64_t head = std::min<std::uint64_t>(kWipeHead, devSize_);
-        if (auto r = zeroRange(0, head); !r) return r;
-        if (devSize_ > kWipeTail) {
-            const std::uint64_t tailBegin =
-                std::max<std::uint64_t>(head, devSize_ - kWipeTail);
-            if (auto r = zeroRange(tailBegin, devSize_); !r) return r;
-        }
-        ::fdatasync(fd_);  // make sure the wipe reaches media
-        return {};
-    }
-
-    Result<void> flushAndSync() override {
-        if (auto r = flushTail(); !r) return r;  // commit the staged tail first
-        if (::fsync(fd_) != 0) {
-            return ioError(errno, "fsync failed");
-        }
-        ::ioctl(fd_, BLKFLSBUF);  // drop the bdev page cache (best effort)
-        // Belt-and-suspenders for the buffered fallback: force the verify pass
-        // to re-read from media. Harmless (a no-op cost) under O_DIRECT.
-        ::posix_fadvise(fd_, 0, 0, POSIX_FADV_DONTNEED);
-        return {};
-    }
-
-    Result<void> rereadPartTable() override {
-        ::ioctl(fd_, BLKRRPART);  // best effort; harmless if it fails
-        return {};
-    }
-
 private:
-    // Cache block size + capacity and allocate the aligned I/O buffers. Called
-    // once per successful open.
-    Result<void> initGeometry() {
-        offset_ = 0;
-        wfill_ = 0;
-        rpos_ = 0;
-        rlen_ = 0;
-
-        int ssz = 0;
-        if (::ioctl(fd_, BLKSSZGET, &ssz) != 0 || ssz <= 0) {
-            ssz = 512;  // conservative default
-        }
-        blockSize_ = static_cast<unsigned>(ssz);
-        alignment_ = std::max<unsigned>(blockSize_, 4096u);
-
-        std::uint64_t bytes = 0;
-        devSize_ = (::ioctl(fd_, BLKGETSIZE64, &bytes) == 0) ? bytes : 0;
-
-        wbuf_ = AlignedBuf(kAlignBuf, alignment_);
-        rbuf_ = AlignedBuf(kAlignBuf, alignment_);
-        if (!wbuf_ || !rbuf_) {
-            return Err(ErrorCode::Unknown, "Out of memory (aligned I/O buffers)");
-        }
-        return {};
+    // Wrap an open fd in a LinuxRawDevice and cache its geometry. Takes ownership
+    // of the fd on success; closes it on an init failure (OOM).
+    static Result<std::unique_ptr<IRawDevice>> makeDevice(int fd, bool direct) {
+        auto dev = std::make_unique<LinuxRawDevice>(fd, direct);
+        if (auto r = dev->init(); !r) return std::unexpected(r.error());
+        return std::move(dev);
     }
-
-    std::size_t roundUpToBlock(std::size_t x) const {
-        return (x + blockSize_ - 1) / blockSize_ * blockSize_;
-    }
-
-    // Write a full, block-aligned staging buffer at the current offset.
-    Result<void> flushFull() {
-        if (auto r = pwriteAll(wbuf_.get(), wfill_, offset_); !r) return r;
-        offset_ += static_cast<off_t>(wfill_);
-        wfill_ = 0;
-        return {};
-    }
-
-    // Write the partial staging remainder, zero-padded up to a block so the
-    // transfer stays O_DIRECT-legal. Advances the logical offset by the real
-    // (unpadded) byte count; the next write must seek() first.
-    Result<void> flushTail() {
-        if (wfill_ == 0) return {};
-        const std::size_t padded = roundUpToBlock(wfill_);
-        std::memset(wbuf_.get() + wfill_, 0, padded - wfill_);
-        if (auto r = pwriteAll(wbuf_.get(), padded, offset_); !r) return r;
-        offset_ += static_cast<off_t>(wfill_);
-        wfill_ = 0;
-        return {};
-    }
-
-    Result<void> pwriteAll(const std::byte* buf, std::size_t len, off_t off) {
-        std::size_t done = 0;
-        while (done < len) {
-            const ssize_t n = ::pwrite(fd_, buf + done, len - done, off + done);
-            if (n < 0) {
-                if (errno == EINTR) continue;
-                return ioError(errno, "Write to device failed");
-            }
-            if (n == 0) {
-                return Err(ErrorCode::Unknown, "Write returned zero bytes");
-            }
-            done += static_cast<std::size_t>(n);
-        }
-        return {};
-    }
-
-    // pread `len` (block-aligned) bytes into an aligned buffer at `off`. Block
-    // devices only short-read at EOF, so a partial return ends the fill.
-    Result<std::size_t> preadAligned(std::byte* buf, std::size_t len,
-                                     off_t off) {
-        std::size_t done = 0;
-        while (done < len) {
-            const ssize_t n = ::pread(fd_, buf + done, len - done, off + done);
-            if (n < 0) {
-                if (errno == EINTR) continue;
-                return ioError(errno, "Read from device failed");
-            }
-            if (n == 0) break;  // EOF
-            done += static_cast<std::size_t>(n);
-        }
-        return done;
-    }
-
-    int fd_ = -1;
-    bool direct_ = false;
-    unsigned blockSize_ = 512;
-    unsigned alignment_ = 4096;
-    std::uint64_t devSize_ = 0;
-    off_t offset_ = 0;
-
-    AlignedBuf wbuf_;        // write staging (aligned)
-    std::size_t wfill_ = 0;  // bytes currently staged in wbuf_
-
-    AlignedBuf rbuf_;        // read bounce / read-ahead (aligned)
-    std::size_t rpos_ = 0;   // start of unread data in rbuf_
-    std::size_t rlen_ = 0;   // bytes of unread data in rbuf_
 };
 
 }  // namespace
