@@ -7,32 +7,25 @@ namespace {
 
 class WindowsDriveBackend final : public IDriveBackend {
 public:
+    const char* name() const noexcept override { return "windows"; }
+
     Result<DriveList> listDrives() override {
         // noop — real enumeration lands with the Windows port (Phase 4).
         return DriveList{};
     }
-
-    const char* name() const noexcept override { return "windows"; }
 
     Result<MountedPartition> mount(const Partition&) override {
         return std::unexpected(unsupported().error());
     }
 
     Result<void> unmountAll(const std::string&) override { return unsupported(); }
-    Result<void> openForWrite(const std::string&) override { return unsupported(); }
-    Result<void> openForRead(const std::string&) override { return unsupported(); }
-    void close() override {}
-    Result<void> seek(std::uint64_t) override { return unsupported(); }
-    Result<void> write(std::span<const std::byte>) override { return unsupported(); }
-    Result<std::size_t> read(std::span<std::byte>) override {
+
+    Result<std::unique_ptr<IRawDevice>> openForWrite(const std::string&) override {
         return std::unexpected(unsupported().error());
     }
-    Result<std::uint64_t> deviceSize() override {
+    Result<std::unique_ptr<IRawDevice>> openForRead(const std::string&) override {
         return std::unexpected(unsupported().error());
     }
-    Result<void> wipeSignatures() override { return unsupported(); }
-    Result<void> flushAndSync() override { return unsupported(); }
-    Result<void> rereadPartTable() override { return {}; }
 
 private:
     static Result<void> unsupported() {
