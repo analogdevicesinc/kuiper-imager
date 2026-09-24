@@ -56,6 +56,15 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
+      - name: Test (unit suite)
+        run: ctest --test-dir build-ci -LE integration --output-on-failure
+
+      - name: Test (Linux loopback integration, root)
+        if: runner.os == 'Linux'
+        run: |
+          sudo -E env "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" \
+            ctest --test-dir build-ci -L integration --output-on-failure
+
       - name: Smoke test (kli version)
         run: ./build-ci/src/cli/kli version
 
