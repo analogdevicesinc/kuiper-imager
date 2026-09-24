@@ -130,7 +130,7 @@ Result<std::string> chooseZipEntry(const fs::path& path) {
 
 // Streaming write state shared with the decompressor. See docs: flash-pipeline.
 struct WriteCtx {
-    IDriveBackend& dev;
+    IRawDevice& dev;
     std::uint64_t capacity;
     std::uint64_t deferHead;
     std::vector<std::byte>& head;
@@ -259,7 +259,7 @@ Result<void> decompressToDevice(const fs::path& imagePath, WriteCtx& ctx) {
 }
 
 // The backend handles all block alignment; callers pass plain byte counts.
-Result<void> hashDeviceRange(IDriveBackend& dev, std::uint64_t length,
+Result<void> hashDeviceRange(IRawDevice& dev, std::uint64_t length,
                              Sha256& hash,
                              const ProgressFn& onProgress,
                              const CancelToken& cancel, const char* message) {
@@ -303,14 +303,6 @@ Result<std::uint64_t> statSource(const fs::path& path) {
     }
     return size;
 }
-
-// Runs IDriveBackend::close() on every exit path; set dev=nullptr to disarm.
-struct Closer {
-    IDriveBackend* dev = nullptr;
-    ~Closer() {
-        if (dev) dev->close();
-    }
-};
 
 }  // namespace
 
@@ -397,16 +389,16 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
     }
 
     // Bounded EBUSY retry lives inside the backend (udev may re-open the device).
-    if (auto r = backend_->openForWrite(driveNode); !r) {
-        return std::unexpected(r.error());
-    }
-    Closer closer{backend_.get()};
+    // The handle owns the fd for the rest of this scope (RAII closes on return).
+    auto opened = backend_->openForWrite(driveNode);
+    if (!opened) return std::unexpected(opened.error());
+    IRawDevice& dev = **opened;
 
-    auto capacity = backend_->deviceSize();
+    auto capacity = dev.deviceSize();
     if (!capacity) return std::unexpected(capacity.error());
 
     // Wipe signatures so a smaller image can't leave a ghost partition table.
-    if (auto r = backend_->wipeSignatures(); !r) {
+    if (auto r = dev.wipeSignatures(); !r) {
         return std::unexpected(r.error());
     }
 
@@ -418,10 +410,10 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
     std::vector<std::byte> head;
     head.reserve(static_cast<std::size_t>(kDeferHead));
 
-    if (auto r = backend_->seek(kDeferHead); !r) {
+    if (auto r = dev.seek(kDeferHead); !r) {
         return std::unexpected(r.error());
     }
-    WriteCtx ctx{*backend_, *capacity, kDeferHead, head,
+    WriteCtx ctx{dev, *capacity, kDeferHead, head,
                  fullHash,  options.verify ? &bodyHash : nullptr,
                  compressedSize, onProgress, cancel};
     const auto tWrite = Clock::now();
@@ -438,7 +430,7 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
 
     report(Progress::Phase::Finalizing, "Flushing to device");
     const auto tFlush = Clock::now();
-    if (auto r = backend_->flushAndSync(); !r) {
+    if (auto r = dev.flushAndSync(); !r) {
         return std::unexpected(r.error());
     }
     timings.flushSec = elapsed(tFlush);
@@ -451,11 +443,11 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
     const auto tVerify = Clock::now();
     if (options.verify && bodyWritten > 0) {
         report(Progress::Phase::Verifying, "Verifying image");
-        if (auto r = backend_->seek(kDeferHead); !r) {
+        if (auto r = dev.seek(kDeferHead); !r) {
             return std::unexpected(r.error());
         }
         Sha256 readBody;
-        if (auto r = hashDeviceRange(*backend_, bodyWritten, readBody, onProgress,
+        if (auto r = hashDeviceRange(dev, bodyWritten, readBody, onProgress,
                                      cancel, "Verifying image");
             !r) {
             return std::unexpected(r.error());
@@ -471,28 +463,28 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
     // Commit the head (partition table) last, then flush and re-read.
     const auto tHead = Clock::now();
     report(Progress::Phase::Finalizing, "Writing partition table");
-    if (auto r = backend_->seek(0); !r) {
+    if (auto r = dev.seek(0); !r) {
         return std::unexpected(r.error());
     }
-    if (auto r = backend_->write(std::span<const std::byte>(head.data(),
-                                                           head.size()));
+    if (auto r = dev.write(std::span<const std::byte>(head.data(),
+                                                      head.size()));
         !r) {
         return std::unexpected(r.error());
     }
-    if (auto r = backend_->flushAndSync(); !r) {
+    if (auto r = dev.flushAndSync(); !r) {
         return std::unexpected(r.error());
     }
-    backend_->rereadPartTable();  // best-effort; ignore result
+    dev.rereadPartTable();  // best-effort; ignore result
 
     // Verify the committed head matches the bytes we retained.
     report(Progress::Phase::Verifying, "Verifying partition table");
-    if (auto r = backend_->seek(0); !r) {
+    if (auto r = dev.seek(0); !r) {
         return std::unexpected(r.error());
     }
     std::vector<std::byte> readHead(head.size());
     std::size_t got = 0;
     while (got < readHead.size()) {
-        auto n = backend_->read(
+        auto n = dev.read(
             std::span<std::byte>(readHead.data() + got, readHead.size() - got));
         if (!n) return std::unexpected(n.error());
         if (*n == 0) {
@@ -502,15 +494,12 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
         got += *n;
     }
     if (readHead != head) {
-        backend_->wipeSignatures();  // best effort: don't leave a bad table live
+        dev.wipeSignatures();  // best effort: don't leave a bad table live
         return Err(ErrorCode::HashMismatch,
                    "Verification failed: partition table differs from image");
     }
 
     timings.headSec = elapsed(tHead);
-
-    backend_->close();
-    closer.dev = nullptr;  // already closed
 
     timings.totalSec = elapsed(tStart);
     report(Progress::Phase::Done, "Done");
@@ -588,12 +577,11 @@ Result<FlashSummary> DriveService::writePreloader(
     if (auto r = backend_->unmountAll(partitionDevice); !r) {
         return std::unexpected(r.error());
     }
-    if (auto r = backend_->openForWrite(partitionDevice); !r) {
-        return std::unexpected(r.error());
-    }
-    Closer closer{backend_.get()};
+    auto opened = backend_->openForWrite(partitionDevice);
+    if (!opened) return std::unexpected(opened.error());
+    IRawDevice& dev = **opened;  // RAII closes on return
 
-    auto capacity = backend_->deviceSize();
+    auto capacity = dev.deviceSize();
     if (!capacity) return std::unexpected(capacity.error());
     if (preloaderSize > *capacity) {
         return Err(ErrorCode::DiskFull,
@@ -603,7 +591,7 @@ Result<FlashSummary> DriveService::writePreloader(
 
     // A preloader must start at the partition head — no deferral.
     report(Progress::Phase::Writing, "Writing preloader");
-    if (auto r = backend_->seek(0); !r) return std::unexpected(r.error());
+    if (auto r = dev.seek(0); !r) return std::unexpected(r.error());
 
     std::ifstream in(preloaderFile, std::ios::binary);
     if (!in) {
@@ -622,7 +610,7 @@ Result<FlashSummary> DriveService::writePreloader(
         if (got <= 0) break;
         const auto n = static_cast<std::size_t>(got);
         const auto* bytes = reinterpret_cast<const std::byte*>(buf.data());
-        if (auto r = backend_->write(std::span<const std::byte>(bytes, n)); !r) {
+        if (auto r = dev.write(std::span<const std::byte>(bytes, n)); !r) {
             return std::unexpected(r.error());
         }
         hash.update(bytes, n);
@@ -641,7 +629,7 @@ Result<FlashSummary> DriveService::writePreloader(
     }
 
     report(Progress::Phase::Finalizing, "Flushing to device");
-    if (auto r = backend_->flushAndSync(); !r) {
+    if (auto r = dev.flushAndSync(); !r) {
         return std::unexpected(r.error());
     }
 
@@ -649,9 +637,9 @@ Result<FlashSummary> DriveService::writePreloader(
 
     if (options.verify) {
         report(Progress::Phase::Verifying, "Verifying preloader");
-        if (auto r = backend_->seek(0); !r) return std::unexpected(r.error());
+        if (auto r = dev.seek(0); !r) return std::unexpected(r.error());
         Sha256 readBack;
-        if (auto r = hashDeviceRange(*backend_, written, readBack, onProgress,
+        if (auto r = hashDeviceRange(dev, written, readBack, onProgress,
                                      cancel, "Verifying preloader");
             !r) {
             return std::unexpected(r.error());
@@ -661,9 +649,6 @@ Result<FlashSummary> DriveService::writePreloader(
                        "Verification failed: partition differs from preloader");
         }
     }
-
-    backend_->close();
-    closer.dev = nullptr;  // already closed
 
     report(Progress::Phase::Done, "Done");
     return FlashSummary{written, digest};
