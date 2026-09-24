@@ -217,10 +217,14 @@ See <a class="reference internal" href="../how-it-works/core-library.html#core-l
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/gui</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">kuiper-imager</span></code> — the Qt Widgets GUI front-end (thin; early skeleton).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">docker/</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tests/</span></code></p></td>
+<td><p>The doctest suite: in-memory fakes, portable unit tests, and the root-only
+Linux loopback integration test. See <a class="reference internal" href="#testing"><span class="std std-ref">Testing</span></a> below.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">docker/</span></code></p></td>
 <td><p>The <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code> for the dev + Linux-build environment.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">docs/</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">docs/</span></code></p></td>
 <td><p>This Sphinx documentation.</p></td>
 </tr>
 </tbody>
@@ -282,14 +286,87 @@ session and launch it:</p>
 docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>dev<span class="w"> </span>./build/src/gui/kuiper-imager
 </pre></div>
 </div>
-</section>
 <hr class="docutils" />
+</section>
 <section id="testing">
-<h2>Testing<a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
-<p>There is no automated test suite yet — a <code class="docutils literal notranslate"><span class="pre">ctest</span></code> target is a planned addition.
-The CI pipeline’s smoke test is <code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">version</span></code>, which confirms the binary links
-and runs. When contributing, verify changes manually against the relevant
-command and note that in your commit (see <a class="reference internal" href="contributing.html#contributing"><span class="std std-ref">Contributing</span></a>).</p>
+<span id="id2"></span><h2>Testing<a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
+<p>The suite is built on <a class="icon link reference external" href="https://github.com/doctest/doctest" target="_blank">doctest</a>, pulled in
+by <code class="docutils literal notranslate"><span class="pre">FetchContent</span></code> (pinned) only when <code class="docutils literal notranslate"><span class="pre">KUIPER_IMAGER_TESTS</span></code> is on — so it is
+hermetic, needs no system package, and never touches the <code class="docutils literal notranslate"><span class="pre">deb-linux</span></code> build. The
+<code class="docutils literal notranslate"><span class="pre">dev</span></code> and <code class="docutils literal notranslate"><span class="pre">ci-*</span></code> presets enable it; <code class="docutils literal notranslate"><span class="pre">cli-only</span></code> and <code class="docutils literal notranslate"><span class="pre">deb-linux</span></code> do not.
+Everything lives under <code class="docutils literal notranslate"><span class="pre">tests/</span></code>.</p>
+<p><strong>Why it is testable.</strong> Every dependency that touches the outside world sits
+behind an interface the core already injects — <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code> and its
+<code class="docutils literal notranslate"><span class="pre">IRawDevice</span></code> handle for devices, <code class="docutils literal notranslate"><span class="pre">IHttpClient</span></code> for the network. The suite
+supplies in-memory fakes for each, so the real services run end to end with no
+hardware, no root, and no network:</p>
+<div class="table-wrapper colwidths-given docutils container">
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 26.0%" />
+<col style="width: 74.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Fake</p></th>
+<th class="head"><p>Stands in for</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FakeRawDevice</span></code></p></td>
+<td><p>An open device: a byte vector with a cursor. Records a write log (to assert
+the <a class="reference internal" href="../using-the-cli/flash.html#flash"><span class="std std-ref">defer-head ordering</span></a>) and can corrupt an offset to force a
+verify mismatch.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FakeDriveBackend</span></code></p></td>
+<td><p>The platform backend: a scripted drive list and capabilities, handing out a
+<code class="docutils literal notranslate"><span class="pre">FakeRawDevice</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FakeHttpClient</span></code></p></td>
+<td><p>The HTTP client: canned metadata and artifact bytes for the fetch path.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Two suites, two audiences:</strong></p>
+<div class="table-wrapper colwidths-given docutils container">
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22.0%" />
+<col style="width: 20.0%" />
+<col style="width: 58.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Target</p></th>
+<th class="head"><p>Where it runs</p></th>
+<th class="head"><p>Covers</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">kuiper_tests</span></code></p></td>
+<td><p>Everywhere, no root</p></td>
+<td><p>The write-target guard, the <code class="docutils literal notranslate"><span class="pre">flash</span></code> pipeline (bytes, size guard,
+verify-mismatch, defer-head ordering, cancellation, <code class="docutils literal notranslate"><span class="pre">--no-verify</span></code>),
+capabilities, layout identification, <code class="docutils literal notranslate"><span class="pre">ConfigurationService</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">ImageService</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">kuiper_linux_it</span></code></p></td>
+<td><p>Linux, root only</p></td>
+<td><p>The real <code class="docutils literal notranslate"><span class="pre">LinuxDriveBackend</span></code> / <code class="docutils literal notranslate"><span class="pre">LinuxRawDevice</span></code> flashing a loop device
+and reading it back — the O_DIRECT path against a real fd. Labelled
+<code class="docutils literal notranslate"><span class="pre">integration</span></code> so the default run skips it.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Run the portable suite with <code class="docutils literal notranslate"><span class="pre">ctest</span> <span class="pre">--preset</span> <span class="pre">dev</span></code> (or <code class="docutils literal notranslate"><span class="pre">ctest</span> <span class="pre">--test-dir</span>
+<span class="pre">build</span></code>). The integration test needs a loop device, so run it as root and select
+it by label:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>ctest<span class="w"> </span>--test-dir<span class="w"> </span>build<span class="w"> </span>-L<span class="w"> </span>integration<span class="w"> </span>--output-on-failure
+</pre></div>
+</div>
+<p>CI runs both: the portable suite on every build, then the loopback test in a
+separate root step. The <code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">version</span></code> smoke test still guards that the binary
+links and runs.</p>
 </section>
 </section>
 

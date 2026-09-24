@@ -213,8 +213,13 @@ mounted the handle <em>borrows</em> it (and leaves it alone on destruction);
 otherwise the backend mounts to a private temp dir and the handle unmounts and
 cleans up. A partition with no filesystem is an error.</p></li>
 </ul>
-<p><strong>Raw device I/O</strong> (one device open at a time, via <code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> /
-<code class="docutils literal notranslate"><span class="pre">openForRead</span></code>)</p>
+<p><strong>Raw device I/O</strong> (an RAII handle, via <code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code>)</p>
+<p><code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code> open the device and hand back a
+<code class="docutils literal notranslate"><span class="pre">std::unique_ptr&lt;IRawDevice&gt;</span></code> — an owning handle whose lifetime <em>is</em> the open
+session. The destructor closes the fd, so exactly one device is open for as long
+as the handle lives; there is no separate <code class="docutils literal notranslate"><span class="pre">close()</span></code> to forget and no
+“one-open-at-a-time” convention to police. The handle carries the byte-stream
+surface:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">seek</span></code> / <code class="docutils literal notranslate"><span class="pre">write</span></code> / <code class="docutils literal notranslate"><span class="pre">read</span></code> — a byte-stream abstraction. Callers pass
 arbitrary offsets and lengths; the backend does all short-write, short-read,
@@ -228,10 +233,22 @@ flash caller satisfies (it only ever seeks to 0 and the 1-MiB defer-head).</p></
 so verification reads media, not cache.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">rereadPartTable</span></code> — ask the kernel to re-read the table (best-effort).</p></li>
 </ul>
+<p>Splitting the open session into its own type keeps <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code> to six
+methods (a new OS implements the drive-level operations, not a fused I/O session)
+and lets the raw pipeline be unit-tested against an in-memory <code class="docutils literal notranslate"><span class="pre">IRawDevice</span></code> with
+no hardware.</p>
 <p>The preloader safety check needs no separate topology methods: it derives the
 owning drive and the target’s mount state directly from <code class="docutils literal notranslate"><span class="pre">listDrives()</span></code> — the
 drive that lists a partition is its owner, and each partition row already carries
 its own mountpoint — so no <code class="docutils literal notranslate"><span class="pre">/dev/Xp1</span></code> string surgery leaks into the contract.</p>
+<p><strong>Capabilities.</strong> <code class="docutils literal notranslate"><span class="pre">capabilities()</span></code> returns a <code class="docutils literal notranslate"><span class="pre">DriveCapabilities</span></code>
+<code class="docutils literal notranslate"><span class="pre">{enumerate,</span> <span class="pre">flash,</span> <span class="pre">mount}</span></code> describing what the backend can do on the host. A
+front-end gates commands on it up front — <code class="docutils literal notranslate"><span class="pre">list-drives</span></code> needs <code class="docutils literal notranslate"><span class="pre">enumerate</span></code>,
+<code class="docutils literal notranslate"><span class="pre">flash</span></code> needs <code class="docutils literal notranslate"><span class="pre">flash</span></code>, <code class="docutils literal notranslate"><span class="pre">configure</span></code> / <code class="docutils literal notranslate"><span class="pre">list-projects</span></code> need <code class="docutils literal notranslate"><span class="pre">mount</span></code> — so
+an unsupported action fails with a clear message instead of deep in a pipeline.
+The Linux backend reports all three true; the macOS/Windows stubs report all
+false. <code class="docutils literal notranslate"><span class="pre">DriveService::isSupported()</span></code> is the shorthand for “can this platform at
+least enumerate?”.</p>
 </section>
 <hr class="docutils" />
 <section id="selecting-a-backend">
@@ -345,9 +362,11 @@ core:</p>
 <section id="macos-and-windows-planned">
 <h2>macOS and Windows (Planned)<a class="headerlink" href="#macos-and-windows-planned" title="Link to this heading"></a></h2>
 <p>The macOS and Windows backends exist today as <strong>structural stubs</strong>: they
-implement <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code> so the tool compiles and links everywhere, but every
-operation returns <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>. They mark the seam the Phase 4 ports
-will fill (see <a class="reference internal" href="../development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a>):</p>
+implement <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code>’s six methods so the tool compiles and links
+everywhere, but <code class="docutils literal notranslate"><span class="pre">capabilities()</span></code> reports all-false and every operation returns
+<code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>. A front-end that checks capabilities never reaches those
+operations; it reports the platform as unsupported up front. They mark the seam
+the Phase 4 ports will fill (see <a class="reference internal" href="../development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a>):</p>
 <ul class="simple">
 <li><p><strong>macOS</strong> — enumeration via DiskArbitration + IOKit; raw open of
 <code class="docutils literal notranslate"><span class="pre">/dev/rdiskN</span></code> using a file descriptor obtained from <code class="docutils literal notranslate"><span class="pre">authopen</span></code> and passed
