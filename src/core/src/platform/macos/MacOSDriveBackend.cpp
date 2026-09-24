@@ -9,6 +9,9 @@ class MacOSDriveBackend final : public IDriveBackend {
 public:
     const char* name() const noexcept override { return "macos"; }
 
+    // No capabilities until the Phase 4 macOS port lands; front-ends gate on this.
+    DriveCapabilities capabilities() const noexcept override { return {}; }
+
     Result<DriveList> listDrives() override {
         // noop — real enumeration lands with the macOS port (Phase 4).
         return DriveList{};

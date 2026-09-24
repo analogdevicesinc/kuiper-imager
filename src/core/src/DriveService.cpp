@@ -680,4 +680,12 @@ const char* DriveService::backendName() const noexcept {
     return backend_ ? backend_->name() : "none";
 }
 
+DriveCapabilities DriveService::capabilities() const noexcept {
+    return backend_ ? backend_->capabilities() : DriveCapabilities{};
+}
+
+bool DriveService::isSupported() const noexcept {
+    return backend_ && backend_->capabilities().enumerate;
+}
+
 }  // namespace kuiper

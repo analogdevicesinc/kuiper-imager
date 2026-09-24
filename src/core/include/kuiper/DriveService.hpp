@@ -80,6 +80,14 @@ public:
 
     const char* backendName() const noexcept;
 
+    // What the active backend can do on this platform. A front-end gates commands
+    // on this rather than failing deep in a pipeline. Empty if no backend.
+    DriveCapabilities capabilities() const noexcept;
+
+    // True if this platform has a working drive backend (can at least enumerate).
+    // The macOS/Windows stubs report false until their Phase 4 ports land.
+    bool isSupported() const noexcept;
+
 private:
     std::unique_ptr<IDriveBackend> backend_;
 };
