@@ -185,260 +185,45 @@ private:
     std::size_t n_ = 0;
 };
 
-class LinuxDriveBackend final : public IDriveBackend {
+// One open raw-device session: owns the fd and the aligned staging/bounce
+// buffers, and closes the fd on destruction. Constructed by the backend's
+// openForWrite/openForRead once the exclusive open has succeeded; init() caches
+// the geometry and allocates the buffers. See docs: platform-backends.
+class LinuxRawDevice final : public IRawDevice {
 public:
-    ~LinuxDriveBackend() override { close(); }
+    LinuxRawDevice(int fd, bool direct) : fd_(fd), direct_(direct) {}
 
-    Result<DriveList> listDrives() override {
-        // -b bytes, -J JSON, -p full paths. No -d: the children[] tree carries
-        // both the partitions and the holders (LVM/LUKS/RAID) the system check
-        // walks. Columns are only what we consume. See docs: platform-backends.
-        QProcess proc;
-        proc.start("lsblk",
-                   {"-b", "-J", "-p", "-o",
-                    "NAME,SIZE,MODEL,RM,HOTPLUG,TRAN,TYPE,RO,FSTYPE,LABEL,"
-                    "MOUNTPOINT,MAJ:MIN"});
-        if (!proc.waitForStarted(3000)) {
-            return Err(ErrorCode::Unknown,
-                       "Failed to start 'lsblk'",
-                       "Is util-linux installed?");
-        }
-        if (!proc.waitForFinished(5000)) {
-            return Err(ErrorCode::Unknown, "'lsblk' did not finish in time");
-        }
-        if (proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
-            return Err(ErrorCode::Unknown, "'lsblk' failed",
-                       proc.readAllStandardError().toStdString());
-        }
-
-        QJsonParseError parseErr;
-        const auto doc =
-            QJsonDocument::fromJson(proc.readAllStandardOutput(), &parseErr);
-        if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
-            return Err(ErrorCode::Unknown, "Could not parse lsblk JSON",
-                       parseErr.errorString().toStdString());
-        }
-
-        const QString rootDev = rootDeviceId();  // "maj:min" of the disk under /
-
-        DriveList drives;
-        for (const auto& v : doc.object().value("blockdevices").toArray()) {
-            const auto obj = v.toObject();
-
-            // Only whole disks are flash candidates; skip virtual/optical nodes.
-            if (obj.value("type").toString() != "disk") continue;
-            const auto name = obj.value("name").toString();
-            if (name.startsWith("/dev/loop") || name.startsWith("/dev/ram") ||
-                name.startsWith("/dev/zram") || name.startsWith("/dev/sr")) {
-                continue;
-            }
-
-            Drive drive;
-            drive.node = name.toStdString();
-            drive.description =
-                obj.value("model").toString().trimmed().toStdString();
-            drive.sizeBytes = obj.value("size").toVariant().toULongLong();
-            drive.isRemovable = computeRemovable(obj);
-            drive.isSystem = subtreeIsSystem(obj, rootDev);
-
-            // Top-level partitions only. Kuiper cards use a simple partition
-            // table (no extended/logical partitions), so we do not recurse into
-            // nested children — which would also pull in LVM/LUKS/RAID mapper
-            // nodes that are not partitions of this drive.
-            for (const auto& c : obj.value("children").toArray()) {
-                drive.partitions.push_back(parsePartition(c.toObject()));
-            }
-            drives.push_back(std::move(drive));
-        }
-        return drives;
-    }
-
-    Result<MountedPartition> mount(const Partition& partition) override {
-        // Already mounted (e.g. desktop auto-mount): borrow it, don't touch it.
-        if (!partition.mountpoint.empty()) {
-            return MountedPartition(partition.mountpoint, {});
-        }
-        // Nothing to mount without a filesystem — the caller picked the wrong
-        // partition (e.g. the raw bootloader slot).
-        if (partition.fsType.empty()) {
-            return Err(ErrorCode::NotFound,
-                       "Partition has no filesystem to mount: " + partition.node,
-                       "Only a formatted partition (vfat/ext4) can be mounted.");
-        }
-
-        char tmpl[] = "/tmp/kuiper-mnt-XXXXXX";
-        const char* dir = ::mkdtemp(tmpl);
-        if (!dir) {
-            return ioError(errno, "Cannot create mount point for " +
-                                      partition.node);
-        }
-        const std::string mountDir = dir;
-
-        if (::mount(partition.node.c_str(), mountDir.c_str(),
-                    partition.fsType.c_str(), 0, nullptr) != 0) {
-            const int e = errno;
-            ::rmdir(mountDir.c_str());
-            return ioError(e, "Cannot mount " + partition.node + " (" +
-                                  partition.fsType + ")");
-        }
-
-        // Owning handle: unmount and remove the temp dir on scope exit.
-        return MountedPartition(mountDir, [mountDir] {
-            ::umount2(mountDir.c_str(), 0);
-            ::rmdir(mountDir.c_str());
-        });
-    }
-
-    const char* name() const noexcept override { return "linux"; }
-
-    Result<void> unmountAll(const std::string& node) override {
-        // Query the device tree. If lsblk can't read it (e.g. not a block
-        // device), there is nothing to unmount — let openForWrite give the
-        // definitive error instead.
-        QProcess proc;
-        proc.start("lsblk",
-                   {"-J", "-p", "-o", "NAME,TYPE,MOUNTPOINT",
-                    QString::fromStdString(node)});
-        if (!proc.waitForStarted(3000) || !proc.waitForFinished(5000) ||
-            proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
-            return {};
-        }
-        const auto doc =
-            QJsonDocument::fromJson(proc.readAllStandardOutput());
-        if (!doc.isObject()) return {};
-
-        std::vector<QString> mounts;  // filesystem mountpoints to umount
-        std::vector<QString> swaps;   // device paths active as swap
-        bool holder = false;          // md/LVM/LUKS stacked on the device
-
-        // Recursively walk the block tree collecting what must be released.
-        std::function<void(const QJsonObject&)> walk = [&](const QJsonObject& o) {
-            const QString type = o.value("type").toString();
-            const QString mp = o.value("mountpoint").toString();
-            const QString nm = o.value("name").toString();
-            if (type == "crypt" || type == "lvm" || type.startsWith("raid")) {
-                holder = true;
-            }
-            if (mp == "[SWAP]") {
-                swaps.push_back(nm);
-            } else if (!mp.isEmpty()) {
-                mounts.push_back(mp);
-            }
-            for (const auto& c : o.value("children").toArray()) {
-                walk(c.toObject());
-            }
-        };
-        for (const auto& v : doc.object().value("blockdevices").toArray()) {
-            walk(v.toObject());
-        }
-
-        if (holder) {
-            return Err(ErrorCode::DeviceBusy,
-                       "Device is in use by LVM/RAID/LUKS: " + node,
-                       "Deactivate the volume group / array first");
-        }
-
-        // Turn off swap, then unmount filesystems (deepest last-discovered
-        // first). Non-lazy: a genuinely busy mount is caught by O_EXCL later.
-        for (const auto& s : swaps) {
-            ::swapoff(s.toUtf8().constData());  // best effort
-        }
-        for (auto it = mounts.rbegin(); it != mounts.rend(); ++it) {
-            if (::umount2(it->toUtf8().constData(), 0) != 0) {
-                if (errno == EINVAL || errno == ENOENT) continue;  // not mounted
-                // EBUSY and friends: leave to the O_EXCL retry loop.
-            }
-        }
-        return {};
-    }
-
-    Result<void> openForWrite(const std::string& node) override {
-        close();
-        bool tryDirect = true;
-        for (int attempt = 0; attempt < kOpenRetries; ++attempt) {
-            const int flags =
-                O_RDWR | O_EXCL | O_CLOEXEC | (tryDirect ? O_DIRECT : 0);
-            int fd = ::open(node.c_str(), flags);
-            if (fd >= 0) {
-                struct stat st{};
-                if (::fstat(fd, &st) != 0 || !S_ISBLK(st.st_mode)) {
-                    ::close(fd);
-                    return Err(ErrorCode::InvalidImage,
-                               "Not a block device: " + node,
-                               "--drive must point at a disk like /dev/sdX");
-                }
-                fd_ = fd;
-                direct_ = tryDirect;
-                if (auto r = initGeometry(); !r) {
-                    close();
-                    return r;
-                }
-                return {};
-            }
-            // O_DIRECT unsupported on this target (e.g. some file-backed loops):
-            // fall back to buffered and retry this attempt.
-            if (errno == EINVAL && tryDirect) {
-                tryDirect = false;
-                --attempt;
-                continue;
-            }
-            if (errno == EBUSY) {
-                unmountAll(node);  // re-race the udev auto-remount, then retry
-                sleepBetweenRetries();
-                continue;
-            }
-            return ioError(errno, "Cannot open device for writing: " + node);
-        }
-        return Err(ErrorCode::DeviceBusy,
-                   "Device stayed busy: " + node,
-                   "Close programs using it, or unmount it manually");
-    }
-
-    Result<void> openForRead(const std::string& node) override {
-        close();
-        bool tryDirect = true;
-        for (int attempt = 0; attempt < kOpenRetries; ++attempt) {
-            const int flags =
-                O_RDONLY | O_EXCL | O_CLOEXEC | (tryDirect ? O_DIRECT : 0);
-            int fd = ::open(node.c_str(), flags);
-            if (fd >= 0) {
-                fd_ = fd;
-                direct_ = tryDirect;
-                if (auto r = initGeometry(); !r) {
-                    close();
-                    return r;
-                }
-                // Without O_DIRECT, drop cached pages so reads hit the media.
-                if (!direct_) ::posix_fadvise(fd_, 0, 0, POSIX_FADV_DONTNEED);
-                return {};
-            }
-            if (errno == EINVAL && tryDirect) {
-                tryDirect = false;
-                --attempt;
-                continue;
-            }
-            if (errno == EBUSY) {
-                sleepBetweenRetries();
-                continue;
-            }
-            return ioError(errno, "Cannot open device for reading: " + node);
-        }
-        return Err(ErrorCode::DeviceBusy, "Device stayed busy for verify: " + node);
-    }
-
-    void close() override {
+    ~LinuxRawDevice() override {
         if (fd_ >= 0) {
             ::close(fd_);  // do not retry on EINTR (Linux closes the fd anyway)
-            fd_ = -1;
         }
-        offset_ = 0;
-        wfill_ = 0;
-        rpos_ = 0;
-        rlen_ = 0;
-        devSize_ = 0;
-        direct_ = false;
-        wbuf_ = AlignedBuf{};
-        rbuf_ = AlignedBuf{};
+    }
+
+    LinuxRawDevice(const LinuxRawDevice&) = delete;
+    LinuxRawDevice& operator=(const LinuxRawDevice&) = delete;
+
+    // Cache block size + capacity and allocate the aligned I/O buffers. Called
+    // once, right after construction, before any I/O.
+    Result<void> init() {
+        int ssz = 0;
+        if (::ioctl(fd_, BLKSSZGET, &ssz) != 0 || ssz <= 0) {
+            ssz = 512;  // conservative default
+        }
+        blockSize_ = static_cast<unsigned>(ssz);
+        alignment_ = std::max<unsigned>(blockSize_, 4096u);
+
+        std::uint64_t bytes = 0;
+        devSize_ = (::ioctl(fd_, BLKGETSIZE64, &bytes) == 0) ? bytes : 0;
+
+        wbuf_ = AlignedBuf(kAlignBuf, alignment_);
+        rbuf_ = AlignedBuf(kAlignBuf, alignment_);
+        if (!wbuf_ || !rbuf_) {
+            return Err(ErrorCode::Unknown, "Out of memory (aligned I/O buffers)");
+        }
+        // Without O_DIRECT, drop cached pages so reads hit the media (harmless
+        // for the write path).
+        if (!direct_) ::posix_fadvise(fd_, 0, 0, POSIX_FADV_DONTNEED);
+        return {};
     }
 
     Result<void> seek(std::uint64_t offset) override {
@@ -566,32 +351,6 @@ public:
     }
 
 private:
-    // Cache block size + capacity and allocate the aligned I/O buffers. Called
-    // once per successful open.
-    Result<void> initGeometry() {
-        offset_ = 0;
-        wfill_ = 0;
-        rpos_ = 0;
-        rlen_ = 0;
-
-        int ssz = 0;
-        if (::ioctl(fd_, BLKSSZGET, &ssz) != 0 || ssz <= 0) {
-            ssz = 512;  // conservative default
-        }
-        blockSize_ = static_cast<unsigned>(ssz);
-        alignment_ = std::max<unsigned>(blockSize_, 4096u);
-
-        std::uint64_t bytes = 0;
-        devSize_ = (::ioctl(fd_, BLKGETSIZE64, &bytes) == 0) ? bytes : 0;
-
-        wbuf_ = AlignedBuf(kAlignBuf, alignment_);
-        rbuf_ = AlignedBuf(kAlignBuf, alignment_);
-        if (!wbuf_ || !rbuf_) {
-            return Err(ErrorCode::Unknown, "Out of memory (aligned I/O buffers)");
-        }
-        return {};
-    }
-
     std::size_t roundUpToBlock(std::size_t x) const {
         return (x + blockSize_ - 1) / blockSize_ * blockSize_;
     }
@@ -663,6 +422,245 @@ private:
     AlignedBuf rbuf_;        // read bounce / read-ahead (aligned)
     std::size_t rpos_ = 0;   // start of unread data in rbuf_
     std::size_t rlen_ = 0;   // bytes of unread data in rbuf_
+};
+
+class LinuxDriveBackend final : public IDriveBackend {
+public:
+    Result<DriveList> listDrives() override {
+        // -b bytes, -J JSON, -p full paths. No -d: the children[] tree carries
+        // both the partitions and the holders (LVM/LUKS/RAID) the system check
+        // walks. Columns are only what we consume. See docs: platform-backends.
+        QProcess proc;
+        proc.start("lsblk",
+                   {"-b", "-J", "-p", "-o",
+                    "NAME,SIZE,MODEL,RM,HOTPLUG,TRAN,TYPE,RO,FSTYPE,LABEL,"
+                    "MOUNTPOINT,MAJ:MIN"});
+        if (!proc.waitForStarted(3000)) {
+            return Err(ErrorCode::Unknown,
+                       "Failed to start 'lsblk'",
+                       "Is util-linux installed?");
+        }
+        if (!proc.waitForFinished(5000)) {
+            return Err(ErrorCode::Unknown, "'lsblk' did not finish in time");
+        }
+        if (proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
+            return Err(ErrorCode::Unknown, "'lsblk' failed",
+                       proc.readAllStandardError().toStdString());
+        }
+
+        QJsonParseError parseErr;
+        const auto doc =
+            QJsonDocument::fromJson(proc.readAllStandardOutput(), &parseErr);
+        if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
+            return Err(ErrorCode::Unknown, "Could not parse lsblk JSON",
+                       parseErr.errorString().toStdString());
+        }
+
+        const QString rootDev = rootDeviceId();  // "maj:min" of the disk under /
+
+        DriveList drives;
+        for (const auto& v : doc.object().value("blockdevices").toArray()) {
+            const auto obj = v.toObject();
+
+            // Only whole disks are flash candidates; skip virtual/optical nodes.
+            if (obj.value("type").toString() != "disk") continue;
+            const auto name = obj.value("name").toString();
+            if (name.startsWith("/dev/loop") || name.startsWith("/dev/ram") ||
+                name.startsWith("/dev/zram") || name.startsWith("/dev/sr")) {
+                continue;
+            }
+
+            Drive drive;
+            drive.node = name.toStdString();
+            drive.description =
+                obj.value("model").toString().trimmed().toStdString();
+            drive.sizeBytes = obj.value("size").toVariant().toULongLong();
+            drive.isRemovable = computeRemovable(obj);
+            drive.isSystem = subtreeIsSystem(obj, rootDev);
+
+            // Top-level partitions only. Kuiper cards use a simple partition
+            // table (no extended/logical partitions), so we do not recurse into
+            // nested children — which would also pull in LVM/LUKS/RAID mapper
+            // nodes that are not partitions of this drive.
+            for (const auto& c : obj.value("children").toArray()) {
+                drive.partitions.push_back(parsePartition(c.toObject()));
+            }
+            drives.push_back(std::move(drive));
+        }
+        return drives;
+    }
+
+    Result<MountedPartition> mount(const Partition& partition) override {
+        // Already mounted (e.g. desktop auto-mount): borrow it, don't touch it.
+        if (!partition.mountpoint.empty()) {
+            return MountedPartition(partition.mountpoint, {});
+        }
+        // Nothing to mount without a filesystem — the caller picked the wrong
+        // partition (e.g. the raw bootloader slot).
+        if (partition.fsType.empty()) {
+            return Err(ErrorCode::NotFound,
+                       "Partition has no filesystem to mount: " + partition.node,
+                       "Only a formatted partition (vfat/ext4) can be mounted.");
+        }
+
+        char tmpl[] = "/tmp/kuiper-mnt-XXXXXX";
+        const char* dir = ::mkdtemp(tmpl);
+        if (!dir) {
+            return ioError(errno, "Cannot create mount point for " +
+                                      partition.node);
+        }
+        const std::string mountDir = dir;
+
+        if (::mount(partition.node.c_str(), mountDir.c_str(),
+                    partition.fsType.c_str(), 0, nullptr) != 0) {
+            const int e = errno;
+            ::rmdir(mountDir.c_str());
+            return ioError(e, "Cannot mount " + partition.node + " (" +
+                                  partition.fsType + ")");
+        }
+
+        // Owning handle: unmount and remove the temp dir on scope exit.
+        return MountedPartition(mountDir, [mountDir] {
+            ::umount2(mountDir.c_str(), 0);
+            ::rmdir(mountDir.c_str());
+        });
+    }
+
+    const char* name() const noexcept override { return "linux"; }
+
+    DriveCapabilities capabilities() const noexcept override {
+        return {.enumerate = true, .flash = true, .mount = true};
+    }
+
+    Result<void> unmountAll(const std::string& node) override {
+        // Query the device tree. If lsblk can't read it (e.g. not a block
+        // device), there is nothing to unmount — let openForWrite give the
+        // definitive error instead.
+        QProcess proc;
+        proc.start("lsblk",
+                   {"-J", "-p", "-o", "NAME,TYPE,MOUNTPOINT",
+                    QString::fromStdString(node)});
+        if (!proc.waitForStarted(3000) || !proc.waitForFinished(5000) ||
+            proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
+            return {};
+        }
+        const auto doc =
+            QJsonDocument::fromJson(proc.readAllStandardOutput());
+        if (!doc.isObject()) return {};
+
+        std::vector<QString> mounts;  // filesystem mountpoints to umount
+        std::vector<QString> swaps;   // device paths active as swap
+        bool holder = false;          // md/LVM/LUKS stacked on the device
+
+        // Recursively walk the block tree collecting what must be released.
+        std::function<void(const QJsonObject&)> walk = [&](const QJsonObject& o) {
+            const QString type = o.value("type").toString();
+            const QString mp = o.value("mountpoint").toString();
+            const QString nm = o.value("name").toString();
+            if (type == "crypt" || type == "lvm" || type.startsWith("raid")) {
+                holder = true;
+            }
+            if (mp == "[SWAP]") {
+                swaps.push_back(nm);
+            } else if (!mp.isEmpty()) {
+                mounts.push_back(mp);
+            }
+            for (const auto& c : o.value("children").toArray()) {
+                walk(c.toObject());
+            }
+        };
+        for (const auto& v : doc.object().value("blockdevices").toArray()) {
+            walk(v.toObject());
+        }
+
+        if (holder) {
+            return Err(ErrorCode::DeviceBusy,
+                       "Device is in use by LVM/RAID/LUKS: " + node,
+                       "Deactivate the volume group / array first");
+        }
+
+        // Turn off swap, then unmount filesystems (deepest last-discovered
+        // first). Non-lazy: a genuinely busy mount is caught by O_EXCL later.
+        for (const auto& s : swaps) {
+            ::swapoff(s.toUtf8().constData());  // best effort
+        }
+        for (auto it = mounts.rbegin(); it != mounts.rend(); ++it) {
+            if (::umount2(it->toUtf8().constData(), 0) != 0) {
+                if (errno == EINVAL || errno == ENOENT) continue;  // not mounted
+                // EBUSY and friends: leave to the O_EXCL retry loop.
+            }
+        }
+        return {};
+    }
+
+    Result<std::unique_ptr<IRawDevice>> openForWrite(
+        const std::string& node) override {
+        bool tryDirect = true;
+        for (int attempt = 0; attempt < kOpenRetries; ++attempt) {
+            const int flags =
+                O_RDWR | O_EXCL | O_CLOEXEC | (tryDirect ? O_DIRECT : 0);
+            int fd = ::open(node.c_str(), flags);
+            if (fd >= 0) {
+                struct stat st{};
+                if (::fstat(fd, &st) != 0 || !S_ISBLK(st.st_mode)) {
+                    ::close(fd);
+                    return Err(ErrorCode::InvalidImage,
+                               "Not a block device: " + node,
+                               "--drive must point at a disk like /dev/sdX");
+                }
+                return makeDevice(fd, tryDirect);
+            }
+            // O_DIRECT unsupported on this target (e.g. some file-backed loops):
+            // fall back to buffered and retry this attempt.
+            if (errno == EINVAL && tryDirect) {
+                tryDirect = false;
+                --attempt;
+                continue;
+            }
+            if (errno == EBUSY) {
+                unmountAll(node);  // re-race the udev auto-remount, then retry
+                sleepBetweenRetries();
+                continue;
+            }
+            return ioError(errno, "Cannot open device for writing: " + node);
+        }
+        return Err(ErrorCode::DeviceBusy,
+                   "Device stayed busy: " + node,
+                   "Close programs using it, or unmount it manually");
+    }
+
+    Result<std::unique_ptr<IRawDevice>> openForRead(
+        const std::string& node) override {
+        bool tryDirect = true;
+        for (int attempt = 0; attempt < kOpenRetries; ++attempt) {
+            const int flags =
+                O_RDONLY | O_EXCL | O_CLOEXEC | (tryDirect ? O_DIRECT : 0);
+            int fd = ::open(node.c_str(), flags);
+            if (fd >= 0) {
+                return makeDevice(fd, tryDirect);
+            }
+            if (errno == EINVAL && tryDirect) {
+                tryDirect = false;
+                --attempt;
+                continue;
+            }
+            if (errno == EBUSY) {
+                sleepBetweenRetries();
+                continue;
+            }
+            return ioError(errno, "Cannot open device for reading: " + node);
+        }
+        return Err(ErrorCode::DeviceBusy, "Device stayed busy for verify: " + node);
+    }
+
+private:
+    // Wrap an open fd in a LinuxRawDevice and cache its geometry. Takes ownership
+    // of the fd on success; closes it on an init failure (OOM).
+    static Result<std::unique_ptr<IRawDevice>> makeDevice(int fd, bool direct) {
+        auto dev = std::make_unique<LinuxRawDevice>(fd, direct);
+        if (auto r = dev->init(); !r) return std::unexpected(r.error());
+        return std::move(dev);
+    }
 };
 
 }  // namespace

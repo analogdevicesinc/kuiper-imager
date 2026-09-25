@@ -35,8 +35,14 @@ grouped into three areas:
   otherwise the backend mounts to a private temp dir and the handle unmounts and
   cleans up. A partition with no filesystem is an error.
 
-**Raw device I/O** (one device open at a time, via ``openForWrite`` /
-``openForRead``)
+**Raw device I/O** (an RAII handle, via ``openForWrite`` / ``openForRead``)
+
+``openForWrite`` / ``openForRead`` open the device and hand back a
+``std::unique_ptr<IRawDevice>`` — an owning handle whose lifetime *is* the open
+session. The destructor closes the fd, so exactly one device is open for as long
+as the handle lives; there is no separate ``close()`` to forget and no
+"one-open-at-a-time" convention to police. The handle carries the byte-stream
+surface:
 
 - ``seek`` / ``write`` / ``read`` — a byte-stream abstraction. Callers pass
   arbitrary offsets and lengths; the backend does all short-write, short-read,
@@ -50,10 +56,24 @@ grouped into three areas:
   so verification reads media, not cache.
 - ``rereadPartTable`` — ask the kernel to re-read the table (best-effort).
 
+Splitting the open session into its own type keeps ``IDriveBackend`` to six
+methods (a new OS implements the drive-level operations, not a fused I/O session)
+and lets the raw pipeline be unit-tested against an in-memory ``IRawDevice`` with
+no hardware.
+
 The preloader safety check needs no separate topology methods: it derives the
 owning drive and the target's mount state directly from ``listDrives()`` — the
 drive that lists a partition is its owner, and each partition row already carries
 its own mountpoint — so no ``/dev/Xp1`` string surgery leaks into the contract.
+
+**Capabilities.** ``capabilities()`` returns a ``DriveCapabilities``
+``{enumerate, flash, mount}`` describing what the backend can do on the host. A
+front-end gates commands on it up front — ``list-drives`` needs ``enumerate``,
+``flash`` needs ``flash``, ``configure`` / ``list-projects`` need ``mount`` — so
+an unsupported action fails with a clear message instead of deep in a pipeline.
+The Linux backend reports all three true; the macOS/Windows stubs report all
+false. ``DriveService::isSupported()`` is the shorthand for "can this platform at
+least enumerate?".
 
 ----
 
@@ -172,9 +192,11 @@ macOS and Windows (Planned)
 ---------------------------
 
 The macOS and Windows backends exist today as **structural stubs**: they
-implement ``IDriveBackend`` so the tool compiles and links everywhere, but every
-operation returns ``UnsupportedPlatform``. They mark the seam the Phase 4 ports
-will fill (see :ref:`roadmap`):
+implement ``IDriveBackend``'s six methods so the tool compiles and links
+everywhere, but ``capabilities()`` reports all-false and every operation returns
+``UnsupportedPlatform``. A front-end that checks capabilities never reaches those
+operations; it reports the platform as unsupported up front. They mark the seam
+the Phase 4 ports will fill (see :ref:`roadmap`):
 
 - **macOS** — enumeration via DiskArbitration + IOKit; raw open of
   ``/dev/rdiskN`` using a file descriptor obtained from ``authopen`` and passed

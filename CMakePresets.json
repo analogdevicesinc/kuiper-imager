@@ -9,7 +9,8 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "KUIPER_IMAGER_GUI": "ON"
+        "KUIPER_IMAGER_GUI": "ON",
+        "KUIPER_IMAGER_TESTS": "ON"
       }
     },
     {
@@ -43,7 +44,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "KUIPER_IMAGER_GUI": "ON",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "KUIPER_IMAGER_TESTS": "ON"
       }
     },
     {
