@@ -92,3 +92,48 @@ TEST_CASE("fetch refuses to overwrite an existing file without force") {
     std::string content((std::istreambuf_iterator<char>(in)), {});
     CHECK(content == "already here");
 }
+
+TEST_CASE("list-releases --unstable lists the CI's image artifacts") {
+    auto rig = makeRig();
+    rig.http->routes = {
+        {"/runs?",
+         R"({"workflow_runs":[
+             {"id":42,"head_branch":"main","head_sha":"abcdef1234567890"}]})"},
+        {"/artifacts",
+         R"({"artifacts":[
+             {"id":100,"name":"kuiper_full_64_image.zip","size_in_bytes":2000000000,
+              "expired":false,"expires_at":"2026-12-01T00:00:00Z",
+              "archive_download_url":"https://x/100/zip"},
+             {"id":101,"name":"kuiper_basic_32_image.zip","size_in_bytes":1000000000,
+              "expired":false,"archive_download_url":"https://x/101/zip"},
+             {"id":102,"name":"kuiper_full_64_meta.zip","size_in_bytes":1024,
+              "expired":false}]})"},
+    };
+
+    ReleaseQuery q;
+    q.channel = "unstable";
+    auto r = rig.service.listReleases(q);
+    REQUIRE_MESSAGE(r, (r ? "" : r.error().message));
+
+    REQUIRE(r->size() == 2);  // the *_meta companion is dropped
+    const Release* full = nullptr;
+    const Release* basic = nullptr;
+    for (const auto& rel : *r) {
+        if (rel.id == "gh:100") full = &rel;
+        if (rel.id == "gh:101") basic = &rel;
+    }
+    REQUIRE(full);
+    REQUIRE(basic);
+
+    CHECK(full->variant == "full");
+    CHECK(full->arch == "arm64");
+    CHECK(full->channel == "unstable");
+    CHECK(full->branch == "main");
+    CHECK(full->commit == "abcdef1");
+    CHECK(full->available);
+    REQUIRE(full->expiresAt.has_value());
+    CHECK(*full->expiresAt == "2026-12-01T00:00:00Z");
+
+    CHECK(basic->variant == "basic");
+    CHECK(basic->arch == "arm32");
+}
