@@ -27,7 +27,7 @@ jobs:
             preset: ci-linux
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
@@ -60,7 +60,7 @@ jobs:
         run: ./build-ci/src/cli/kli version
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: kuiper-imager-${{ matrix.name }}-unpackaged
           path: |
@@ -80,7 +80,7 @@ jobs:
           - { arch: amd64, runner: ubuntu-24.04 }
           - { arch: arm64, runner: ubuntu-24.04-arm }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Install build + packaging dependencies
         run: |
@@ -115,9 +115,10 @@ jobs:
         run: lintian build-deb/*.deb || true
 
       - name: Upload .deb
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: kuiper-imager-cli-deb-${{ matrix.arch }}
           path: build-deb/*.deb
           if-no-files-found: error
           retention-days: 14
+

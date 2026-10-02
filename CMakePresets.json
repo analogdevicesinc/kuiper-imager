@@ -74,11 +74,25 @@
       "name": "ci-windows",
       "inherits": "ci-base",
       "displayName": "CI — Windows (Ninja, Release, MSVC)",
-      "description": "Not yet exercised by CI. Ninja + MSVC requires the developer command prompt environment (e.g. ilammy/msvc-dev-cmd) to be sourced before configuring.",
+      "description": "Requires the developer command prompt environment (e.g. ilammy/msvc-dev-cmd) to be sourced before configuring. Dependencies (libarchive, OpenSSL, curl) come from vcpkg in manifest mode; set VCPKG_ROOT before configuring.",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
+      },
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "windows-installer",
+      "inherits": "ci-windows",
+      "displayName": "Windows installer (NSIS, Release)",
+      "description": "Same toolchain as ci-windows, with CPack NSIS packaging enabled to produce a Kuiper Imager setup.exe.",
+      "binaryDir": "${sourceDir}/build-windows-installer",
+      "cacheVariables": {
+        "KUIPER_IMAGER_PACKAGE": "ON"
       }
     }
   ],
@@ -88,6 +102,7 @@
     { "name": "deb-linux", "configurePreset": "deb-linux" },
     { "name": "ci-linux", "configurePreset": "ci-linux" },
     { "name": "ci-macos", "configurePreset": "ci-macos" },
-    { "name": "ci-windows", "configurePreset": "ci-windows" }
+    { "name": "ci-windows", "configurePreset": "ci-windows" },
+    { "name": "windows-installer", "configurePreset": "windows-installer" }
   ]
 }

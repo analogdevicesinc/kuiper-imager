@@ -1,0 +1,70 @@
+name: Windows Installer Build
+
+on:
+  push:
+    branches: [main, v2.0, ci-add-windows]
+  pull_request:
+    branches: [main, v2.0]
+  workflow_dispatch:
+    inputs:
+      qt_version:
+        description: 'Qt version to install'
+        required: true
+        type: string
+        default: '6.8.2'
+  workflow_call:
+    inputs:
+      qt_version:
+        required: true
+        type: string
+
+env:
+  QT_VERSION: 6.8.2
+
+jobs:
+  package-windows-installer:
+    name: package (windows installer)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up vcpkg (libarchive, OpenSSL, curl)
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: 'vcpkg.json'
+
+      - name: Set up MSVC dev environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
+
+      - name: Install Qt ${{ inputs.qt_version || env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ inputs.qt_version || env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Configure
+        run: cmake --preset windows-installer
+
+      - name: Build
+        run: cmake --build --preset windows-installer
+
+      - name: Smoke test (kli version)
+        run: .\build-windows-installer\src\cli\kli.exe version
+
+      - name: Package (cpack -G NSIS)
+        working-directory: build-windows-installer
+        run: cpack -G NSIS
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: kuiper-imager-windows-setup
+          path: build-windows-installer/kuiper-imager-setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
