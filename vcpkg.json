@@ -1,0 +1,15 @@
+{
+  "name": "kuiper-imager",
+  "version": "2.0.0",
+  "description": "Windows dependencies for kuiper-imager (libarchive, OpenSSL, curl). Qt is installed separately via aqtinstall.",
+  "builtin-baseline": "2024.12.16",
+  "dependencies": [
+    "libarchive",
+    "openssl",
+    {
+      "name": "curl",
+      "default-features": false,
+      "features": ["ssl"]
+    }
+  ]
+}
