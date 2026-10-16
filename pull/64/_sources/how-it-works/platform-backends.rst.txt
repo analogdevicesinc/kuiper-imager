@@ -71,9 +71,10 @@ its own mountpoint — so no ``/dev/Xp1`` string surgery leaks into the contract
 front-end gates commands on it up front — ``list-drives`` needs ``enumerate``,
 ``flash`` needs ``flash``, ``configure`` / ``list-projects`` need ``mount`` — so
 an unsupported action fails with a clear message instead of deep in a pipeline.
-The Linux backend reports all three true; the macOS/Windows stubs report all
-false. ``DriveService::isSupported()`` is the shorthand for "can this platform at
-least enumerate?".
+The Linux backend reports all three true; the Windows backend reports
+``enumerate`` and ``flash`` (``mount`` is off — ``configure`` is Linux-only for
+now); the macOS stub reports all false. ``DriveService::isSupported()`` is the
+shorthand for "can this platform at least enumerate?".
 
 ----
 
@@ -180,30 +181,62 @@ core:
    * - macOS*
      - ``/dev/rdiskN``
      - ``authopen`` hands back an fd over ``SCM_RIGHTS``
-   * - Windows*
+   * - Windows
      - ``\\.\PhysicalDriveN``
-     - UAC-elevated process
+     - Run from an elevated (Administrator) prompt
 
-\* Planned for Phase 4 — see below.
+\* macOS is still planned — see below.
 
 ----
 
-macOS and Windows (Planned)
----------------------------
+The Windows Backend
+-------------------
 
-The macOS and Windows backends exist today as **structural stubs**: they
-implement ``IDriveBackend``'s six methods so the tool compiles and links
-everywhere, but ``capabilities()`` reports all-false and every operation returns
-``UnsupportedPlatform``. A front-end that checks capabilities never reaches those
-operations; it reports the platform as unsupported up front. They mark the seam
-the Phase 4 ports will fill (see :ref:`roadmap`):
+The Windows backend implements enumeration and flashing (``configure`` is
+Linux-only for now, so ``capabilities().mount`` is false and the front-ends hide
+it). It uses Win32 directly — no subprocess.
 
-- **macOS** — enumeration via DiskArbitration + IOKit; raw open of
-  ``/dev/rdiskN`` using a file descriptor obtained from ``authopen`` and passed
-  back over ``SCM_RIGHTS``; ``DKIOCGETBLOCKCOUNT`` for size.
-- **Windows** — enumeration via SetupAPI + ``IOCTL_STORAGE_QUERY_PROPERTY``; raw
-  open of ``\\.\PhysicalDriveN`` from a UAC-elevated process, with
-  ``DeviceIoControl`` for lock, dismount, and size.
+**Enumeration.** SetupAPI (``GUID_DEVINTERFACE_DISK``) lists the disk device
+interfaces; ``IOCTL_STORAGE_GET_DEVICE_NUMBER`` maps each to its
+``\\.\PhysicalDriveN`` node. ``IOCTL_STORAGE_QUERY_PROPERTY`` gives the model and
+bus type (USB / SD / MMC ⇒ removable) and ``IOCTL_DISK_GET_LENGTH_INFO`` the
+size. Partitions come from ``IOCTL_DISK_GET_DRIVE_LAYOUT_EX``; each is enriched by
+walking the system's volumes and matching them to a disk + starting offset via
+``IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS`` (drive letter, filesystem, label). The
+disk backing ``%SystemDrive%`` is flagged ``isSystem`` so the two-tier guard
+protects it. Because Windows has no ``/dev/sdXN``, a partition's ``node`` is a
+backend-owned opaque identifier (the volume GUID path, or a synthetic token) — it
+is populated for display but not opened in this scope.
 
-Because they sit behind the funnel, filling them in touches nothing in
+**Raw I/O and locking.** ``openForWrite`` locks and dismounts every volume on the
+target disk (``FSCTL_LOCK_VOLUME`` + ``FSCTL_DISMOUNT_VOLUME``) and *holds* the
+locks for the whole session — the equivalent of Linux's unmount + ``O_EXCL`` —
+then opens ``\\.\PhysicalDriveN`` with ``FILE_FLAG_NO_BUFFERING |
+FILE_FLAG_WRITE_THROUGH`` (the O_DIRECT analog) and
+``FSCTL_ALLOW_EXTENDED_DASD_IO``. The handle is wrapped in the shared
+``AlignedRawDevice`` engine, so all the alignment, defer-head, and verify logic is
+identical to Linux; only the thin positioned-I/O primitive (``WindowsBlockIo``:
+``ReadFile`` / ``WriteFile`` over ``OVERLAPPED``, ``FlushFileBuffers``,
+``IOCTL_DISK_UPDATE_PROPERTIES``) is Windows-specific. Raw device access needs an
+elevated prompt; ``ERROR_ACCESS_DENIED`` maps to ``PermissionDenied`` with a "run
+as Administrator" hint.
+
+The C libraries (libarchive, OpenSSL, libcurl) come from vcpkg on Windows; the
+Linux build keeps using the distro packages.
+
+----
+
+macOS (Planned)
+---------------
+
+The macOS backend is still a **structural stub**: it implements
+``IDriveBackend``'s methods so the tool compiles and links, but ``capabilities()``
+reports all-false and every operation returns ``UnsupportedPlatform``. A front-end
+that checks capabilities reports the platform as unsupported up front. The port
+(see :ref:`roadmap`) will add enumeration via DiskArbitration + IOKit and a raw
+open of ``/dev/rdiskN`` using a descriptor from ``authopen`` passed over
+``SCM_RIGHTS`` (``DKIOCGETBLOCKCOUNT`` for size) — reusing the same
+``AlignedRawDevice`` engine behind a macOS ``BlockIo``.
+
+Because it sits behind the funnel, filling it in touches nothing in
 ``ImageService``, ``ConfigurationService``, or either front-end.
