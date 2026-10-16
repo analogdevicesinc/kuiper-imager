@@ -74,11 +74,14 @@
       "name": "ci-windows",
       "inherits": "ci-base",
       "displayName": "CI — Windows (Ninja, Release, MSVC)",
-      "description": "Not yet exercised by CI. Ninja + MSVC requires the developer command prompt environment (e.g. ilammy/msvc-dev-cmd) to be sourced before configuring.",
+      "description": "Ninja + MSVC requires the developer command prompt environment (e.g. ilammy/msvc-dev-cmd) to be sourced before configuring. The C libraries (libarchive, curl, openssl) come from vcpkg manifest mode via the toolchain file below.",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake"
       }
     }
   ],
