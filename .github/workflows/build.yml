@@ -25,6 +25,9 @@ jobs:
           - name: linux
             os: ubuntu-24.04
             preset: ci-linux
+          - name: windows
+            os: windows-latest
+            preset: ci-windows
 
     steps:
       - uses: actions/checkout@v7
@@ -44,6 +47,16 @@ jobs:
             libdbus-1-3 \
             libglib2.0-0t64
 
+      # Windows C libraries (libarchive, curl, openssl) come from vcpkg manifest
+      # mode via the ci-windows preset's toolchain; only Ninja + MSVC need wiring.
+      - name: Set up MSVC + Ninja (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Ninja (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja --no-progress
+
       - name: Install Qt ${{ env.QT_VERSION }}
         uses: jurplel/install-qt-action@v4
         with:
@@ -56,16 +69,55 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
-      - name: Smoke test (kli version)
+      - name: Smoke test (Linux)
+        if: runner.os == 'Linux'
         run: ./build-ci/src/cli/kli version
 
-      - name: Upload binaries
+      # Assemble a self-contained folder: the exes, the vcpkg C-library DLLs, and
+      # (via windeployqt) the Qt DLLs, the Windows platform plugin, and the MSVC
+      # runtime. The result runs on a clean Windows host with nothing installed.
+      - name: Stage runnable Windows bundle
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build-ci/src/cli/kli.exe dist
+          Copy-Item build-ci/src/gui/kuiper-imager.exe dist
+          $vcpkgBin = "build-ci/vcpkg_installed/x64-windows/bin"
+          if (Test-Path $vcpkgBin) { Copy-Item "$vcpkgBin/*.dll" dist }
+          Copy-Item build-ci/src/cli/*.dll dist -ErrorAction SilentlyContinue
+          Copy-Item build-ci/src/gui/*.dll dist -ErrorAction SilentlyContinue
+          windeployqt --release --no-translations --compiler-runtime dist/kli.exe
+          windeployqt --release --no-translations --compiler-runtime dist/kuiper-imager.exe
+
+      # Prove the bundle is self-contained: run it with PATH stripped to the
+      # system dirs, so every dependency must resolve from the bundle itself.
+      # list-drives also exercises the real SetupAPI enumeration on the runner.
+      - name: Smoke test the Windows bundle (clean PATH)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:SystemRoot;$env:SystemRoot\System32"
+          ./dist/kli.exe version
+          ./dist/kli.exe list-drives
+
+      - name: Upload Linux binaries
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
-          name: kuiper-imager-${{ matrix.name }}-unpackaged
+          name: kuiper-imager-linux-unpackaged
           path: |
             build-ci/src/cli/kli
             build-ci/src/gui/kuiper-imager
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows bundle
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: kuiper-imager-windows
+          path: dist/**
           if-no-files-found: error
           retention-days: 14
 
