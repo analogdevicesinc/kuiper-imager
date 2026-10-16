@@ -8,9 +8,9 @@ Development
    Set up a development environment, understand the project layout, and build
    the CLI, GUI, and packages
 
-Development and the Linux build happen in Docker; the (planned) Windows and macOS
-executables come from native CI runners rather than this container. This page
-covers the repository layout, the dev environment, and the build presets.
+Development and the Linux build happen in Docker; the Windows executables come
+from a native CI runner (macOS is still planned) rather than this container. This
+page covers the repository layout, the dev environment, and the build presets.
 
 ----
 
@@ -72,8 +72,9 @@ The build is driven by CMake presets:
        :ref:`installation`).
    * - ``ci-linux`` / ``ci-macos`` / ``ci-windows``
      - ``build-ci``
-     - Release CI builds. Only ``ci-linux`` is exercised today; the macOS and
-       Windows rows wait on the Phase 4 :ref:`backends <platform-backends>`.
+     - Release CI builds. ``ci-linux`` and ``ci-windows`` are exercised by CI
+       (``ci-windows`` pulls the C libraries from vcpkg); the macOS row waits on
+       its :ref:`backend <platform-backends>`.
 
 Configure and build with, for example, ``cmake --preset dev && cmake --build
 build``. The ``KUIPER_IMAGER_GUI`` option (set by the preset) toggles the GUI so
@@ -89,10 +90,21 @@ session and launch it:
 
 ----
 
-Testing
--------
+.. _testing:
 
-There is no automated test suite yet — a ``ctest`` target is a planned addition.
-The CI pipeline's smoke test is ``kli version``, which confirms the binary links
-and runs. When contributing, verify changes manually against the relevant
-command and note that in your commit (see :ref:`contributing`).
+Verification
+------------
+
+The automated test suite has been removed while the cross-platform backends land.
+Verification today is the CI build/smoke gate plus a manual flash check.
+
+- **CI** builds the CLI and GUI on Linux and Windows and runs ``kli version`` on
+  each, so a broken build or link fails the pipeline.
+- **Flash parity (Linux)** is checked by hand against a loop device: write an
+  image to ``/dev/loopN`` with ``--force`` and confirm the read-back verify
+  passes (the SHA-256 the tool reports matches the source). The whole
+  :ref:`flash pipeline <flash>` — wipe, defer-head write, verify — is
+  OS-agnostic (it runs above the backend), so this also exercises the logic the
+  Windows backend reuses through the shared ``AlignedRawDevice`` engine.
+- **Flash (Windows)** is validated on a real machine with an SD card, from an
+  elevated prompt, once CI confirms the backend compiles and links.
