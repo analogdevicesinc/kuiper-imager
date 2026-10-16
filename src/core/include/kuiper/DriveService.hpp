@@ -19,7 +19,7 @@ struct FlashTimings {
     double prepareSec = 0;      // unmount + open + wipe signatures
     double writeSec = 0;        // decompress + device write, serialized
     double decompressSec = 0;   //   of which: archive_read_data
-    double deviceWriteSec = 0;  //   of which: dev.write (memcpy + O_DIRECT pwrite)
+    double deviceWriteSec = 0;  //   of which: dev.write (memcpy + aligned device write)
     double flushSec = 0;        // flushAndSync (fsync)
     double verifySec = 0;       // body read-back + hash compare
     double headSec = 0;         // commit + verify partition table
