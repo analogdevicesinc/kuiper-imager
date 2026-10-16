@@ -20,14 +20,36 @@
 #include "kuiper/Version.hpp"
 #include "kuiper/http/HttpClient.hpp"
 
+#ifdef _WIN32
+// Forward-declared from kernel32 (auto-linked) so this portable file needs no
+// <windows.h>. Used once to switch the console to UTF-8.
+extern "C" __declspec(dllimport) int __stdcall SetConsoleOutputCP(unsigned int);
+#endif
+
 namespace {
 
 // Set from the SIGINT handler; polled by the flash CancelToken.
 std::atomic<bool> g_cancel{false};
 void onSigint(int) { g_cancel.store(true); }
 
+// Platform-specific help snippets: the whole-drive node example and the
+// elevation hint differ per OS (the rest of the usage is portable).
+#if defined(_WIN32)
+constexpr const char* kDriveExampleLong = "\\\\.\\PhysicalDrive1";
+constexpr const char* kDriveExampleShort = "\\\\.\\PhysicalDriveN";
+constexpr const char* kPrivilegeNote =
+    "Flashing requires elevation; run from an Administrator prompt.";
+#else
+constexpr const char* kDriveExampleLong = "/dev/sda or /dev/mmcblk0";
+constexpr const char* kDriveExampleShort = "/dev/sdX";
+constexpr const char* kPrivilegeNote =
+    "Flashing and intel preloader writes require root; run with sudo.";
+#endif
+
 void printUsage() {
-    std::puts(
+    // printf (not puts): the three %s below are the only format specifiers and
+    // the rest of the text contains no '%', so this is safe.
+    std::printf(
         "kli — Kuiper Imager CLI\n\n"
         "Usage:\n"
         "  kli version\n"
@@ -40,14 +62,14 @@ void printUsage() {
         "  kli configure --drive <dev> --project <name> --board <carrier>\n"
         "                [--dry-run] [--force]\n"
         "  kli help\n\n"
-        "A <dev> is always a whole drive, e.g. /dev/sda or /dev/mmcblk0.\n"
+        "A <dev> is always a whole drive, e.g. %s.\n"
         "Kuiper Imager finds the BOOT / rootfs / bootloader partitions itself.\n\n"
         "flash options:\n"
         "  -i, --image <file>   Local image: raw .img or .zip/.xz/.zst/.gz/.bz2\n"
-        "  -d, --drive <dev>    Target whole drive, e.g. /dev/sdX\n"
+        "  -d, --drive <dev>    Target whole drive, e.g. %s\n"
         "  -y, --yes            Skip the confirmation prompt\n"
-        "      --force          Bypass the removable-drive heuristic (internal\n"
-        "                       SD readers, /dev/loopN). Never the system-disk guard.\n"
+        "      --force          Bypass the removable-drive heuristic (internal card\n"
+        "                       readers, loopback/virtual disks). Never the system guard.\n"
         "      --no-verify      Skip the read-back verify (~half the wall time);\n"
         "                       the partition table is still written last & checked\n"
         "      --timings        Print a per-phase wall-clock breakdown\n\n"
@@ -74,7 +96,8 @@ void printUsage() {
         "      --dry-run        Show the copy plan without touching the card\n"
         "      --force          Bypass the removable/mounted-target heuristic for\n"
         "                       the bootloader partition (intel). Never the system disk.\n\n"
-        "Flashing and intel preloader writes require root; run with sudo.\n");
+        "%s\n",
+        kDriveExampleLong, kDriveExampleShort, kPrivilegeNote);
 }
 
 void printDrives(const kuiper::DriveList& drives) {
@@ -119,8 +142,25 @@ void printError(const kuiper::Error& e) {
     }
 }
 
+// Fail fast with a clear UnsupportedPlatform error when the active backend can't
+// do what the command needs, instead of failing deep in a pipeline. The
+// macOS/Windows stubs report no capabilities until their Phase 4 ports land.
+int failUnsupported(const kuiper::DriveService& svc, const char* action) {
+    const auto e = kuiper::Err(
+        kuiper::ErrorCode::UnsupportedPlatform,
+        std::string(action) + " is not supported on this platform",
+        std::string("Active drive backend: ") + svc.backendName(),
+        std::string("The ") + svc.backendName() +
+            " backend is a stub; its port is planned (see the roadmap).").error();
+    printError(e);
+    return exitCodeFor(e.code);
+}
+
 int cmdListDrives() {
     kuiper::DriveService service;
+    if (!service.capabilities().enumerate) {
+        return failUnsupported(service, "Listing drives");
+    }
     const auto result = service.listDrives();
     if (!result) {
         printError(result.error());  // errors → stderr; results → stdout
@@ -330,6 +370,9 @@ int cmdListProjects(const std::vector<std::string>& args) {
     }
 
     kuiper::DriveService drives;
+    if (!drives.capabilities().mount) {
+        return failUnsupported(drives, "Listing projects");
+    }
     auto boot = openBoot(drives, drive);
     if (!boot) {
         printError(boot.error());
@@ -420,6 +463,11 @@ int cmdFlash(const std::vector<std::string>& args) {
         return 2;
     }
 
+    kuiper::DriveService service;
+    if (!service.capabilities().flash) {
+        return failUnsupported(service, "Flashing");
+    }
+
     // Loud, unambiguous confirmation — this erases the drive.
     if (!assumeYes) {
         std::fprintf(stderr,
@@ -438,7 +486,6 @@ int cmdFlash(const std::vector<std::string>& args) {
 
     std::signal(SIGINT, onSigint);
 
-    kuiper::DriveService service;
     kuiper::WriteOptions opts;
     opts.force = force;
     opts.verify = verify;
@@ -504,6 +551,9 @@ int cmdConfigure(const std::vector<std::string>& args) {
     }
 
     kuiper::DriveService drives;
+    if (!drives.capabilities().mount) {
+        return failUnsupported(drives, "Configuring cards");
+    }
     auto boot = openBoot(drives, drive);
     if (!boot) {
         printError(boot.error());
@@ -586,7 +636,12 @@ int cmdConfigure(const std::vector<std::string>& args) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    // QCoreApplication: needed for QProcess (lsblk) and Qt event handling.
+#ifdef _WIN32
+    // Render accented model names / non-ASCII output correctly on the console.
+    ::SetConsoleOutputCP(65001);  // CP_UTF8
+#endif
+
+    // QCoreApplication: needed for QProcess (Linux lsblk) and Qt event handling.
     QCoreApplication app(argc, argv);
 
     std::vector<std::string> args(argv + 1, argv + argc);

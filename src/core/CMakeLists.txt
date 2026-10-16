@@ -24,15 +24,21 @@ add_library(kuiper STATIC
     src/ImageService.cpp
     src/http/CurlHttpClient.cpp
     src/image/GitHubActionsProvider.cpp
+    src/platform/common/AlignedRawDevice.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
     ${KUIPER_PLATFORM_SOURCES})
 
-target_include_directories(kuiper PUBLIC include)
+target_include_directories(kuiper PUBLIC include PRIVATE src)
 
 target_compile_definitions(kuiper PRIVATE _FILE_OFFSET_BITS=64)
 
 target_link_libraries(kuiper PUBLIC Qt6::Core
                               PRIVATE LibArchive::LibArchive OpenSSL::Crypto
                                       CURL::libcurl)
+
+# Native platform libraries for the per-OS drive backend.
+if(WIN32)
+    target_link_libraries(kuiper PRIVATE setupapi)
+endif()
 
 add_library(kuiper::kuiper ALIAS kuiper)

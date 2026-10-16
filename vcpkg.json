@@ -1,0 +1,10 @@
+{
+  "name": "kuiper-imager",
+  "version": "2.0.0",
+  "description": "C-library dependencies for the Windows/macOS builds. Linux builds use the distro packages and ignore this manifest (no vcpkg toolchain is passed).",
+  "dependencies": [
+    "libarchive",
+    "curl",
+    "openssl"
+  ]
+}

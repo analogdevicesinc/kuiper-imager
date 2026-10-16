@@ -23,9 +23,9 @@ namespace {
 constexpr const char* kApiBase =
     "https://api.github.com/repos/analogdevicesinc/kuiper";
 constexpr const char* kWorkflowFile = "kuiper2_0-build.yml";
-constexpr std::string_view kImageSuffix = "_image";
+constexpr std::string_view kImageSuffix = "_image.zip";
 
-// Parsed pieces of an artifact name like "kuiper_full_64_image".
+// Parsed pieces of an artifact name like "kuiper_full_64_image.zip".
 struct Variant {
     std::string type;  // "full" | "basic" (or the raw token if unrecognised)
     std::string arch;  // "arm32" | "arm64" (empty if unrecognised)
@@ -34,7 +34,7 @@ struct Variant {
 // The build encodes the ARM word size as "32"/"64"; surface it as arm32/arm64.
 Variant variantOf(const std::string& artifactName) {
     const QStringList parts = QString::fromStdString(artifactName).split('_');
-    if (parts.size() == 4 && parts.back() == QStringLiteral("image")) {
+    if (parts.size() == 4 && parts.back() == QStringLiteral("image.zip")) {
         const QString bits = parts[2];  // "32" | "64"
         std::string arch;
         if (bits == QStringLiteral("64")) arch = "arm64";
@@ -205,7 +205,7 @@ Result<DownloadSource> GitHubActionsProvider::resolve(const std::string& id) {
     DownloadSource src;
     src.url = metaUrl + "/zip";
     src.headers = apiHeaders();
-    src.filename = (name.empty() ? ("artifact-" + artId) : name) + ".zip";
+    src.filename = name.empty() ? ("artifact-" + artId + ".zip") : name;
     return src;
 }
 

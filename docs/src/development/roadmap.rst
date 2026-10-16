@@ -7,10 +7,10 @@ Roadmap
 
    What is built today and what is postponed, phase by phase
 
-Kuiper Imager is developed in phases. The core and the full Linux CLI workflow
-are done; the additional platform backends and the GUI are deliberately
-postponed but already have their seams in place, so filling them in touches
-nothing above the :ref:`funnel <architecture>`.
+Kuiper Imager is developed in phases. The core, the full Linux CLI workflow, and
+the Windows imaging backend are done; the macOS backend and the GUI are
+deliberately postponed but already have their seams in place, so filling them in
+touches nothing above the :ref:`funnel <architecture>`.
 
 ----
 
@@ -38,14 +38,17 @@ Phase Status
      - **Done**
    * - 4
      - Windows and macOS drive backends
-     - Postponed — compilable stubs (see :ref:`platform-backends`)
+     - Windows **done** (``list-drives`` + ``flash``; ``configure`` is Linux-only);
+       macOS postponed — compilable stub (see :ref:`platform-backends`)
    * - 5
      - GUI wire-up and image customization
      - Postponed
 
 What works today: the ``kli`` CLI on **Linux** — ``list-drives``, ``flash`` of a
 local image, ``list-projects`` / ``configure``, ``list-releases --unstable``, and
-``fetch``. The GUI builds but currently lists drives only.
+``fetch`` — and on **Windows** — ``list-drives``, ``flash``, ``list-releases``,
+and ``fetch`` (``configure`` is Linux-only for now). The GUI builds on both but
+currently lists drives only.
 
 ----
 
