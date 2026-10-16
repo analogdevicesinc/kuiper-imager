@@ -25,10 +25,11 @@ add_library(kuiper STATIC
     src/http/CurlHttpClient.cpp
     src/image/GitHubActionsProvider.cpp
     src/image/StableReleaseProvider.cpp
+    src/platform/common/AlignedRawDevice.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
     ${KUIPER_PLATFORM_SOURCES})
 
-target_include_directories(kuiper PUBLIC include)
+target_include_directories(kuiper PUBLIC include PRIVATE src)
 
 target_compile_definitions(kuiper PRIVATE _FILE_OFFSET_BITS=64)
 
