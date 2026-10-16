@@ -37,4 +37,9 @@ target_link_libraries(kuiper PUBLIC Qt6::Core
                               PRIVATE LibArchive::LibArchive OpenSSL::Crypto
                                       CURL::libcurl)
 
+# Native platform libraries for the per-OS drive backend.
+if(WIN32)
+    target_link_libraries(kuiper PRIVATE setupapi)
+endif()
+
 add_library(kuiper::kuiper ALIAS kuiper)
