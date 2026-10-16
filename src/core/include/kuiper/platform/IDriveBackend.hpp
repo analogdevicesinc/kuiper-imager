@@ -6,6 +6,7 @@
 #include "kuiper/Drive.hpp"
 #include "kuiper/Error.hpp"
 #include "kuiper/MountedPartition.hpp"
+#include "kuiper/platform/DriveCapabilities.hpp"
 #include "kuiper/platform/IRawDevice.hpp"
 
 namespace kuiper {
@@ -16,6 +17,10 @@ public:
 
     // Human-readable name of the active platform, e.g. "linux". For diagnostics.
     virtual const char* name() const noexcept = 0;
+
+    // What this backend can do on the host platform (used to gate commands up
+    // front). The Linux backend reports everything; the stubs report nothing.
+    virtual DriveCapabilities capabilities() const noexcept = 0;
 
     // Enumerate storage drives, each with its partitions filled in (removable,
     // non-system are the flash candidates). One platform call, whole tree.

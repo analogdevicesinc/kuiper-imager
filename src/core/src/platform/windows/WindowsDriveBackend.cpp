@@ -9,6 +9,9 @@ class WindowsDriveBackend final : public IDriveBackend {
 public:
     const char* name() const noexcept override { return "windows"; }
 
+    // No capabilities until the Phase 4 Windows port lands; front-ends gate on this.
+    DriveCapabilities capabilities() const noexcept override { return {}; }
+
     Result<DriveList> listDrives() override {
         // noop — real enumeration lands with the Windows port (Phase 4).
         return DriveList{};

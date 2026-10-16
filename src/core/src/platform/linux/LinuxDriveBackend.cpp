@@ -528,6 +528,10 @@ public:
 
     const char* name() const noexcept override { return "linux"; }
 
+    DriveCapabilities capabilities() const noexcept override {
+        return {.enumerate = true, .flash = true, .mount = true};
+    }
+
     Result<void> unmountAll(const std::string& node) override {
         // Query the device tree. If lsblk can't read it (e.g. not a block
         // device), there is nothing to unmount — let openForWrite give the

@@ -119,8 +119,25 @@ void printError(const kuiper::Error& e) {
     }
 }
 
+// Fail fast with a clear UnsupportedPlatform error when the active backend can't
+// do what the command needs, instead of failing deep in a pipeline. The
+// macOS/Windows stubs report no capabilities until their Phase 4 ports land.
+int failUnsupported(const kuiper::DriveService& svc, const char* action) {
+    const auto e = kuiper::Err(
+        kuiper::ErrorCode::UnsupportedPlatform,
+        std::string(action) + " is not supported on this platform",
+        std::string("Active drive backend: ") + svc.backendName(),
+        std::string("The ") + svc.backendName() +
+            " backend is a stub; its port is planned (see the roadmap).").error();
+    printError(e);
+    return exitCodeFor(e.code);
+}
+
 int cmdListDrives() {
     kuiper::DriveService service;
+    if (!service.capabilities().enumerate) {
+        return failUnsupported(service, "Listing drives");
+    }
     const auto result = service.listDrives();
     if (!result) {
         printError(result.error());  // errors → stderr; results → stdout
@@ -330,6 +347,9 @@ int cmdListProjects(const std::vector<std::string>& args) {
     }
 
     kuiper::DriveService drives;
+    if (!drives.capabilities().mount) {
+        return failUnsupported(drives, "Listing projects");
+    }
     auto boot = openBoot(drives, drive);
     if (!boot) {
         printError(boot.error());
@@ -420,6 +440,11 @@ int cmdFlash(const std::vector<std::string>& args) {
         return 2;
     }
 
+    kuiper::DriveService service;
+    if (!service.capabilities().flash) {
+        return failUnsupported(service, "Flashing");
+    }
+
     // Loud, unambiguous confirmation — this erases the drive.
     if (!assumeYes) {
         std::fprintf(stderr,
@@ -438,7 +463,6 @@ int cmdFlash(const std::vector<std::string>& args) {
 
     std::signal(SIGINT, onSigint);
 
-    kuiper::DriveService service;
     kuiper::WriteOptions opts;
     opts.force = force;
     opts.verify = verify;
@@ -504,6 +528,9 @@ int cmdConfigure(const std::vector<std::string>& args) {
     }
 
     kuiper::DriveService drives;
+    if (!drives.capabilities().mount) {
+        return failUnsupported(drives, "Configuring cards");
+    }
     auto boot = openBoot(drives, drive);
     if (!boot) {
         printError(boot.error());
