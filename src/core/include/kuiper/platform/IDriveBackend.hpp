@@ -31,8 +31,9 @@ public:
     virtual Result<void> unmountAll(const std::string& node) = 0;
 
     // Open the device for writing (exclusive) and hand back an owning IRawDevice
-    // handle whose lifetime is the open session. Beats the udev auto-remount race
-    // with a bounded retry loop. See docs: platform-backends.
+    // handle whose lifetime is the open session. Opens exclusively and retries a
+    // transient-busy target with a bounded loop (each backend handles its own
+    // auto-remount race). See docs: platform-backends.
     virtual Result<std::unique_ptr<IRawDevice>> openForWrite(
         const std::string& node) = 0;
 

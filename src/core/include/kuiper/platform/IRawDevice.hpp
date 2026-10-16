@@ -10,8 +10,8 @@ namespace kuiper {
 
 // An owning handle to one open raw-device session, handed back by
 // IDriveBackend::openForWrite / openForRead. Its lifetime *is* the open device:
-// the destructor closes the fd, so a single device is open for exactly as long
-// as the handle lives. The backend absorbs alignment and short-I/O internally,
+// the destructor closes the underlying handle, so a single device is open for
+// exactly as long as the handle lives. The backend absorbs alignment and short-I/O internally,
 // so callers pass arbitrary lengths; only seek() offsets must be block-aligned.
 // See docs: platform-backends.
 class IRawDevice {
