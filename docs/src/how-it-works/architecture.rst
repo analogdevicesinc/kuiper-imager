@@ -38,8 +38,8 @@ The Four Layers
    ──────────────────── only DriveService crosses this line ─────
    Platform abstraction  (one interface, three implementations)
      IDriveBackend — enumerate · raw I/O · mount · privilege
-       Linux backend      Windows backend*     macOS backend*
-                                        (*planned, Phase 4)
+       Linux backend      Windows backend      macOS backend*
+                                        (*planned)
 
 The top layer holds two interchangeable front-ends. ``kli`` is the
 command-line tool; the Qt Widgets GUI is a second front-end that builds today
@@ -81,10 +81,10 @@ its parent disk): those shell out to ``util-linux`` from inside the backend
 rather than from the portable services, so no platform assumption ever leaks
 upward.
 
-The payoff is that porting to Windows or macOS (Phase 4) touches only
-DriveService and its backends — nothing in ImageService or ConfigurationService
-changes. See :ref:`platform-backends` for the interface and the Linux
-implementation.
+The payoff showed up in the Windows port: it touched only a new backend behind
+DriveService — nothing in ImageService or ConfigurationService changed, and the
+Linux and Windows backends share one ``AlignedRawDevice`` engine. macOS will be
+the same. See :ref:`platform-backends` for the interface and the backends.
 
 ----
 
