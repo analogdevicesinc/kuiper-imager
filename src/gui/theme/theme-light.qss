@@ -111,3 +111,98 @@ QPushButton[hmc="true"][kind="ghost"][processing="true"] {
 QPushButton[hmc="true"]:focus {
     border: 2px solid #b16ee0;
 }
+
+/* --- HmcCard --- */
+QFrame[hmcCard="true"] {
+    background-color: #ffffff;
+    border: 1px solid #b7bbc3;
+    border-radius: 8px;
+}
+/* --- HmcContainerHeader --- */
+QLabel[hmcHeading="true"] { color: #101820; font-weight: 700; font-size: 16px; }
+QLabel[hmcHeading="true"][density="low"] { font-size: 20px; font-weight: 600; }
+QLabel[hmcSubtitle="true"] { color: #5e6773; font-weight: 400; font-size: 14px; }
+QLabel[hmcCaption="true"] { color: #848b95; font-size: 12px; }
+/* --- HmcTag --- */
+QLabel[hmcTag="true"][status="info"] {
+    background-color: #f0f1f3; color: #101820;
+    border: 1px solid #b7bbc3; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+QLabel[hmcTag="true"][status="success"] {
+    background-color: #e4f6ef; color: #101820;
+    border: 1px solid #2e9e6f; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+QLabel[hmcTag="true"][status="warning"] {
+    background-color: #feefe7; color: #101820;
+    border: 1px solid #e76423; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+QLabel[hmcTag="true"][status="danger"] {
+    background-color: #feeeef; color: #c81a28;
+    border: 1px solid #c81a28; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+QLabel[hmcTag="true"][status="highlight"] {
+    background-color: #f6eefc; color: #101820;
+    border: 1px solid #b16ee0; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+/* --- HmcProgressBar --- */
+QProgressBar[hmcProgress="true"] {
+    background-color: rgba(132, 139, 149, 0.43);
+    border: none; border-radius: 4px; max-height: 8px; min-height: 8px;
+}
+QProgressBar[hmcProgress="true"]::chunk { background-color: #0067b9; border-radius: 4px; }
+QProgressBar[hmcProgress="true"][status="success"]::chunk { background-color: #2e9e6f; }
+QProgressBar[hmcProgress="true"][status="danger"]::chunk { background-color: #c81a28; }
+/* --- HmcSegmentedControl --- */
+QFrame[hmcSegmented="true"] { border: 1px solid #848b95; border-radius: 4px; }
+QPushButton[hmcSegment="true"] {
+    border: none; border-radius: 0; background-color: transparent;
+    color: #101820;
+    padding: 0 16px; min-height: 38px; font-size: 14px; font-weight: 600;
+}
+QPushButton[hmcSegment="true"][pos="mid"], QPushButton[hmcSegment="true"][pos="last"] {
+    border-left: 1px solid #848b95;
+}
+QPushButton[hmcSegment="true"][pos="first"] { border-top-left-radius: 3px; border-bottom-left-radius: 3px; }
+QPushButton[hmcSegment="true"][pos="last"] { border-top-right-radius: 3px; border-bottom-right-radius: 3px; }
+QPushButton[hmcSegment="true"]:checked {
+    background-color: rgba(146, 190, 252, 0.18);
+    color: #0067b9;
+}
+/* --- HmcCheckBox --- */
+QCheckBox[hmcCheck="true"] { color: #101820; spacing: 8px; font-size: 14px; }
+QCheckBox[hmcCheck="true"]::indicator {
+    width: 16px; height: 16px; border-radius: 4px;
+    border: 1px solid #848b95;
+    background-color: #ffffff;
+}
+QCheckBox[hmcCheck="true"]::indicator:hover { border-color: #5e6773; }
+QCheckBox[hmcCheck="true"]::indicator:checked {
+    border: none; background-color: #0067b9;
+    image: url(:/theme/check.svg);
+}
+/* --- HmcBanner (subtle) --- */
+QFrame[hmcBanner="true"][status="info"] {
+    background-color: #f0f1f3; border: 1px solid #b7bbc3; border-radius: 8px;
+}
+QFrame[hmcBanner="true"][status="info"] QLabel { color: #101820; background: transparent; }
+QFrame[hmcBanner="true"][status="success"] {
+    background-color: #e4f6ef; border: 1px solid #2e9e6f; border-radius: 8px;
+}
+QFrame[hmcBanner="true"][status="success"] QLabel { color: #101820; background: transparent; }
+QFrame[hmcBanner="true"][status="warning"] {
+    background-color: #feefe7; border: 1px solid #e76423; border-radius: 8px;
+}
+QFrame[hmcBanner="true"][status="warning"] QLabel { color: #101820; background: transparent; }
+QFrame[hmcBanner="true"][status="danger"] {
+    background-color: #feeeef; border: 1px solid #c81a28; border-radius: 8px;
+}
+QFrame[hmcBanner="true"][status="danger"] QLabel { color: #c81a28; background: transparent; }
+QFrame[hmcBanner="true"][status="highlight"] {
+    background-color: #f6eefc; border: 1px solid #b16ee0; border-radius: 8px;
+}
+QFrame[hmcBanner="true"][status="highlight"] QLabel { color: #101820; background: transparent; }

@@ -3,5 +3,6 @@
     <qresource prefix="/theme">
         <file>theme-light.qss</file>
         <file>theme-dark.qss</file>
+        <file>check.svg</file>
     </qresource>
 </RCC>

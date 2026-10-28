@@ -251,6 +251,106 @@ function buttonBlock(t) {
   return lines.join('\n');
 }
 
+// Harmonic components beyond the button, skinned onto native widgets. Each rule
+// is keyed on a dynamic property the matching Hmc* widget sets. Token names and
+// geometry are taken from graphics/src/components/<name>/<name>.scss.
+function componentsBlock(t) {
+  const c = (n) => qss(n, t);
+  const notif = (s) => ({
+    bg: c(`c-notification-${s}-background`),
+    fg: c(`c-notification-${s}-text`),
+    border: c(`c-notification-${s}-border`),
+  });
+  const STATUSES = {
+    info: notif('info'),
+    success: notif('success'),
+    warning: notif('warning'),
+    danger: notif('danger'),
+    highlight: notif('highlight'),
+  };
+
+  const out = [];
+
+  // --- Card (QFrame): 8px radius, 1px divider, container surface ---
+  out.push(`/* --- HmcCard --- */`);
+  out.push(`QFrame[hmcCard="true"] {`);
+  out.push(`    background-color: ${c('c-layout-container')};`);
+  out.push(`    border: 1px solid ${c('c-layout-divider')};`);
+  out.push(`    border-radius: 8px;`);
+  out.push(`}`);
+
+  // --- Container header labels ---
+  out.push(`/* --- HmcContainerHeader --- */`);
+  out.push(`QLabel[hmcHeading="true"] { color: ${c('c-content')}; font-weight: 700; font-size: 16px; }`);
+  out.push(`QLabel[hmcHeading="true"][density="low"] { font-size: 20px; font-weight: 600; }`);
+  out.push(`QLabel[hmcSubtitle="true"] { color: ${c('c-content-medium')}; font-weight: 400; font-size: 14px; }`);
+  out.push(`QLabel[hmcCaption="true"] { color: ${c('c-content-weak')}; font-size: 12px; }`);
+
+  // --- Tag (QLabel pill) ---
+  out.push(`/* --- HmcTag --- */`);
+  for (const [name, s] of Object.entries(STATUSES)) {
+    out.push(`QLabel[hmcTag="true"][status="${name}"] {`);
+    out.push(`    background-color: ${s.bg}; color: ${s.fg};`);
+    out.push(`    border: 1px solid ${s.border}; border-radius: 4px;`);
+    out.push(`    padding: 1px 6px; font-size: 12px; font-weight: 600;`);
+    out.push(`}`);
+  }
+
+  // --- Progress bar (QProgressBar), 8px track, per-status chunk ---
+  out.push(`/* --- HmcProgressBar --- */`);
+  out.push(`QProgressBar[hmcProgress="true"] {`);
+  out.push(`    background-color: ${c('c-progress-background')};`);
+  out.push(`    border: none; border-radius: 4px; max-height: 8px; min-height: 8px;`);
+  out.push(`}`);
+  // Harmonic progress: *-background is the (grey) track, *-content is the fill.
+  out.push(`QProgressBar[hmcProgress="true"]::chunk { background-color: ${c('c-progress-primary-content')}; border-radius: 4px; }`);
+  out.push(`QProgressBar[hmcProgress="true"][status="success"]::chunk { background-color: ${c('c-progress-success-content')}; }`);
+  out.push(`QProgressBar[hmcProgress="true"][status="danger"]::chunk { background-color: ${c('c-progress-danger-content')}; }`);
+
+  // --- Segmented control: bordered frame + flat checkable buttons ---
+  out.push(`/* --- HmcSegmentedControl --- */`);
+  out.push(`QFrame[hmcSegmented="true"] { border: 1px solid ${c('c-selection-unselected-medium-border')}; border-radius: 4px; }`);
+  out.push(`QPushButton[hmcSegment="true"] {`);
+  out.push(`    border: none; border-radius: 0; background-color: transparent;`);
+  out.push(`    color: ${c('c-selection-unselected-medium-content')};`);
+  out.push(`    padding: 0 16px; min-height: 38px; font-size: 14px; font-weight: 600;`);
+  out.push(`}`);
+  out.push(`QPushButton[hmcSegment="true"][pos="mid"], QPushButton[hmcSegment="true"][pos="last"] {`);
+  out.push(`    border-left: 1px solid ${c('c-selection-unselected-medium-border')};`);
+  out.push(`}`);
+  out.push(`QPushButton[hmcSegment="true"][pos="first"] { border-top-left-radius: 3px; border-bottom-left-radius: 3px; }`);
+  out.push(`QPushButton[hmcSegment="true"][pos="last"] { border-top-right-radius: 3px; border-bottom-right-radius: 3px; }`);
+  out.push(`QPushButton[hmcSegment="true"]:checked {`);
+  out.push(`    background-color: ${c('c-selection-selected-medium-background')};`);
+  out.push(`    color: ${c('c-selection-selected-medium-content')};`);
+  out.push(`}`);
+
+  // --- Checkbox (QCheckBox) ---
+  out.push(`/* --- HmcCheckBox --- */`);
+  out.push(`QCheckBox[hmcCheck="true"] { color: ${c('c-content')}; spacing: 8px; font-size: 14px; }`);
+  out.push(`QCheckBox[hmcCheck="true"]::indicator {`);
+  out.push(`    width: 16px; height: 16px; border-radius: 4px;`);
+  out.push(`    border: 1px solid ${c('c-selection-unselected-strong-border')};`);
+  out.push(`    background-color: ${c('c-layout-container')};`);
+  out.push(`}`);
+  out.push(`QCheckBox[hmcCheck="true"]::indicator:hover { border-color: ${c('c-selection-unselected-strong-border-hover')}; }`);
+  out.push(`QCheckBox[hmcCheck="true"]::indicator:checked {`);
+  out.push(`    border: none; background-color: ${c('c-selection-selected-strong-background')};`);
+  out.push(`    image: url(:/theme/check.svg);`);
+  out.push(`}`);
+
+  // --- Banner message (QFrame, subtle emphasis) ---
+  out.push(`/* --- HmcBanner (subtle) --- */`);
+  for (const [name, s] of Object.entries(STATUSES)) {
+    out.push(`QFrame[hmcBanner="true"][status="${name}"] {`);
+    out.push(`    background-color: ${s.bg}; border: 1px solid ${s.border}; border-radius: 8px;`);
+    out.push(`}`);
+    out.push(`QFrame[hmcBanner="true"][status="${name}"] QLabel { color: ${s.fg}; background: transparent; }`);
+  }
+
+  return out.join('\n');
+}
+
 function themeQss(themeName, t) {
   const c = (n) => qss(n, t);
   return `/* GENERATED by src/gui/theme/tools/gen_theme.mjs — do not edit.
@@ -286,6 +386,8 @@ QStatusBar { color: ${c('c-content-weak')}; }
 QStatusBar QLabel { color: ${c('c-content-weak')}; }
 
 ${buttonBlock(t)}
+
+${componentsBlock(t)}
 `;
 }
 
