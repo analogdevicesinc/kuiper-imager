@@ -271,6 +271,11 @@ function componentsBlock(t) {
 
   const out = [];
 
+  // --- App header bar + hairline divider ---
+  out.push(`/* --- chrome --- */`);
+  out.push(`QFrame[hmcHeaderBar="true"] { background-color: ${c('c-layout-container')}; border-bottom: 1px solid ${c('c-layout-divider')}; }`);
+  out.push(`QFrame[hmcDivider="true"] { background-color: ${c('c-layout-divider')}; max-height: 1px; min-height: 1px; }`);
+
   // --- Card (QFrame): 8px radius, 1px divider, container surface ---
   out.push(`/* --- HmcCard --- */`);
   out.push(`QFrame[hmcCard="true"] {`);
@@ -357,8 +362,10 @@ function themeQss(themeName, t) {
    Harmonic ${themeName} theme. Regenerate: node src/gui/theme/tools/gen_theme.mjs */
 
 /* --- app surfaces --- */
+/* Base text/font only — NOT background: a universal background-color would paint
+   every child (labels, rows) and hide the card surfaces. The canvas colour is set
+   on the window instead, and children stay transparent unless a rule opts in. */
 QWidget {
-    background-color: ${c('c-layout-canvas')};
     color: ${c('c-content')};
     font-family: "Inter";
     font-size: 14px;

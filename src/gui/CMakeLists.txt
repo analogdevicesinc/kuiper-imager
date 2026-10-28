@@ -11,6 +11,8 @@ qt_add_executable(kuiper-imager
     MainWindow.hpp
     GalleryWindow.cpp
     GalleryWindow.hpp
+    ConsoleWindow.cpp
+    ConsoleWindow.hpp
     theme/ThemeManager.cpp
     theme/ThemeManager.hpp
     widgets/HmcButton.cpp
