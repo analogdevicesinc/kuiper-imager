@@ -8,8 +8,8 @@
 
     <title>Roadmap &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
-    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=fb8972a4" />
-    <script async="async" src="../_static/app.umd.js?v=8c78863f"></script>
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=a3ee7af8" />
+    <script async="async" src="../_static/app.umd.js?v=048c1170"></script>
     <link rel="icon" href="../_static/icon.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -236,8 +236,9 @@ nothing above the <a class="reference internal" href="../how-it-works/architectu
 </table>
 </div>
 <p>What works today: the <code class="docutils literal notranslate"><span class="pre">kli</span></code> CLI on <strong>Linux</strong> — <code class="docutils literal notranslate"><span class="pre">list-drives</span></code>, <code class="docutils literal notranslate"><span class="pre">flash</span></code> of a
-local image, <code class="docutils literal notranslate"><span class="pre">list-projects</span></code> / <code class="docutils literal notranslate"><span class="pre">configure</span></code>, <code class="docutils literal notranslate"><span class="pre">list-releases</span> <span class="pre">--unstable</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">fetch</span></code>. The GUI builds but currently lists drives only.</p>
+local image, <code class="docutils literal notranslate"><span class="pre">list-projects</span></code> / <code class="docutils literal notranslate"><span class="pre">configure</span></code>, <code class="docutils literal notranslate"><span class="pre">list-releases</span></code> (both the
+stable and <code class="docutils literal notranslate"><span class="pre">--unstable</span></code> channels), and <code class="docutils literal notranslate"><span class="pre">fetch</span></code>. The GUI builds but currently
+lists drives only.</p>
 </section>
 <hr class="docutils" />
 <section id="deferred-design-pieces">
@@ -247,10 +248,11 @@ local image, <code class="docutils literal notranslate"><span class="pre">list-p
 <li><p><strong>Streaming flash</strong> — a download-straight-to-device seam (<code class="docutils literal notranslate"><span class="pre">ImageReader</span></code>) and
 a blob cache, so <code class="docutils literal notranslate"><span class="pre">fetch</span></code> and <code class="docutils literal notranslate"><span class="pre">flash</span></code> can fuse without an intermediate
 file. The current flash writes from a local file only.</p></li>
-<li><p><strong>The stable release source</strong> — the official (non-CI) source for
-<code class="docutils literal notranslate"><span class="pre">list-releases</span></code> has not been finalized (GitHub Releases? a hosted image
-list?), so the stable channel reports cleanly as not-yet-available. See
-<a class="reference internal" href="../how-it-works/releases-and-sources.html#releases-and-sources"><span class="std std-ref">Releases and Sources</span></a>.</p></li>
+<li><p><strong>A dynamic stable release source</strong> — the stable channel currently lists a
+compiled-in catalog of published releases. A hosted index (a manifest on
+<code class="docutils literal notranslate"><span class="pre">packages.analog.com</span></code>, or a repository listing API) would let new releases
+appear without an imager update, and could carry per-image SHA-256 for
+download verification. See <a class="reference internal" href="../how-it-works/releases-and-sources.html#releases-and-sources"><span class="std std-ref">Releases and Sources</span></a>.</p></li>
 <li><p><strong>The GUI privilege model</strong> — the GUI will elevate through a privileged helper
 rather than taking a hard dependency on <code class="docutils literal notranslate"><span class="pre">udisks2</span></code> / D-Bus, consistent with
 the CLI’s <a class="reference internal" href="../how-it-works/platform-backends.html#platform-backends"><span class="std std-ref">privilege approach</span></a>.</p></li>
