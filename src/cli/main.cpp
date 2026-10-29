@@ -56,7 +56,7 @@ void printUsage() {
         "                       instead of the default stable channel (published\n"
         "                       releases, no token needed)\n"
         "  -b, --branch <name>  Filter unstable builds to one branch\n"
-        "      --limit <n>      Recent successful runs to scan (default 10)\n"
+        "      --limit <n>      Recent successful unstable runs to scan (default 10)\n"
         "                       Listing needs no token; $GH_TOKEN/$GITHUB_TOKEN or\n"
         "                       'gh auth token' only raises the API rate limit.\n\n"
         "fetch options:\n"
@@ -285,6 +285,11 @@ int cmdListReleases(const std::vector<std::string>& args) {
     if (!branch.empty() && !unstable) {
         std::fprintf(stderr,
                      "list-releases: --branch only applies to --unstable\n");
+        return 2;
+    }
+    if (!limitStr.empty() && !unstable) {
+        std::fprintf(stderr,
+                     "list-releases: --limit only applies to --unstable\n");
         return 2;
     }
 
