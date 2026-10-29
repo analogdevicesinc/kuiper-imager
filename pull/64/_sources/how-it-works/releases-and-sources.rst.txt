@@ -43,14 +43,13 @@ Channels: stable and unstable
 
 ``list-releases`` takes a channel:
 
-- **stable** (the default) — the official release source. It is **not wired up
-  yet**: the source has not been finalized (GitHub Releases? a hosted image
-  list?), so the channel fails cleanly with a "not yet available" error that
-  points the user at ``--unstable``. See :ref:`roadmap` and the plan's open
-  questions.
+- **stable** (the default) — published Kuiper releases from
+  ``packages.analog.com``, served by ``StableReleaseProvider``. The set of
+  releases is a compiled-in catalog for now (see :ref:`roadmap` for the planned
+  hosted index); each image's download URL is derived from the release naming
+  convention, so listing and resolution need no network and no token.
 - **unstable** — Kuiper 2.0 CI images, built by the ``kuiper2_0-build.yml``
-  GitHub Actions workflow in the ADI ``kuiper`` repository. This is the channel
-  that works today.
+  GitHub Actions workflow in the ADI ``kuiper`` repository.
 
 An unknown channel is rejected with the list of valid ones.
 
@@ -89,6 +88,26 @@ rejects requests without one), the ``Accept`` and API-version headers, and the
 bearer token when set. CI artifacts are deleted after ~90 days; ``resolve()``
 checks the ``expired`` flag and fails with a clear "re-run list-releases"
 message rather than handing back a dead URL.
+
+----
+
+The Stable Provider
+-------------------
+
+The stable channel is served by ``StableReleaseProvider`` from a compiled-in
+catalog — one entry per published ``(version, variant, arch)``. A patch may ship
+fewer variants than its base release (``2026.1.1`` is 64-bit only), so the
+catalog lists only what exists rather than cross-producing the combinations.
+
+A release's ``id`` is ``adi:<version>/<variant>/<arch>`` (e.g.
+``adi:2026.1.1/full/arm64``). Unlike the unstable channel — where one commit
+yields several runs, forcing an opaque artifact id — this triple is unique, so
+the identifier is also human-readable. Both ``list()`` and ``resolve()`` derive
+the download URL from the release naming convention
+(``kuiper_<variant>_<bits>_image_<version>.zip`` under the packages host), so
+neither makes a network request and no token is involved. When the catalog is
+replaced by a hosted index (see :ref:`roadmap`), only *how the entries are
+populated* changes — the ``id`` scheme and ``resolve()`` stay the same.
 
 ----
 
