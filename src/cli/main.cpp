@@ -53,13 +53,15 @@ void printUsage() {
         "      --timings        Print a per-phase wall-clock breakdown\n\n"
         "list-releases options:\n"
         "      --unstable       List Kuiper 2.0 CI builds from GitHub Actions\n"
-        "                       (the default 'stable' channel is not wired up yet)\n"
+        "                       instead of the default stable channel (published\n"
+        "                       releases, no token needed)\n"
         "  -b, --branch <name>  Filter unstable builds to one branch\n"
         "      --limit <n>      Recent successful runs to scan (default 10)\n"
         "                       Listing needs no token; $GH_TOKEN/$GITHUB_TOKEN or\n"
         "                       'gh auth token' only raises the API rate limit.\n\n"
         "fetch options:\n"
-        "  -i, --image <id>     Image identifier from list-releases (e.g. gh:1234)\n"
+        "  -i, --image <id>     Image identifier from list-releases\n"
+        "                       (gh:1234 or adi:2026.1.1/full/arm64)\n"
         "  -o, --output <path>  File to write, or a directory to save the\n"
         "                       artifact into under its own name\n"
         "      --force          Overwrite the output file if it already exists\n"
@@ -247,6 +249,15 @@ void printReleases(const std::vector<kuiper::Release>& releases) {
         std::puts("No images found.");
         return;
     }
+    if (releases.front().channel == "stable") {
+        std::printf("%-26s %-10s %-8s %-6s\n", "IDENTIFIER", "VERSION", "VARIANT",
+                    "ARCH");
+        for (const auto& r : releases) {
+            std::printf("%-26s %-10s %-8s %-6s\n", r.id.c_str(),
+                        r.version.c_str(), r.variant.c_str(), r.arch.c_str());
+        }
+        return;
+    }
     std::printf("%-16s %-16s %-8s %-7s %-6s %9s  %-22s %s\n", "IDENTIFIER",
                 "BRANCH", "COMMIT", "VARIANT", "ARCH", "SIZE(GB)", "EXPIRES",
                 "STATUS");
@@ -366,7 +377,9 @@ int cmdFetch(const std::vector<std::string>& args) {
 
     std::signal(SIGINT, onSigint);
 
-    kuiper::ImageService service(kuiper::makeHttpClient(), discoverGitHubToken());
+    std::optional<std::string> token;
+    if (image.starts_with("gh:")) token = discoverGitHubToken();
+    kuiper::ImageService service(kuiper::makeHttpClient(), std::move(token));
 
     int lastPercent = -1;
     kuiper::ProgressFn onProgress = [&](const kuiper::Progress& p) {
