@@ -39,8 +39,8 @@ grouped into three areas:
 
 ``openForWrite`` / ``openForRead`` open the device and hand back a
 ``std::unique_ptr<IRawDevice>`` — an owning handle whose lifetime *is* the open
-session. The destructor closes the fd, so exactly one device is open for as long
-as the handle lives; there is no separate ``close()`` to forget and no
+session. The destructor closes the underlying handle, so exactly one device is open
+for as long as the handle lives; there is no separate ``close()`` to forget and no
 "one-open-at-a-time" convention to police. The handle carries the byte-stream
 surface:
 
@@ -56,10 +56,10 @@ surface:
   so verification reads media, not cache.
 - ``rereadPartTable`` — ask the kernel to re-read the table (best-effort).
 
-Splitting the open session into its own type keeps ``IDriveBackend`` to six
-methods (a new OS implements the drive-level operations, not a fused I/O session)
-and lets the raw pipeline be unit-tested against an in-memory ``IRawDevice`` with
-no hardware.
+Splitting the open session into its own type keeps ``IDriveBackend`` small — a new
+OS implements a handful of drive-level operations, not a fused I/O session — and
+lets the raw pipeline be unit-tested against an in-memory ``IRawDevice`` with no
+hardware.
 
 The preloader safety check needs no separate topology methods: it derives the
 owning drive and the target's mount state directly from ``listDrives()`` — the
@@ -199,8 +199,10 @@ it). It uses Win32 directly — no subprocess.
 **Enumeration.** SetupAPI (``GUID_DEVINTERFACE_DISK``) lists the disk device
 interfaces; ``IOCTL_STORAGE_GET_DEVICE_NUMBER`` maps each to its
 ``\\.\PhysicalDriveN`` node. ``IOCTL_STORAGE_QUERY_PROPERTY`` gives the model and
-bus type (USB / SD / MMC ⇒ removable) and ``IOCTL_DISK_GET_LENGTH_INFO`` the
-size. Partitions come from ``IOCTL_DISK_GET_DRIVE_LAYOUT_EX``; each is enriched by
+bus type (USB / SD / MMC ⇒ removable), and ``IOCTL_DISK_GET_DRIVE_GEOMETRY_EX`` the
+size — the zero-access enumeration handle can't use ``IOCTL_DISK_GET_LENGTH_INFO``,
+which needs read access and is reserved for the open write/verify session.
+Partitions come from ``IOCTL_DISK_GET_DRIVE_LAYOUT_EX``; each is enriched by
 walking the system's volumes and matching them to a disk + starting offset via
 ``IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS`` (drive letter, filesystem, label). The
 disk backing ``%SystemDrive%`` is flagged ``isSystem`` so the two-tier guard

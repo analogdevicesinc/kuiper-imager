@@ -217,8 +217,8 @@ cleans up. A partition with no filesystem is an error.</p></li>
 <p><strong>Raw device I/O</strong> (an RAII handle, via <code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code>)</p>
 <p><code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code> open the device and hand back a
 <code class="docutils literal notranslate"><span class="pre">std::unique_ptr&lt;IRawDevice&gt;</span></code> — an owning handle whose lifetime <em>is</em> the open
-session. The destructor closes the fd, so exactly one device is open for as long
-as the handle lives; there is no separate <code class="docutils literal notranslate"><span class="pre">close()</span></code> to forget and no
+session. The destructor closes the underlying handle, so exactly one device is open
+for as long as the handle lives; there is no separate <code class="docutils literal notranslate"><span class="pre">close()</span></code> to forget and no
 “one-open-at-a-time” convention to police. The handle carries the byte-stream
 surface:</p>
 <ul class="simple">
@@ -234,10 +234,10 @@ flash caller satisfies (it only ever seeks to 0 and the 1-MiB defer-head).</p></
 so verification reads media, not cache.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">rereadPartTable</span></code> — ask the kernel to re-read the table (best-effort).</p></li>
 </ul>
-<p>Splitting the open session into its own type keeps <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code> to six
-methods (a new OS implements the drive-level operations, not a fused I/O session)
-and lets the raw pipeline be unit-tested against an in-memory <code class="docutils literal notranslate"><span class="pre">IRawDevice</span></code> with
-no hardware.</p>
+<p>Splitting the open session into its own type keeps <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code> small — a new
+OS implements a handful of drive-level operations, not a fused I/O session — and
+lets the raw pipeline be unit-tested against an in-memory <code class="docutils literal notranslate"><span class="pre">IRawDevice</span></code> with no
+hardware.</p>
 <p>The preloader safety check needs no separate topology methods: it derives the
 owning drive and the target’s mount state directly from <code class="docutils literal notranslate"><span class="pre">listDrives()</span></code> — the
 drive that lists a partition is its owner, and each partition row already carries
@@ -369,8 +369,10 @@ it). It uses Win32 directly — no subprocess.</p>
 <p><strong>Enumeration.</strong> SetupAPI (<code class="docutils literal notranslate"><span class="pre">GUID_DEVINTERFACE_DISK</span></code>) lists the disk device
 interfaces; <code class="docutils literal notranslate"><span class="pre">IOCTL_STORAGE_GET_DEVICE_NUMBER</span></code> maps each to its
 <code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code> node. <code class="docutils literal notranslate"><span class="pre">IOCTL_STORAGE_QUERY_PROPERTY</span></code> gives the model and
-bus type (USB / SD / MMC ⇒ removable) and <code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_GET_LENGTH_INFO</span></code> the
-size. Partitions come from <code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_GET_DRIVE_LAYOUT_EX</span></code>; each is enriched by
+bus type (USB / SD / MMC ⇒ removable), and <code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_GET_DRIVE_GEOMETRY_EX</span></code> the
+size — the zero-access enumeration handle can’t use <code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_GET_LENGTH_INFO</span></code>,
+which needs read access and is reserved for the open write/verify session.
+Partitions come from <code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_GET_DRIVE_LAYOUT_EX</span></code>; each is enriched by
 walking the system’s volumes and matching them to a disk + starting offset via
 <code class="docutils literal notranslate"><span class="pre">IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS</span></code> (drive letter, filesystem, label). The
 disk backing <code class="docutils literal notranslate"><span class="pre">%SystemDrive%</span></code> is flagged <code class="docutils literal notranslate"><span class="pre">isSystem</span></code> so the two-tier guard
