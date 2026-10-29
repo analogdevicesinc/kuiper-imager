@@ -4,11 +4,15 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <utility>
 
 #include "image/GitHubActionsProvider.hpp"
+#include "image/StableReleaseProvider.hpp"
+#include "kuiper/ReleaseProvider.hpp"
 #include "util/Sha256.hpp"
 
 namespace kuiper {
@@ -17,22 +21,23 @@ ImageService::ImageService(std::unique_ptr<IHttpClient> http,
                            std::optional<std::string> githubToken)
     : http_(std::move(http)), githubToken_(std::move(githubToken)) {}
 
+std::unique_ptr<ReleaseProvider> ImageService::makeProvider(
+    std::string_view channel) {
+    if (channel == "unstable")
+        return std::make_unique<GitHubActionsProvider>(*http_, githubToken_);
+    if (channel == "stable") return std::make_unique<StableReleaseProvider>();
+    return nullptr;
+}
+
 Result<std::vector<Release>> ImageService::listReleases(
     const ReleaseQuery& query) {
-    if (query.channel == "unstable") {
-        GitHubActionsProvider provider(*http_, githubToken_);
-        return provider.list(query);
+    auto provider = makeProvider(query.channel);
+    if (!provider) {
+        return Err(ErrorCode::NotFound,
+                   "Unknown release channel: " + query.channel,
+                   "Valid channels are 'stable' and 'unstable'.");
     }
-    if (query.channel == "stable") {
-        // No official release source is wired up yet (see the plan's Open
-        // Questions). Fail cleanly and point at the one channel that works.
-        return Err(
-            ErrorCode::NotFound, "Stable releases are not yet available",
-            "The official Kuiper release source has not been finalised.",
-            "Try 'kli list-releases --unstable' to list Kuiper 2.0 CI builds.");
-    }
-    return Err(ErrorCode::NotFound, "Unknown release channel: " + query.channel,
-               "Valid channels are 'stable' and 'unstable'.");
+    return provider->list(query);
 }
 
 Result<FetchSummary> ImageService::fetch(const std::string& id,
@@ -40,10 +45,16 @@ Result<FetchSummary> ImageService::fetch(const std::string& id,
                                          ProgressFn onProgress, CancelToken cancel) {
     namespace fs = std::filesystem;
 
-    // Fail fast on local preconditions before touching the network or a token.
-    if (!id.starts_with("gh:")) {  // route by identifier scheme (GitHub only yet)
+    // Route by identifier scheme to the owning channel, failing fast before any
+    // filesystem or network work.
+    std::string_view channel;
+    if (id.starts_with("gh:")) channel = "unstable";
+    else if (id.starts_with("adi:")) channel = "stable";
+    auto provider = makeProvider(channel);
+    if (!provider) {
         return Err(ErrorCode::NotFound, "Unknown image identifier: " + id,
-                   "Expected 'gh:<id>' from 'kli list-releases --unstable'.");
+                   "Expected 'gh:<id>' or 'adi:<version>/<variant>/<arch>' from "
+                   "'kli list-releases'.");
     }
 
     // `outputPath` is either a file to write, or a directory to drop the artifact
@@ -71,8 +82,7 @@ Result<FetchSummary> ImageService::fetch(const std::string& id,
                    "Create it first, or give a full file path.");
     }
 
-    GitHubActionsProvider provider(*http_, githubToken_);
-    auto src = provider.resolve(id);
+    auto src = provider->resolve(id);
     if (!src) return std::unexpected(src.error());
 
     if (intoDir) {
