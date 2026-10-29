@@ -24,6 +24,7 @@ add_library(kuiper STATIC
     src/ImageService.cpp
     src/http/CurlHttpClient.cpp
     src/image/GitHubActionsProvider.cpp
+    src/image/StableReleaseProvider.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
     ${KUIPER_PLATFORM_SOURCES})
 

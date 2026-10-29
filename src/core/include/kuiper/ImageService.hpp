@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "kuiper/Error.hpp"
@@ -12,6 +13,8 @@
 #include "kuiper/http/HttpClient.hpp"
 
 namespace kuiper {
+
+class ReleaseProvider;
 
 // Result of a successful fetch: where the bytes landed, how many, and their
 // SHA-256 (of the file exactly as downloaded).
@@ -40,6 +43,10 @@ public:
                                ProgressFn onProgress = {}, CancelToken cancel = {});
 
 private:
+    // The provider serving a channel ("stable" | "unstable"), or nullptr if the
+    // channel is unknown. fetch() maps an id's scheme to its channel first.
+    std::unique_ptr<ReleaseProvider> makeProvider(std::string_view channel);
+
     std::unique_ptr<IHttpClient> http_;
     std::optional<std::string> githubToken_;
 };

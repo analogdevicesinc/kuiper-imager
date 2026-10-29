@@ -18,9 +18,9 @@ struct DownloadSource {
     std::string filename;  // e.g. "kuiper_full_64_image.zip"
 };
 
-// One release source (unstable CI artifacts today, stable Releases later).
-// ImageService dispatches to these by channel/identifier scheme. See docs:
-// releases-and-sources.
+// One release source: GitHub Actions CI artifacts (unstable) or published
+// releases (stable). ImageService dispatches to these by channel/identifier
+// scheme. See docs: releases-and-sources.
 class ReleaseProvider {
 public:
     virtual Result<std::vector<Release>> list(const ReleaseQuery& query) = 0;
