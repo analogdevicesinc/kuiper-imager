@@ -211,8 +211,9 @@ candidates.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">mount(partition)</span></code> — mount a partition and return an RAII
 <a class="reference internal" href="core-library.html#core-library"><span class="std std-ref">MountedPartition</span></a> handle. If the partition is already
 mounted the handle <em>borrows</em> it (and leaves it alone on destruction);
-otherwise the backend mounts to a private temp dir and the handle unmounts and
-cleans up. A partition with no filesystem is an error.</p></li>
+otherwise the backend mounts it and the handle unmounts on destruction. How the
+backend mounts is its own concern (see the Linux backend’s unprivileged udisks2
+path below). A partition with no filesystem is an error.</p></li>
 </ul>
 <p><strong>Raw device I/O</strong> (an RAII handle, via <code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code>)</p>
 <p><code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code> open the device and hand back a
@@ -244,10 +245,10 @@ drive that lists a partition is its owner, and each partition row already carrie
 its own mountpoint — so no <code class="docutils literal notranslate"><span class="pre">/dev/Xp1</span></code> string surgery leaks into the contract.</p>
 <p><strong>Unsupported operations.</strong> An operation a backend does not implement returns an
 <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code> error rather than failing deep in a pipeline: the macOS
-stub returns it from every method, and the Windows backend returns it from
-<code class="docutils literal notranslate"><span class="pre">mount</span></code> (<code class="docutils literal notranslate"><span class="pre">configure</span></code> is Linux-only for now). A front-end surfaces that error
-directly, so the user sees a clear message without a machine-wide capability
-table to keep in sync.</p>
+stub returns it from every method, and on Windows only the raw <em>intel preloader</em>
+write is unimplemented (<code class="docutils literal notranslate"><span class="pre">configure</span></code> refuses an intel project up front, before
+touching the card). A front-end surfaces that error directly, so the user sees a
+clear message without a machine-wide capability table to keep in sync.</p>
 </section>
 <hr class="docutils" />
 <section id="selecting-a-backend">
@@ -313,6 +314,18 @@ since it cannot be safely released.</p>
 the block device’s page cache and <code class="docutils literal notranslate"><span class="pre">posix_fadvise(DONTNEED)</span></code> as
 belt-and-suspenders for the buffered fallback — together forcing the verify pass
 to re-read from media. Under O_DIRECT these are near-free no-ops.</p>
+<p><strong>Mounting.</strong> <code class="docutils literal notranslate"><span class="pre">configure</span></code> and <code class="docutils literal notranslate"><span class="pre">list-projects</span></code> need the BOOT partition mounted,
+not raw access — and mounting a filesystem, unlike raw block I/O, has an
+unprivileged path. <code class="docutils literal notranslate"><span class="pre">mount</span></code> first tries <code class="docutils literal notranslate"><span class="pre">udisksctl</span> <span class="pre">mount</span></code> (the same udisks2 +
+polkit mechanism a file manager uses), so these commands work <strong>without sudo</strong>
+right after a flash. This matters because a freshly written card is present but
+not auto-mounted — the desktop auto-mounts on <em>media insertion</em>, and rewriting the
+partition table in place (even after <code class="docutils literal notranslate"><span class="pre">BLKRRPART</span></code>) is not one — so without this
+the only way to mount it would be the privileged <code class="docutils literal notranslate"><span class="pre">mount(2)</span></code> syscall. udisks2’s
+output is localized, so the mountpoint is read back from <code class="docutils literal notranslate"><span class="pre">lsblk</span></code> rather than
+parsed from it; the handle unmounts via <code class="docutils literal notranslate"><span class="pre">udisksctl</span></code> on destruction. When udisks2
+is absent (headless / minimal systems) <code class="docutils literal notranslate"><span class="pre">mount</span></code> falls back to <code class="docutils literal notranslate"><span class="pre">mount(2)</span></code> into a
+private temp dir, where the caller is root anyway.</p>
 </section>
 <hr class="docutils" />
 <section id="privilege">
@@ -320,9 +333,11 @@ to re-read from media. Under O_DIRECT these are near-free no-ops.</p>
 <p>Raw device access requires root. On Linux the tool opens the device directly and
 expects to be run with <code class="docutils literal notranslate"><span class="pre">sudo</span></code>; an <code class="docutils literal notranslate"><span class="pre">EACCES</span></code> / <code class="docutils literal notranslate"><span class="pre">EPERM</span></code> is mapped to
 <code class="docutils literal notranslate"><span class="pre">PermissionDenied</span></code> with a “run with sudo” hint. This “open the raw node with
-elevated privilege” approach is deliberately simple and dependency-free: it
-avoids taking a hard runtime dependency on <code class="docutils literal notranslate"><span class="pre">udisks2</span></code> / D-Bus and the policy
-surface that comes with it, in exchange for requiring explicit elevation.</p>
+elevated privilege” approach is deliberately simple and dependency-free: it takes
+no <em>hard</em> dependency on <code class="docutils literal notranslate"><span class="pre">udisks2</span></code> / D-Bus. Mounting is the one exception, and a
+deliberate one: <code class="docutils literal notranslate"><span class="pre">mount</span></code> uses <code class="docutils literal notranslate"><span class="pre">udisksctl</span></code> when it is present (so <code class="docutils literal notranslate"><span class="pre">configure</span></code>
+needs no sudo) but treats it as <em>optional</em>, falling back to <code class="docutils literal notranslate"><span class="pre">mount(2)</span></code> when it is
+not — raw flashing still always goes through the direct, elevated open.</p>
 <p>The other platforms follow the same shape with their own elevation mechanism,
 which is why privilege sits behind <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code> rather than in the portable
 core:</p>
@@ -360,9 +375,9 @@ core:</p>
 <hr class="docutils" />
 <section id="the-windows-backend">
 <h2>The Windows Backend<a class="headerlink" href="#the-windows-backend" title="Link to this heading"></a></h2>
-<p>The Windows backend implements enumeration and flashing (<code class="docutils literal notranslate"><span class="pre">configure</span></code> is
-Linux-only for now, so <code class="docutils literal notranslate"><span class="pre">mount</span></code> returns <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>). It uses Win32
-directly — no subprocess.</p>
+<p>The Windows backend implements enumeration, flashing, and <code class="docutils literal notranslate"><span class="pre">mount</span></code> (so
+<code class="docutils literal notranslate"><span class="pre">list-projects</span></code> and <code class="docutils literal notranslate"><span class="pre">configure</span></code> work for ordinary boards); only the raw intel
+preloader write is Linux-only for now. It uses Win32 directly — no subprocess.</p>
 <p><strong>Enumeration.</strong> SetupAPI (<code class="docutils literal notranslate"><span class="pre">GUID_DEVINTERFACE_DISK</span></code>) lists the disk device
 interfaces; <code class="docutils literal notranslate"><span class="pre">IOCTL_STORAGE_GET_DEVICE_NUMBER</span></code> maps each to its
 <code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code> node. <code class="docutils literal notranslate"><span class="pre">IOCTL_STORAGE_QUERY_PROPERTY</span></code> gives the model and
@@ -374,8 +389,17 @@ walking the system’s volumes and matching them to a disk + starting offset via
 <code class="docutils literal notranslate"><span class="pre">IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS</span></code> (drive letter, filesystem, label). The
 disk backing <code class="docutils literal notranslate"><span class="pre">%SystemDrive%</span></code> is flagged <code class="docutils literal notranslate"><span class="pre">isSystem</span></code> so the two-tier guard
 protects it. Because Windows has no <code class="docutils literal notranslate"><span class="pre">/dev/sdXN</span></code>, a partition’s <code class="docutils literal notranslate"><span class="pre">node</span></code> is a
-backend-owned opaque identifier (the volume GUID path, or a synthetic token) — it
-is populated for display but not opened in this scope.</p>
+backend-owned opaque identifier: the volume GUID path (<code class="docutils literal notranslate"><span class="pre">\\?\Volume{...}</span></code>) for a
+recognized volume, or a synthetic token for a raw slot. It is never opened as a
+raw device — the flash path only ever opens the whole-disk <code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code>.</p>
+<p><strong>Mounting.</strong> Windows auto-mounts recognized filesystems, so <code class="docutils literal notranslate"><span class="pre">mount</span></code> has nothing
+to mount — it <em>borrows</em>, exactly as the Linux backend borrows an already-mounted
+partition. It hands back the drive letter the volume carries (<code class="docutils literal notranslate"><span class="pre">E:\</span></code>), or, when a
+mounted volume has no letter, its volume GUID path — both are valid filesystem
+roots for the portable <code class="docutils literal notranslate"><span class="pre">ConfigurationService</span></code>, and the handle releases nothing on
+destruction. A raw slot (no filesystem) returns <code class="docutils literal notranslate"><span class="pre">NotFound</span></code>. This is what makes
+<code class="docutils literal notranslate"><span class="pre">list-projects</span></code> and <code class="docutils literal notranslate"><span class="pre">configure</span></code> work on Windows for ordinary boards; only the
+raw intel preloader write, which still needs a base-offset device write, is absent.</p>
 <p><strong>Raw I/O and locking.</strong> <code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> locks and dismounts every volume on the
 target disk (<code class="docutils literal notranslate"><span class="pre">FSCTL_LOCK_VOLUME</span></code> + <code class="docutils literal notranslate"><span class="pre">FSCTL_DISMOUNT_VOLUME</span></code>) and <em>holds</em> the
 locks for the whole session — the equivalent of Linux’s unmount + <code class="docutils literal notranslate"><span class="pre">O_EXCL</span></code> —
