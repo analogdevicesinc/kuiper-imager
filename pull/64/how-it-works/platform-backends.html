@@ -242,15 +242,12 @@ hardware.</p>
 owning drive and the target’s mount state directly from <code class="docutils literal notranslate"><span class="pre">listDrives()</span></code> — the
 drive that lists a partition is its owner, and each partition row already carries
 its own mountpoint — so no <code class="docutils literal notranslate"><span class="pre">/dev/Xp1</span></code> string surgery leaks into the contract.</p>
-<p><strong>Capabilities.</strong> <code class="docutils literal notranslate"><span class="pre">capabilities()</span></code> returns a <code class="docutils literal notranslate"><span class="pre">DriveCapabilities</span></code>
-<code class="docutils literal notranslate"><span class="pre">{enumerate,</span> <span class="pre">flash,</span> <span class="pre">mount}</span></code> describing what the backend can do on the host. A
-front-end gates commands on it up front — <code class="docutils literal notranslate"><span class="pre">list-drives</span></code> needs <code class="docutils literal notranslate"><span class="pre">enumerate</span></code>,
-<code class="docutils literal notranslate"><span class="pre">flash</span></code> needs <code class="docutils literal notranslate"><span class="pre">flash</span></code>, <code class="docutils literal notranslate"><span class="pre">configure</span></code> / <code class="docutils literal notranslate"><span class="pre">list-projects</span></code> need <code class="docutils literal notranslate"><span class="pre">mount</span></code> — so
-an unsupported action fails with a clear message instead of deep in a pipeline.
-The Linux backend reports all three true; the Windows backend reports
-<code class="docutils literal notranslate"><span class="pre">enumerate</span></code> and <code class="docutils literal notranslate"><span class="pre">flash</span></code> (<code class="docutils literal notranslate"><span class="pre">mount</span></code> is off — <code class="docutils literal notranslate"><span class="pre">configure</span></code> is Linux-only for
-now); the macOS stub reports all false. <code class="docutils literal notranslate"><span class="pre">DriveService::isSupported()</span></code> is the
-shorthand for “can this platform at least enumerate?”.</p>
+<p><strong>Unsupported operations.</strong> An operation a backend does not implement returns an
+<code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code> error rather than failing deep in a pipeline: the macOS
+stub returns it from every method, and the Windows backend returns it from
+<code class="docutils literal notranslate"><span class="pre">mount</span></code> (<code class="docutils literal notranslate"><span class="pre">configure</span></code> is Linux-only for now). A front-end surfaces that error
+directly, so the user sees a clear message without a machine-wide capability
+table to keep in sync.</p>
 </section>
 <hr class="docutils" />
 <section id="selecting-a-backend">
@@ -364,8 +361,8 @@ core:</p>
 <section id="the-windows-backend">
 <h2>The Windows Backend<a class="headerlink" href="#the-windows-backend" title="Link to this heading"></a></h2>
 <p>The Windows backend implements enumeration and flashing (<code class="docutils literal notranslate"><span class="pre">configure</span></code> is
-Linux-only for now, so <code class="docutils literal notranslate"><span class="pre">capabilities().mount</span></code> is false and the front-ends hide
-it). It uses Win32 directly — no subprocess.</p>
+Linux-only for now, so <code class="docutils literal notranslate"><span class="pre">mount</span></code> returns <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>). It uses Win32
+directly — no subprocess.</p>
 <p><strong>Enumeration.</strong> SetupAPI (<code class="docutils literal notranslate"><span class="pre">GUID_DEVINTERFACE_DISK</span></code>) lists the disk device
 interfaces; <code class="docutils literal notranslate"><span class="pre">IOCTL_STORAGE_GET_DEVICE_NUMBER</span></code> maps each to its
 <code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code> node. <code class="docutils literal notranslate"><span class="pre">IOCTL_STORAGE_QUERY_PROPERTY</span></code> gives the model and
@@ -398,9 +395,9 @@ Linux build keeps using the distro packages.</p>
 <section id="macos-planned">
 <h2>macOS (Planned)<a class="headerlink" href="#macos-planned" title="Link to this heading"></a></h2>
 <p>The macOS backend is still a <strong>structural stub</strong>: it implements
-<code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code>’s methods so the tool compiles and links, but <code class="docutils literal notranslate"><span class="pre">capabilities()</span></code>
-reports all-false and every operation returns <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>. A front-end
-that checks capabilities reports the platform as unsupported up front. The port
+<code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code>’s methods so the tool compiles and links, but every operation
+returns <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>. A front-end surfaces that error, so the platform
+reads as unsupported up front. The port
 (see <a class="reference internal" href="../development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a>) will add enumeration via DiskArbitration + IOKit and a raw
 open of <code class="docutils literal notranslate"><span class="pre">/dev/rdiskN</span></code> using a descriptor from <code class="docutils literal notranslate"><span class="pre">authopen</span></code> passed over
 <code class="docutils literal notranslate"><span class="pre">SCM_RIGHTS</span></code> (<code class="docutils literal notranslate"><span class="pre">DKIOCGETBLOCKCOUNT</span></code> for size) — reusing the same

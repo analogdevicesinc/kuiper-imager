@@ -66,15 +66,12 @@ owning drive and the target's mount state directly from ``listDrives()`` — the
 drive that lists a partition is its owner, and each partition row already carries
 its own mountpoint — so no ``/dev/Xp1`` string surgery leaks into the contract.
 
-**Capabilities.** ``capabilities()`` returns a ``DriveCapabilities``
-``{enumerate, flash, mount}`` describing what the backend can do on the host. A
-front-end gates commands on it up front — ``list-drives`` needs ``enumerate``,
-``flash`` needs ``flash``, ``configure`` / ``list-projects`` need ``mount`` — so
-an unsupported action fails with a clear message instead of deep in a pipeline.
-The Linux backend reports all three true; the Windows backend reports
-``enumerate`` and ``flash`` (``mount`` is off — ``configure`` is Linux-only for
-now); the macOS stub reports all false. ``DriveService::isSupported()`` is the
-shorthand for "can this platform at least enumerate?".
+**Unsupported operations.** An operation a backend does not implement returns an
+``UnsupportedPlatform`` error rather than failing deep in a pipeline: the macOS
+stub returns it from every method, and the Windows backend returns it from
+``mount`` (``configure`` is Linux-only for now). A front-end surfaces that error
+directly, so the user sees a clear message without a machine-wide capability
+table to keep in sync.
 
 ----
 
@@ -193,8 +190,8 @@ The Windows Backend
 -------------------
 
 The Windows backend implements enumeration and flashing (``configure`` is
-Linux-only for now, so ``capabilities().mount`` is false and the front-ends hide
-it). It uses Win32 directly — no subprocess.
+Linux-only for now, so ``mount`` returns ``UnsupportedPlatform``). It uses Win32
+directly — no subprocess.
 
 **Enumeration.** SetupAPI (``GUID_DEVINTERFACE_DISK``) lists the disk device
 interfaces; ``IOCTL_STORAGE_GET_DEVICE_NUMBER`` maps each to its
@@ -232,9 +229,9 @@ macOS (Planned)
 ---------------
 
 The macOS backend is still a **structural stub**: it implements
-``IDriveBackend``'s methods so the tool compiles and links, but ``capabilities()``
-reports all-false and every operation returns ``UnsupportedPlatform``. A front-end
-that checks capabilities reports the platform as unsupported up front. The port
+``IDriveBackend``'s methods so the tool compiles and links, but every operation
+returns ``UnsupportedPlatform``. A front-end surfaces that error, so the platform
+reads as unsupported up front. The port
 (see :ref:`roadmap`) will add enumeration via DiskArbitration + IOKit and a raw
 open of ``/dev/rdiskN`` using a descriptor from ``authopen`` passed over
 ``SCM_RIGHTS`` (``DKIOCGETBLOCKCOUNT`` for size) — reusing the same
