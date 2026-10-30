@@ -143,6 +143,45 @@ std::unexpected<Error> ioError(int e, const std::string& what) {
     }
 }
 
+// The current mountpoint of `node` per lsblk, or "" if it is not mounted. Read
+// from lsblk (not from udisksctl's human output) so it is stable and locale-proof.
+std::string currentMountpoint(const std::string& node) {
+    QProcess proc;
+    proc.start("lsblk",
+               {"-n", "-o", "MOUNTPOINT", QString::fromStdString(node)});
+    if (!proc.waitForStarted(3000) || !proc.waitForFinished(5000) ||
+        proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
+        return {};
+    }
+    return QString::fromUtf8(proc.readAllStandardOutput()).trimmed().toStdString();
+}
+
+// Mount `node` through udisks2 — the unprivileged path a file manager uses,
+// authorized by polkit without root. Returns the mountpoint on success, or "" if
+// udisks2 is absent/declined so the caller can fall back to the ::mount(2) syscall.
+// --no-user-interaction never blocks on a polkit prompt: if auth is required and
+// unavailable it fails fast rather than hanging a non-interactive run.
+std::string udisksMount(const std::string& node) {
+    QProcess proc;
+    proc.start("udisksctl", {"mount", "--no-user-interaction", "-b",
+                             QString::fromStdString(node)});
+    if (!proc.waitForStarted(3000) || !proc.waitForFinished(15000) ||
+        proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
+        return {};
+    }
+    return currentMountpoint(node);  // authoritative, locale-independent
+}
+
+// Best-effort unmount through udisks2 (the inverse of udisksMount). Used by the
+// handle that udisksMount produced; failures are harmless (the card can still be
+// pulled), so the result is ignored, mirroring the syscall path's umount2.
+void udisksUnmount(const std::string& node) {
+    QProcess proc;
+    proc.start("udisksctl", {"unmount", "--no-user-interaction", "-b",
+                             QString::fromStdString(node)});
+    if (proc.waitForStarted(3000)) proc.waitForFinished(15000);
+}
+
 // One open raw-device session on Linux: owns the fd and does positioned,
 // block-aligned I/O with direct syscalls. All alignment/staging bookkeeping lives
 // in detail::AlignedRawDevice above this; LinuxBlockIo is the thin BlockIo
@@ -310,6 +349,18 @@ public:
             return Err(ErrorCode::NotFound,
                        "Partition has no filesystem to mount: " + partition.node,
                        "Only a formatted partition (vfat/ext4) can be mounted.");
+        }
+
+        // Prefer udisks2 (the unprivileged, polkit-authorized path a file manager
+        // uses) so list-projects / configure work right after a flash without sudo:
+        // a freshly written card is present but not auto-mounted, and mounting it
+        // ourselves with ::mount(2) needs root. The handle unmounts via udisks2 too.
+        // When udisks2 isn't on the system (headless / minimal) this returns "" and
+        // we fall through to the syscall below, where the caller is root anyway.
+        if (auto mp = udisksMount(partition.node); !mp.empty()) {
+            const std::string node = partition.node;
+            return MountedPartition(std::move(mp),
+                                    [node] { udisksUnmount(node); });
         }
 
         char tmpl[] = "/tmp/kuiper-mnt-XXXXXX";
