@@ -96,7 +96,7 @@
 <li><a class="reference internal" href="#">Development</a><ul>
 <li><a class="reference internal" href="#project-layout">Project Layout</a></li>
 <li><a class="reference internal" href="#dev-environment-and-presets">Dev Environment and Presets</a></li>
-<li><a class="reference internal" href="#testing">Testing</a></li>
+<li><a class="reference internal" href="#verification">Verification</a></li>
 </ul>
 </li>
 </ul>
@@ -188,9 +188,9 @@ Content on this topic
             
   <section id="development">
 <span id="id1"></span><h1>Development<a class="headerlink" href="#development" title="Link to this heading"></a></h1>
-<p>Development and the Linux build happen in Docker; the (planned) Windows and macOS
-executables come from native CI runners rather than this container. This page
-covers the repository layout, the dev environment, and the build presets.</p>
+<p>Development and the Linux build happen in Docker; the Windows executables come
+from a native CI runner (macOS is still planned) rather than this container. This
+page covers the repository layout, the dev environment, and the build presets.</p>
 <hr class="docutils" />
 <section id="project-layout">
 <h2>Project Layout<a class="headerlink" href="#project-layout" title="Link to this heading"></a></h2>
@@ -267,8 +267,9 @@ docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w">
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ci-linux</span></code> / <code class="docutils literal notranslate"><span class="pre">ci-macos</span></code> / <code class="docutils literal notranslate"><span class="pre">ci-windows</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">build-ci</span></code></p></td>
-<td><p>Release CI builds. Only <code class="docutils literal notranslate"><span class="pre">ci-linux</span></code> is exercised today; the macOS and
-Windows rows wait on the Phase 4 <a class="reference internal" href="../how-it-works/platform-backends.html#platform-backends"><span class="std std-ref">backends</span></a>.</p></td>
+<td><p>Release CI builds. <code class="docutils literal notranslate"><span class="pre">ci-linux</span></code> and <code class="docutils literal notranslate"><span class="pre">ci-windows</span></code> are exercised by CI
+(<code class="docutils literal notranslate"><span class="pre">ci-windows</span></code> pulls the C libraries from vcpkg); the macOS row waits on
+its <a class="reference internal" href="../how-it-works/platform-backends.html#platform-backends"><span class="std std-ref">backend</span></a>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -284,12 +285,22 @@ docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w">
 </div>
 </section>
 <hr class="docutils" />
-<section id="testing">
-<h2>Testing<a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
-<p>There is no automated test suite yet — a <code class="docutils literal notranslate"><span class="pre">ctest</span></code> target is a planned addition.
-The CI pipeline’s smoke test is <code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">version</span></code>, which confirms the binary links
-and runs. When contributing, verify changes manually against the relevant
-command and note that in your commit (see <a class="reference internal" href="contributing.html#contributing"><span class="std std-ref">Contributing</span></a>).</p>
+<section id="verification">
+<span id="testing"></span><h2>Verification<a class="headerlink" href="#verification" title="Link to this heading"></a></h2>
+<p>The automated test suite has been removed while the cross-platform backends land.
+Verification today is the CI build/smoke gate plus a manual flash check.</p>
+<ul class="simple">
+<li><p><strong>CI</strong> builds the CLI and GUI on Linux and Windows and runs <code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">version</span></code> on
+each, so a broken build or link fails the pipeline.</p></li>
+<li><p><strong>Flash parity (Linux)</strong> is checked by hand against a loop device: write an
+image to <code class="docutils literal notranslate"><span class="pre">/dev/loopN</span></code> with <code class="docutils literal notranslate"><span class="pre">--force</span></code> and confirm the read-back verify
+passes (the SHA-256 the tool reports matches the source). The whole
+<a class="reference internal" href="../using-the-cli/flash.html#flash"><span class="std std-ref">flash pipeline</span></a> — wipe, defer-head write, verify — is
+OS-agnostic (it runs above the backend), so this also exercises the logic the
+Windows backend reuses through the shared <code class="docutils literal notranslate"><span class="pre">AlignedRawDevice</span></code> engine.</p></li>
+<li><p><strong>Flash (Windows)</strong> is validated on a real machine with an SD card, from an
+elevated prompt, once CI confirms the backend compiles and links.</p></li>
+</ul>
 </section>
 </section>
 

@@ -187,10 +187,10 @@ Content on this topic
             
   <section id="roadmap">
 <span id="id1"></span><h1>Roadmap<a class="headerlink" href="#roadmap" title="Link to this heading"></a></h1>
-<p>Kuiper Imager is developed in phases. The core and the full Linux CLI workflow
-are done; the additional platform backends and the GUI are deliberately
-postponed but already have their seams in place, so filling them in touches
-nothing above the <a class="reference internal" href="../how-it-works/architecture.html#architecture"><span class="std std-ref">funnel</span></a>.</p>
+<p>Kuiper Imager is developed in phases. The core, the full Linux CLI workflow, and
+the Windows imaging backend are done; the macOS backend and the GUI are
+deliberately postponed but already have their seams in place, so filling them in
+touches nothing above the <a class="reference internal" href="../how-it-works/architecture.html#architecture"><span class="std std-ref">funnel</span></a>.</p>
 <hr class="docutils" />
 <section id="phase-status">
 <h2>Phase Status<a class="headerlink" href="#phase-status" title="Link to this heading"></a></h2>
@@ -226,7 +226,8 @@ nothing above the <a class="reference internal" href="../how-it-works/architectu
 </tr>
 <tr class="row-even"><td><p>4</p></td>
 <td><p>Windows and macOS drive backends</p></td>
-<td><p>Postponed — compilable stubs (see <a class="reference internal" href="../how-it-works/platform-backends.html#platform-backends"><span class="std std-ref">Platform Backends</span></a>)</p></td>
+<td><p>Windows <strong>done</strong> (<code class="docutils literal notranslate"><span class="pre">list-drives</span></code> + <code class="docutils literal notranslate"><span class="pre">flash</span></code>; <code class="docutils literal notranslate"><span class="pre">configure</span></code> is Linux-only);
+macOS postponed — compilable stub (see <a class="reference internal" href="../how-it-works/platform-backends.html#platform-backends"><span class="std std-ref">Platform Backends</span></a>)</p></td>
 </tr>
 <tr class="row-odd"><td><p>5</p></td>
 <td><p>GUI wire-up and image customization</p></td>
@@ -235,10 +236,10 @@ nothing above the <a class="reference internal" href="../how-it-works/architectu
 </tbody>
 </table>
 </div>
-<p>What works today: the <code class="docutils literal notranslate"><span class="pre">kli</span></code> CLI on <strong>Linux</strong> — <code class="docutils literal notranslate"><span class="pre">list-drives</span></code>, <code class="docutils literal notranslate"><span class="pre">flash</span></code> of a
-local image, <code class="docutils literal notranslate"><span class="pre">list-projects</span></code> / <code class="docutils literal notranslate"><span class="pre">configure</span></code>, <code class="docutils literal notranslate"><span class="pre">list-releases</span></code> (both the
-stable and <code class="docutils literal notranslate"><span class="pre">--unstable</span></code> channels), and <code class="docutils literal notranslate"><span class="pre">fetch</span></code>. The GUI builds but currently
-lists drives only.</p>
+<p>What works today: the <code class="docutils literal notranslate"><span class="pre">kli</span></code> CLI on <strong>Linux</strong> <code class="docutils literal notranslate"><span class="pre">list-drives</span></code>, <code class="docutils literal notranslate"><span class="pre">flash</span></code> of a
+local image, <code class="docutils literal notranslate"><span class="pre">list-projects</span></code> / <code class="docutils literal notranslate"><span class="pre">configure</span></code>, <code class="docutils literal notranslate"><span class="pre">list-releases</span></code> / <code class="docutils literal notranslate"><span class="pre">fetch</span></code>;
+on <strong>Windows</strong> <code class="docutils literal notranslate"><span class="pre">list-drives</span></code>, <code class="docutils literal notranslate"><span class="pre">flash</span></code>, <code class="docutils literal notranslate"><span class="pre">list-releases</span></code> / <code class="docutils literal notranslate"><span class="pre">fetch</span></code>. The
+GUI builds on both but currently lists drives only.</p>
 </section>
 <hr class="docutils" />
 <section id="deferred-design-pieces">

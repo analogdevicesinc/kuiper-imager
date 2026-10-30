@@ -213,8 +213,8 @@ Core library  libkuiper  (UI-agnostic, Qt Core only)
 ──────────────────── only DriveService crosses this line ─────
 Platform abstraction  (one interface, three implementations)
   IDriveBackend — enumerate · raw I/O · mount · privilege
-    Linux backend      Windows backend*     macOS backend*
-                                     (*planned, Phase 4)
+    Linux backend      Windows backend      macOS backend*
+                                     (*planned)
 </pre></div>
 </div>
 <p>The top layer holds two interchangeable front-ends. <code class="docutils literal notranslate"><span class="pre">kli</span></code> is the
@@ -250,10 +250,10 @@ even for read-only topology lookups (for example, resolving a partition node to
 its parent disk): those shell out to <code class="docutils literal notranslate"><span class="pre">util-linux</span></code> from inside the backend
 rather than from the portable services, so no platform assumption ever leaks
 upward.</p>
-<p>The payoff is that porting to Windows or macOS (Phase 4) touches only
-DriveService and its backends — nothing in ImageService or ConfigurationService
-changes. See <a class="reference internal" href="platform-backends.html#platform-backends"><span class="std std-ref">Platform Backends</span></a> for the interface and the Linux
-implementation.</p>
+<p>The payoff showed up in the Windows port: it touched only a new backend behind
+DriveService — nothing in ImageService or ConfigurationService changed, and the
+Linux and Windows backends share one <code class="docutils literal notranslate"><span class="pre">AlignedRawDevice</span></code> engine. macOS will be
+the same. See <a class="reference internal" href="platform-backends.html#platform-backends"><span class="std std-ref">Platform Backends</span></a> for the interface and the backends.</p>
 </section>
 <hr class="docutils" />
 <section id="one-core-two-front-ends">

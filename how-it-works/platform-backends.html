@@ -98,7 +98,8 @@
 <li><a class="reference internal" href="#selecting-a-backend">Selecting a Backend</a></li>
 <li><a class="reference internal" href="#the-linux-backend">The Linux Backend</a></li>
 <li><a class="reference internal" href="#privilege">Privilege</a></li>
-<li><a class="reference internal" href="#macos-and-windows-planned">macOS and Windows (Planned)</a></li>
+<li><a class="reference internal" href="#the-windows-backend">The Windows Backend</a></li>
+<li><a class="reference internal" href="#macos-planned">macOS (Planned)</a></li>
 </ul>
 </li>
 </ul>
@@ -213,8 +214,13 @@ mounted the handle <em>borrows</em> it (and leaves it alone on destruction);
 otherwise the backend mounts to a private temp dir and the handle unmounts and
 cleans up. A partition with no filesystem is an error.</p></li>
 </ul>
-<p><strong>Raw device I/O</strong> (one device open at a time, via <code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> /
-<code class="docutils literal notranslate"><span class="pre">openForRead</span></code>)</p>
+<p><strong>Raw device I/O</strong> (an RAII handle, via <code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code>)</p>
+<p><code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code> open the device and hand back a
+<code class="docutils literal notranslate"><span class="pre">std::unique_ptr&lt;IRawDevice&gt;</span></code> — an owning handle whose lifetime <em>is</em> the open
+session. The destructor closes the underlying handle, so exactly one device is open
+for as long as the handle lives; there is no separate <code class="docutils literal notranslate"><span class="pre">close()</span></code> to forget and no
+“one-open-at-a-time” convention to police. The handle carries the byte-stream
+surface:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">seek</span></code> / <code class="docutils literal notranslate"><span class="pre">write</span></code> / <code class="docutils literal notranslate"><span class="pre">read</span></code> — a byte-stream abstraction. Callers pass
 arbitrary offsets and lengths; the backend does all short-write, short-read,
@@ -228,10 +234,20 @@ flash caller satisfies (it only ever seeks to 0 and the 1-MiB defer-head).</p></
 so verification reads media, not cache.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">rereadPartTable</span></code> — ask the kernel to re-read the table (best-effort).</p></li>
 </ul>
+<p>Splitting the open session into its own type keeps <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code> small — a new
+OS implements a handful of drive-level operations, not a fused I/O session — and
+lets the raw pipeline be unit-tested against an in-memory <code class="docutils literal notranslate"><span class="pre">IRawDevice</span></code> with no
+hardware.</p>
 <p>The preloader safety check needs no separate topology methods: it derives the
 owning drive and the target’s mount state directly from <code class="docutils literal notranslate"><span class="pre">listDrives()</span></code> — the
 drive that lists a partition is its owner, and each partition row already carries
 its own mountpoint — so no <code class="docutils literal notranslate"><span class="pre">/dev/Xp1</span></code> string surgery leaks into the contract.</p>
+<p><strong>Unsupported operations.</strong> An operation a backend does not implement returns an
+<code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code> error rather than failing deep in a pipeline: the macOS
+stub returns it from every method, and the Windows backend returns it from
+<code class="docutils literal notranslate"><span class="pre">mount</span></code> (<code class="docutils literal notranslate"><span class="pre">configure</span></code> is Linux-only for now). A front-end surfaces that error
+directly, so the user sees a clear message without a machine-wide capability
+table to keep in sync.</p>
 </section>
 <hr class="docutils" />
 <section id="selecting-a-backend">
@@ -332,31 +348,61 @@ core:</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">/dev/rdiskN</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">authopen</span></code> hands back an fd over <code class="docutils literal notranslate"><span class="pre">SCM_RIGHTS</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>Windows*</p></td>
+<tr class="row-even"><td><p>Windows</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code></p></td>
-<td><p>UAC-elevated process</p></td>
+<td><p>Run from an elevated (Administrator) prompt</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>* Planned for Phase 4 — see below.</p>
+<p>* macOS is still planned — see below.</p>
 </section>
 <hr class="docutils" />
-<section id="macos-and-windows-planned">
-<h2>macOS and Windows (Planned)<a class="headerlink" href="#macos-and-windows-planned" title="Link to this heading"></a></h2>
-<p>The macOS and Windows backends exist today as <strong>structural stubs</strong>: they
-implement <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code> so the tool compiles and links everywhere, but every
-operation returns <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>. They mark the seam the Phase 4 ports
-will fill (see <a class="reference internal" href="../development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a>):</p>
-<ul class="simple">
-<li><p><strong>macOS</strong> — enumeration via DiskArbitration + IOKit; raw open of
-<code class="docutils literal notranslate"><span class="pre">/dev/rdiskN</span></code> using a file descriptor obtained from <code class="docutils literal notranslate"><span class="pre">authopen</span></code> and passed
-back over <code class="docutils literal notranslate"><span class="pre">SCM_RIGHTS</span></code>; <code class="docutils literal notranslate"><span class="pre">DKIOCGETBLOCKCOUNT</span></code> for size.</p></li>
-<li><p><strong>Windows</strong> — enumeration via SetupAPI + <code class="docutils literal notranslate"><span class="pre">IOCTL_STORAGE_QUERY_PROPERTY</span></code>; raw
-open of <code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code> from a UAC-elevated process, with
-<code class="docutils literal notranslate"><span class="pre">DeviceIoControl</span></code> for lock, dismount, and size.</p></li>
-</ul>
-<p>Because they sit behind the funnel, filling them in touches nothing in
+<section id="the-windows-backend">
+<h2>The Windows Backend<a class="headerlink" href="#the-windows-backend" title="Link to this heading"></a></h2>
+<p>The Windows backend implements enumeration and flashing (<code class="docutils literal notranslate"><span class="pre">configure</span></code> is
+Linux-only for now, so <code class="docutils literal notranslate"><span class="pre">mount</span></code> returns <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>). It uses Win32
+directly — no subprocess.</p>
+<p><strong>Enumeration.</strong> SetupAPI (<code class="docutils literal notranslate"><span class="pre">GUID_DEVINTERFACE_DISK</span></code>) lists the disk device
+interfaces; <code class="docutils literal notranslate"><span class="pre">IOCTL_STORAGE_GET_DEVICE_NUMBER</span></code> maps each to its
+<code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code> node. <code class="docutils literal notranslate"><span class="pre">IOCTL_STORAGE_QUERY_PROPERTY</span></code> gives the model and
+bus type (USB / SD / MMC ⇒ removable), and <code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_GET_DRIVE_GEOMETRY_EX</span></code> the
+size — the zero-access enumeration handle can’t use <code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_GET_LENGTH_INFO</span></code>,
+which needs read access and is reserved for the open write/verify session.
+Partitions come from <code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_GET_DRIVE_LAYOUT_EX</span></code>; each is enriched by
+walking the system’s volumes and matching them to a disk + starting offset via
+<code class="docutils literal notranslate"><span class="pre">IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS</span></code> (drive letter, filesystem, label). The
+disk backing <code class="docutils literal notranslate"><span class="pre">%SystemDrive%</span></code> is flagged <code class="docutils literal notranslate"><span class="pre">isSystem</span></code> so the two-tier guard
+protects it. Because Windows has no <code class="docutils literal notranslate"><span class="pre">/dev/sdXN</span></code>, a partition’s <code class="docutils literal notranslate"><span class="pre">node</span></code> is a
+backend-owned opaque identifier (the volume GUID path, or a synthetic token) — it
+is populated for display but not opened in this scope.</p>
+<p><strong>Raw I/O and locking.</strong> <code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> locks and dismounts every volume on the
+target disk (<code class="docutils literal notranslate"><span class="pre">FSCTL_LOCK_VOLUME</span></code> + <code class="docutils literal notranslate"><span class="pre">FSCTL_DISMOUNT_VOLUME</span></code>) and <em>holds</em> the
+locks for the whole session — the equivalent of Linux’s unmount + <code class="docutils literal notranslate"><span class="pre">O_EXCL</span></code> —
+then opens <code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code> with <code class="docutils literal notranslate"><span class="pre">FILE_FLAG_NO_BUFFERING</span> <span class="pre">|</span>
+<span class="pre">FILE_FLAG_WRITE_THROUGH</span></code> (the O_DIRECT analog) and
+<code class="docutils literal notranslate"><span class="pre">FSCTL_ALLOW_EXTENDED_DASD_IO</span></code>. The handle is wrapped in the shared
+<code class="docutils literal notranslate"><span class="pre">AlignedRawDevice</span></code> engine, so all the alignment, defer-head, and verify logic is
+identical to Linux; only the thin positioned-I/O primitive (<code class="docutils literal notranslate"><span class="pre">WindowsBlockIo</span></code>:
+<code class="docutils literal notranslate"><span class="pre">ReadFile</span></code> / <code class="docutils literal notranslate"><span class="pre">WriteFile</span></code> over <code class="docutils literal notranslate"><span class="pre">OVERLAPPED</span></code>, <code class="docutils literal notranslate"><span class="pre">FlushFileBuffers</span></code>,
+<code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_UPDATE_PROPERTIES</span></code>) is Windows-specific. Raw device access needs an
+elevated prompt; <code class="docutils literal notranslate"><span class="pre">ERROR_ACCESS_DENIED</span></code> maps to <code class="docutils literal notranslate"><span class="pre">PermissionDenied</span></code> with a “run
+as Administrator” hint.</p>
+<p>The C libraries (libarchive, OpenSSL, libcurl) come from vcpkg on Windows; the
+Linux build keeps using the distro packages.</p>
+</section>
+<hr class="docutils" />
+<section id="macos-planned">
+<h2>macOS (Planned)<a class="headerlink" href="#macos-planned" title="Link to this heading"></a></h2>
+<p>The macOS backend is still a <strong>structural stub</strong>: it implements
+<code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code>’s methods so the tool compiles and links, but every operation
+returns <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>. A front-end surfaces that error, so the platform
+reads as unsupported up front. The port
+(see <a class="reference internal" href="../development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a>) will add enumeration via DiskArbitration + IOKit and a raw
+open of <code class="docutils literal notranslate"><span class="pre">/dev/rdiskN</span></code> using a descriptor from <code class="docutils literal notranslate"><span class="pre">authopen</span></code> passed over
+<code class="docutils literal notranslate"><span class="pre">SCM_RIGHTS</span></code> (<code class="docutils literal notranslate"><span class="pre">DKIOCGETBLOCKCOUNT</span></code> for size) — reusing the same
+<code class="docutils literal notranslate"><span class="pre">AlignedRawDevice</span></code> engine behind a macOS <code class="docutils literal notranslate"><span class="pre">BlockIo</span></code>.</p>
+<p>Because it sits behind the funnel, filling it in touches nothing in
 <code class="docutils literal notranslate"><span class="pre">ImageService</span></code>, <code class="docutils literal notranslate"><span class="pre">ConfigurationService</span></code>, or either front-end.</p>
 </section>
 </section>

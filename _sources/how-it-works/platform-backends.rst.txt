@@ -35,8 +35,14 @@ grouped into three areas:
   otherwise the backend mounts to a private temp dir and the handle unmounts and
   cleans up. A partition with no filesystem is an error.
 
-**Raw device I/O** (one device open at a time, via ``openForWrite`` /
-``openForRead``)
+**Raw device I/O** (an RAII handle, via ``openForWrite`` / ``openForRead``)
+
+``openForWrite`` / ``openForRead`` open the device and hand back a
+``std::unique_ptr<IRawDevice>`` — an owning handle whose lifetime *is* the open
+session. The destructor closes the underlying handle, so exactly one device is open
+for as long as the handle lives; there is no separate ``close()`` to forget and no
+"one-open-at-a-time" convention to police. The handle carries the byte-stream
+surface:
 
 - ``seek`` / ``write`` / ``read`` — a byte-stream abstraction. Callers pass
   arbitrary offsets and lengths; the backend does all short-write, short-read,
@@ -50,10 +56,22 @@ grouped into three areas:
   so verification reads media, not cache.
 - ``rereadPartTable`` — ask the kernel to re-read the table (best-effort).
 
+Splitting the open session into its own type keeps ``IDriveBackend`` small — a new
+OS implements a handful of drive-level operations, not a fused I/O session — and
+lets the raw pipeline be unit-tested against an in-memory ``IRawDevice`` with no
+hardware.
+
 The preloader safety check needs no separate topology methods: it derives the
 owning drive and the target's mount state directly from ``listDrives()`` — the
 drive that lists a partition is its owner, and each partition row already carries
 its own mountpoint — so no ``/dev/Xp1`` string surgery leaks into the contract.
+
+**Unsupported operations.** An operation a backend does not implement returns an
+``UnsupportedPlatform`` error rather than failing deep in a pipeline: the macOS
+stub returns it from every method, and the Windows backend returns it from
+``mount`` (``configure`` is Linux-only for now). A front-end surfaces that error
+directly, so the user sees a clear message without a machine-wide capability
+table to keep in sync.
 
 ----
 
@@ -160,28 +178,64 @@ core:
    * - macOS*
      - ``/dev/rdiskN``
      - ``authopen`` hands back an fd over ``SCM_RIGHTS``
-   * - Windows*
+   * - Windows
      - ``\\.\PhysicalDriveN``
-     - UAC-elevated process
+     - Run from an elevated (Administrator) prompt
 
-\* Planned for Phase 4 — see below.
+\* macOS is still planned — see below.
 
 ----
 
-macOS and Windows (Planned)
----------------------------
+The Windows Backend
+-------------------
 
-The macOS and Windows backends exist today as **structural stubs**: they
-implement ``IDriveBackend`` so the tool compiles and links everywhere, but every
-operation returns ``UnsupportedPlatform``. They mark the seam the Phase 4 ports
-will fill (see :ref:`roadmap`):
+The Windows backend implements enumeration and flashing (``configure`` is
+Linux-only for now, so ``mount`` returns ``UnsupportedPlatform``). It uses Win32
+directly — no subprocess.
 
-- **macOS** — enumeration via DiskArbitration + IOKit; raw open of
-  ``/dev/rdiskN`` using a file descriptor obtained from ``authopen`` and passed
-  back over ``SCM_RIGHTS``; ``DKIOCGETBLOCKCOUNT`` for size.
-- **Windows** — enumeration via SetupAPI + ``IOCTL_STORAGE_QUERY_PROPERTY``; raw
-  open of ``\\.\PhysicalDriveN`` from a UAC-elevated process, with
-  ``DeviceIoControl`` for lock, dismount, and size.
+**Enumeration.** SetupAPI (``GUID_DEVINTERFACE_DISK``) lists the disk device
+interfaces; ``IOCTL_STORAGE_GET_DEVICE_NUMBER`` maps each to its
+``\\.\PhysicalDriveN`` node. ``IOCTL_STORAGE_QUERY_PROPERTY`` gives the model and
+bus type (USB / SD / MMC ⇒ removable), and ``IOCTL_DISK_GET_DRIVE_GEOMETRY_EX`` the
+size — the zero-access enumeration handle can't use ``IOCTL_DISK_GET_LENGTH_INFO``,
+which needs read access and is reserved for the open write/verify session.
+Partitions come from ``IOCTL_DISK_GET_DRIVE_LAYOUT_EX``; each is enriched by
+walking the system's volumes and matching them to a disk + starting offset via
+``IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS`` (drive letter, filesystem, label). The
+disk backing ``%SystemDrive%`` is flagged ``isSystem`` so the two-tier guard
+protects it. Because Windows has no ``/dev/sdXN``, a partition's ``node`` is a
+backend-owned opaque identifier (the volume GUID path, or a synthetic token) — it
+is populated for display but not opened in this scope.
 
-Because they sit behind the funnel, filling them in touches nothing in
+**Raw I/O and locking.** ``openForWrite`` locks and dismounts every volume on the
+target disk (``FSCTL_LOCK_VOLUME`` + ``FSCTL_DISMOUNT_VOLUME``) and *holds* the
+locks for the whole session — the equivalent of Linux's unmount + ``O_EXCL`` —
+then opens ``\\.\PhysicalDriveN`` with ``FILE_FLAG_NO_BUFFERING |
+FILE_FLAG_WRITE_THROUGH`` (the O_DIRECT analog) and
+``FSCTL_ALLOW_EXTENDED_DASD_IO``. The handle is wrapped in the shared
+``AlignedRawDevice`` engine, so all the alignment, defer-head, and verify logic is
+identical to Linux; only the thin positioned-I/O primitive (``WindowsBlockIo``:
+``ReadFile`` / ``WriteFile`` over ``OVERLAPPED``, ``FlushFileBuffers``,
+``IOCTL_DISK_UPDATE_PROPERTIES``) is Windows-specific. Raw device access needs an
+elevated prompt; ``ERROR_ACCESS_DENIED`` maps to ``PermissionDenied`` with a "run
+as Administrator" hint.
+
+The C libraries (libarchive, OpenSSL, libcurl) come from vcpkg on Windows; the
+Linux build keeps using the distro packages.
+
+----
+
+macOS (Planned)
+---------------
+
+The macOS backend is still a **structural stub**: it implements
+``IDriveBackend``'s methods so the tool compiles and links, but every operation
+returns ``UnsupportedPlatform``. A front-end surfaces that error, so the platform
+reads as unsupported up front. The port
+(see :ref:`roadmap`) will add enumeration via DiskArbitration + IOKit and a raw
+open of ``/dev/rdiskN`` using a descriptor from ``authopen`` passed over
+``SCM_RIGHTS`` (``DKIOCGETBLOCKCOUNT`` for size) — reusing the same
+``AlignedRawDevice`` engine behind a macOS ``BlockIo``.
+
+Because it sits behind the funnel, filling it in touches nothing in
 ``ImageService``, ``ConfigurationService``, or either front-end.
