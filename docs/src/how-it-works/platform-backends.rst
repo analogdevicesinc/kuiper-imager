@@ -68,10 +68,10 @@ its own mountpoint — so no ``/dev/Xp1`` string surgery leaks into the contract
 
 **Unsupported operations.** An operation a backend does not implement returns an
 ``UnsupportedPlatform`` error rather than failing deep in a pipeline: the macOS
-stub returns it from every method, and the Windows backend returns it from
-``mount`` (``configure`` is Linux-only for now). A front-end surfaces that error
-directly, so the user sees a clear message without a machine-wide capability
-table to keep in sync.
+stub returns it from every method, and on Windows only the raw *intel preloader*
+write is unimplemented (``configure`` refuses an intel project up front, before
+touching the card). A front-end surfaces that error directly, so the user sees a
+clear message without a machine-wide capability table to keep in sync.
 
 ----
 
@@ -189,9 +189,9 @@ core:
 The Windows Backend
 -------------------
 
-The Windows backend implements enumeration and flashing (``configure`` is
-Linux-only for now, so ``mount`` returns ``UnsupportedPlatform``). It uses Win32
-directly — no subprocess.
+The Windows backend implements enumeration, flashing, and ``mount`` (so
+``list-projects`` and ``configure`` work for ordinary boards); only the raw intel
+preloader write is Linux-only for now. It uses Win32 directly — no subprocess.
 
 **Enumeration.** SetupAPI (``GUID_DEVINTERFACE_DISK``) lists the disk device
 interfaces; ``IOCTL_STORAGE_GET_DEVICE_NUMBER`` maps each to its
@@ -204,8 +204,18 @@ walking the system's volumes and matching them to a disk + starting offset via
 ``IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS`` (drive letter, filesystem, label). The
 disk backing ``%SystemDrive%`` is flagged ``isSystem`` so the two-tier guard
 protects it. Because Windows has no ``/dev/sdXN``, a partition's ``node`` is a
-backend-owned opaque identifier (the volume GUID path, or a synthetic token) — it
-is populated for display but not opened in this scope.
+backend-owned opaque identifier: the volume GUID path (``\\?\Volume{...}``) for a
+recognized volume, or a synthetic token for a raw slot. It is never opened as a
+raw device — the flash path only ever opens the whole-disk ``\\.\PhysicalDriveN``.
+
+**Mounting.** Windows auto-mounts recognized filesystems, so ``mount`` has nothing
+to mount — it *borrows*, exactly as the Linux backend borrows an already-mounted
+partition. It hands back the drive letter the volume carries (``E:\``), or, when a
+mounted volume has no letter, its volume GUID path — both are valid filesystem
+roots for the portable ``ConfigurationService``, and the handle releases nothing on
+destruction. A raw slot (no filesystem) returns ``NotFound``. This is what makes
+``list-projects`` and ``configure`` work on Windows for ordinary boards; only the
+raw intel preloader write, which still needs a base-offset device write, is absent.
 
 **Raw I/O and locking.** ``openForWrite`` locks and dismounts every volume on the
 target disk (``FSCTL_LOCK_VOLUME`` + ``FSCTL_DISMOUNT_VOLUME``) and *holds* the
