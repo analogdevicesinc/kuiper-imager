@@ -575,6 +575,15 @@ int cmdConfigure(const std::vector<std::string>& args) {
     // keeping ConfigurationService portable. The bootloader partition comes from
     // the identified layout, never a composed device-node string.
     std::string writtenPart;
+#ifdef _WIN32
+    // The raw intel preloader write needs a base-offset write into a partition
+    // within the physical drive, which the Windows backend doesn't do yet. Leaving
+    // the sink unwired makes configureProject refuse an intel project up front —
+    // before copying anything — with the manual procedure, rather than failing
+    // mid-write. Non-intel boards configure purely through the mounted filesystem.
+    (void)force;
+    kuiper::PreloaderSink sink{};
+#else
     kuiper::PreloaderSink sink =
         [&](const std::string& preloader,
             kuiper::ProgressFn prog) -> kuiper::Result<void> {
@@ -594,6 +603,7 @@ int cmdConfigure(const std::vector<std::string>& args) {
         writtenPart = part;
         return {};
     };
+#endif
 
     kuiper::ConfigureOptions opts;
     opts.dryRun = dryRun;

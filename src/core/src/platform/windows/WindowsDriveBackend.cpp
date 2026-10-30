@@ -1,7 +1,7 @@
 // Windows drive backend. Enumeration via SetupAPI + storage IOCTLs; raw I/O via a
-// WindowsBlockIo in the shared AlignedRawDevice engine. The configure/mount path
-// is Linux-only for now (mount() returns UnsupportedPlatform). See docs:
-// platform-backends.
+// WindowsBlockIo in the shared AlignedRawDevice engine. mount() borrows an
+// already-mounted volume (so list-projects / configure work); only the raw intel
+// preloader write is Linux-only for now. See docs: platform-backends.
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -100,6 +100,11 @@ constexpr std::string_view kPhysicalDrivePrefix = "\\\\.\\PhysicalDrive";
 std::string physicalDriveNode(int n) {
     return std::string(kPhysicalDrivePrefix) + std::to_string(n);
 }
+
+// Volume GUID path prefix ("\\?\Volume{...}"). Enumeration stores a matched
+// partition's node in this form (trailing '\' stripped); the check distinguishes a
+// real mounted volume from the synthetic "\\.\PhysicalDriveN#k" partition token.
+constexpr std::string_view kVolumeGuidPrefix = "\\\\?\\Volume";
 
 // RAII HANDLE.
 struct Handle {
@@ -589,8 +594,27 @@ public:
         return drives;
     }
 
-    Result<MountedPartition> mount(const Partition&) override {
-        return std::unexpected(unsupported("Configure").error());
+    Result<MountedPartition> mount(const Partition& partition) override {
+        // Windows auto-mounts recognized filesystems, so there is nothing to mount
+        // here — only to borrow, exactly like Linux borrowing an already-mounted
+        // partition. The handle therefore unmounts nothing on destruction.
+        //
+        // A drive letter ("E:\") is the friendliest root and the common case. With
+        // auto-mount off, or on a just-flashed volume, the letter may be absent; the
+        // volume GUID path addresses the same live filesystem and std::filesystem
+        // accepts it, so fall back to that (restoring the trailing '\' enumeration
+        // stripped) before giving up.
+        if (!partition.mountpoint.empty()) {
+            return MountedPartition(partition.mountpoint, {});
+        }
+        if (partition.node.starts_with(kVolumeGuidPrefix)) {
+            return MountedPartition(partition.node + "\\", {});
+        }
+        // A raw slot (the intel preloader partition) or a filesystem Windows can't
+        // read (ext4): nothing to configure here. Mirrors the Linux "no filesystem".
+        return Err(ErrorCode::NotFound,
+                   "Partition has no mountable filesystem: " + partition.node,
+                   "Only a FAT/exFAT/NTFS partition can be configured on Windows.");
     }
 
     Result<void> unmountAll(const std::string&) override {
@@ -608,12 +632,6 @@ public:
     Result<std::unique_ptr<IRawDevice>> openForRead(
         const std::string& node) override {
         return openSession(node, /*write=*/false);
-    }
-
-private:
-    static Result<void> unsupported(const char* what) {
-        return Err(ErrorCode::UnsupportedPlatform,
-                   std::string(what) + " is not yet implemented on Windows");
     }
 };
 
