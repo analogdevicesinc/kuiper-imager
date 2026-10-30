@@ -32,8 +32,9 @@ grouped into three areas:
 - ``mount(partition)`` — mount a partition and return an RAII
   :ref:`MountedPartition <core-library>` handle. If the partition is already
   mounted the handle *borrows* it (and leaves it alone on destruction);
-  otherwise the backend mounts to a private temp dir and the handle unmounts and
-  cleans up. A partition with no filesystem is an error.
+  otherwise the backend mounts it and the handle unmounts on destruction. How the
+  backend mounts is its own concern (see the Linux backend's unprivileged udisks2
+  path below). A partition with no filesystem is an error.
 
 **Raw device I/O** (an RAII handle, via ``openForWrite`` / ``openForRead``)
 
@@ -149,6 +150,19 @@ the block device's page cache and ``posix_fadvise(DONTNEED)`` as
 belt-and-suspenders for the buffered fallback — together forcing the verify pass
 to re-read from media. Under O_DIRECT these are near-free no-ops.
 
+**Mounting.** ``configure`` and ``list-projects`` need the BOOT partition mounted,
+not raw access — and mounting a filesystem, unlike raw block I/O, has an
+unprivileged path. ``mount`` first tries ``udisksctl mount`` (the same udisks2 +
+polkit mechanism a file manager uses), so these commands work **without sudo**
+right after a flash. This matters because a freshly written card is present but
+not auto-mounted — the desktop auto-mounts on *media insertion*, and rewriting the
+partition table in place (even after ``BLKRRPART``) is not one — so without this
+the only way to mount it would be the privileged ``mount(2)`` syscall. udisks2's
+output is localized, so the mountpoint is read back from ``lsblk`` rather than
+parsed from it; the handle unmounts via ``udisksctl`` on destruction. When udisks2
+is absent (headless / minimal systems) ``mount`` falls back to ``mount(2)`` into a
+private temp dir, where the caller is root anyway.
+
 ----
 
 Privilege
@@ -157,9 +171,11 @@ Privilege
 Raw device access requires root. On Linux the tool opens the device directly and
 expects to be run with ``sudo``; an ``EACCES`` / ``EPERM`` is mapped to
 ``PermissionDenied`` with a "run with sudo" hint. This "open the raw node with
-elevated privilege" approach is deliberately simple and dependency-free: it
-avoids taking a hard runtime dependency on ``udisks2`` / D-Bus and the policy
-surface that comes with it, in exchange for requiring explicit elevation.
+elevated privilege" approach is deliberately simple and dependency-free: it takes
+no *hard* dependency on ``udisks2`` / D-Bus. Mounting is the one exception, and a
+deliberate one: ``mount`` uses ``udisksctl`` when it is present (so ``configure``
+needs no sudo) but treats it as *optional*, falling back to ``mount(2)`` when it is
+not — raw flashing still always goes through the direct, elevated open.
 
 The other platforms follow the same shape with their own elevation mechanism,
 which is why privilege sits behind ``IDriveBackend`` rather than in the portable
