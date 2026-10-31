@@ -2,7 +2,6 @@
 
 #include <QHeaderView>
 #include <QLabel>
-#include <QPushButton>
 #include <QStatusBar>
 #include <QString>
 #include <QTableWidget>
@@ -11,6 +10,7 @@
 #include <QWidget>
 
 #include "kuiper/Version.hpp"
+#include "widgets/HmcButton.hpp"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle("Kuiper Imager 2");
@@ -19,9 +19,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto* central = new QWidget(this);
     auto* layout = new QVBoxLayout(central);
 
-    auto* refreshBtn = new QPushButton("Refresh drives", central);
-    connect(refreshBtn, &QPushButton::clicked, this, &MainWindow::refreshDrives);
-    layout->addWidget(refreshBtn);
+    auto* refreshBtn = new HmcButton("Refresh drives", central);
+    connect(refreshBtn, &HmcButton::clicked, this, &MainWindow::refreshDrives);
+    layout->addWidget(refreshBtn, 0, Qt::AlignLeft);
 
     table_ = new QTableWidget(central);
     table_->setColumnCount(5);

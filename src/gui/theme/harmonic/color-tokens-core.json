@@ -1,0 +1,740 @@
+[
+  {
+    "token": "--hmc-color-gray-100",
+    "scss": "$c-gray-100",
+    "hex": "#F0F1F3",
+    "value": "#F0F1F3",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-100)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-200",
+    "scss": "$c-gray-200",
+    "hex": "#D5D8DC",
+    "value": "#D5D8DC",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-200)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-300",
+    "scss": "$c-gray-300",
+    "hex": "#B7BBC3",
+    "value": "#B7BBC3",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-300)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-400",
+    "scss": "$c-gray-400",
+    "hex": "#9FA4AD",
+    "value": "#9FA4AD",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-400)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-500",
+    "scss": "$c-gray-500",
+    "hex": "#848B95",
+    "value": "#848B95",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-500)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-600",
+    "scss": "$c-gray-600",
+    "hex": "#717984",
+    "value": "#717984",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-600)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-700",
+    "scss": "$c-gray-700",
+    "hex": "#5E6773",
+    "value": "#5E6773",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-700)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-800",
+    "scss": "$c-gray-800",
+    "hex": "#4B545D",
+    "value": "#4B545D",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-800)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-900",
+    "scss": "$c-gray-900",
+    "hex": "#3A424B",
+    "value": "#3A424B",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-900)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-1000",
+    "scss": "$c-gray-1000",
+    "hex": "#293038",
+    "value": "#293038",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-1000)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-black",
+    "scss": "$c-black",
+    "hex": "#101820",
+    "value": "#101820",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-black)"
+    }
+  },
+  {
+    "token": "--hmc-color-gray-white",
+    "scss": "$c-white",
+    "hex": "#fff",
+    "value": "#fff",
+    "style": {
+      "backgroundColor": "var(--hmc-color-gray-white)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-100",
+    "scss": "$c-blue-100",
+    "hex": "#EDF3FC",
+    "value": "#EDF3FC",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-100)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-200",
+    "scss": "$c-blue-200",
+    "hex": "#C6D8F6",
+    "value": "#C6D8F6",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-200)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-300",
+    "scss": "$c-blue-300",
+    "hex": "#92BEFC",
+    "value": "#92BEFC",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-300)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-400",
+    "scss": "$c-blue-400",
+    "hex": "#6CA7EF",
+    "value": "#6CA7EF",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-400)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-500",
+    "scss": "$c-blue-500",
+    "hex": "#3A8EE9",
+    "value": "#3A8EE9",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-500)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-600",
+    "scss": "$c-blue-600",
+    "hex": "#0C79DF",
+    "value": "#0C79DF",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-600)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-700",
+    "scss": "$c-blue-700",
+    "hex": "#0067B9",
+    "value": "#0067B9",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-700)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-800",
+    "scss": "$c-blue-800",
+    "hex": "#00549A",
+    "value": "#00549A",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-800)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-900",
+    "scss": "$c-blue-900",
+    "hex": "#00427A",
+    "value": "#00427A",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-900)"
+    }
+  },
+  {
+    "token": "--hmc-color-blue-1000",
+    "scss": "$c-blue-1000",
+    "hex": "#00305B",
+    "value": "#00305B",
+    "style": {
+      "backgroundColor": "var(--hmc-color-blue-1000)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-100",
+    "scss": "$c-purple-100",
+    "hex": "#F6EEFC",
+    "value": "#F6EEFC",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-100)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-200",
+    "scss": "$c-purple-200",
+    "hex": "#E5CEF6",
+    "value": "#E5CEF6",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-200)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-300",
+    "scss": "$c-purple-300",
+    "hex": "#D4ADF0",
+    "value": "#D4ADF0",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-300)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-400",
+    "scss": "$c-purple-400",
+    "hex": "#C48EEB",
+    "value": "#C48EEB",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-400)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-500",
+    "scss": "$c-purple-500",
+    "hex": "#B16EE0",
+    "value": "#B16EE0",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-500)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-600",
+    "scss": "$c-purple-600",
+    "hex": "#A451DF",
+    "value": "#A451DF",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-600)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-700",
+    "scss": "$c-purple-700",
+    "hex": "#8E3DC7",
+    "value": "#8E3DC7",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-700)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-800",
+    "scss": "$c-purple-800",
+    "hex": "#7531A5",
+    "value": "#7531A5",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-800)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-900",
+    "scss": "$c-purple-900",
+    "hex": "#5D2287",
+    "value": "#5D2287",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-900)"
+    }
+  },
+  {
+    "token": "--hmc-color-purple-1000",
+    "scss": "$c-purple-1000",
+    "hex": "#431C5F",
+    "value": "#431C5F",
+    "style": {
+      "backgroundColor": "var(--hmc-color-purple-1000)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-100",
+    "scss": "$c-green-100",
+    "hex": "#E4F6EF",
+    "value": "#E4F6EF",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-100)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-200",
+    "scss": "$c-green-200",
+    "hex": "#ABE3CD",
+    "value": "#ABE3CD",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-200)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-300",
+    "scss": "$c-green-300",
+    "hex": "#6FCEA6",
+    "value": "#6FCEA6",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-300)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-400",
+    "scss": "$c-green-400",
+    "hex": "#3DB885",
+    "value": "#3DB885",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-400)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-500",
+    "scss": "$c-green-500",
+    "hex": "#2E9E6F",
+    "value": "#2E9E6F",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-500)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-600",
+    "scss": "$c-green-600",
+    "hex": "#1F895E",
+    "value": "#1F895E",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-600)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-700",
+    "scss": "$c-green-700",
+    "hex": "#16744D",
+    "value": "#16744D",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-700)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-800",
+    "scss": "$c-green-800",
+    "hex": "#115F3F",
+    "value": "#115F3F",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-800)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-900",
+    "scss": "$c-green-900",
+    "hex": "#114A32",
+    "value": "#114A32",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-900)"
+    }
+  },
+  {
+    "token": "--hmc-color-green-1000",
+    "scss": "$c-green-1000",
+    "hex": "#0D3624",
+    "value": "#0D3624",
+    "style": {
+      "backgroundColor": "var(--hmc-color-green-1000)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-100",
+    "scss": "$c-orange-100",
+    "hex": "#FEEFE7",
+    "value": "#FEEFE7",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-100)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-200",
+    "scss": "$c-orange-200",
+    "hex": "#FCCAB1",
+    "value": "#FCCAB1",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-200)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-300",
+    "scss": "$c-orange-300",
+    "hex": "#FEA77C",
+    "value": "#FEA77C",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-300)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-400",
+    "scss": "$c-orange-400",
+    "hex": "#FB8246",
+    "value": "#FB8246",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-400)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-500",
+    "scss": "$c-orange-500",
+    "hex": "#E76423",
+    "value": "#E76423",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-500)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-600",
+    "scss": "$c-orange-600",
+    "hex": "#CD5215",
+    "value": "#CD5215",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-600)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-700",
+    "scss": "$c-orange-700",
+    "hex": "#AE4410",
+    "value": "#AE4410",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-700)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-800",
+    "scss": "$c-orange-800",
+    "hex": "#91370B",
+    "value": "#91370B",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-800)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-900",
+    "scss": "$c-orange-900",
+    "hex": "#702C0A",
+    "value": "#702C0A",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-900)"
+    }
+  },
+  {
+    "token": "--hmc-color-orange-1000",
+    "scss": "$c-orange-1000",
+    "hex": "#551E03",
+    "value": "#551E03",
+    "style": {
+      "backgroundColor": "var(--hmc-color-orange-1000)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-100",
+    "scss": "$c-red-100",
+    "hex": "#FEEEEF",
+    "value": "#FEEEEF",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-100)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-200",
+    "scss": "$c-red-200",
+    "hex": "#FCCACE",
+    "value": "#FCCACE",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-200)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-300",
+    "scss": "$c-red-300",
+    "hex": "#FFA3AB",
+    "value": "#FFA3AB",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-300)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-400",
+    "scss": "$c-red-400",
+    "hex": "#FE7B86",
+    "value": "#FE7B86",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-400)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-500",
+    "scss": "$c-red-500",
+    "hex": "#F64C5A",
+    "value": "#F64C5A",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-500)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-600",
+    "scss": "$c-red-600",
+    "hex": "#E13745",
+    "value": "#E13745",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-600)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-700",
+    "scss": "$c-red-700",
+    "hex": "#C81A28",
+    "value": "#C81A28",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-700)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-800",
+    "scss": "$c-red-800",
+    "hex": "#A71420",
+    "value": "#A71420",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-800)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-900",
+    "scss": "$c-red-900",
+    "hex": "#840D17",
+    "value": "#840D17",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-900)"
+    }
+  },
+  {
+    "token": "--hmc-color-red-1000",
+    "scss": "$c-red-1000",
+    "hex": "#64060E",
+    "value": "#64060E",
+    "style": {
+      "backgroundColor": "var(--hmc-color-red-1000)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-100",
+    "scss": "$c-teal-100",
+    "hex": "#E3F5FC",
+    "value": "#E3F5FC",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-100)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-200",
+    "scss": "$c-teal-200",
+    "hex": "#A8DEF5",
+    "value": "#A8DEF5",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-200)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-300",
+    "scss": "$c-teal-300",
+    "hex": "#68C6EE",
+    "value": "#68C6EE",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-300)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-400",
+    "scss": "$c-teal-400",
+    "hex": "#2CAFE8",
+    "value": "#2CAFE8",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-400)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-500",
+    "scss": "$c-teal-500",
+    "hex": "#1694CA",
+    "value": "#1694CA",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-500)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-600",
+    "scss": "$c-teal-600",
+    "hex": "#1981AE",
+    "value": "#1981AE",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-600)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-700",
+    "scss": "$c-teal-700",
+    "hex": "#0E6D95",
+    "value": "#0E6D95",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-700)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-800",
+    "scss": "$c-teal-800",
+    "hex": "#07597E",
+    "value": "#07597E",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-800)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-900",
+    "scss": "$c-teal-900",
+    "hex": "#034663",
+    "value": "#034663",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-900)"
+    }
+  },
+  {
+    "token": "--hmc-color-teal-1000",
+    "scss": "$c-teal-1000",
+    "hex": "#053347",
+    "value": "#053347",
+    "style": {
+      "backgroundColor": "var(--hmc-color-teal-1000)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-100",
+    "scss": "$c-pink-100",
+    "hex": "#FEECF8",
+    "value": "#FEECF8",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-100)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-200",
+    "scss": "$c-pink-200",
+    "hex": "#F9C7E8",
+    "value": "#F9C7E8",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-200)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-300",
+    "scss": "$c-pink-300",
+    "hex": "#F7A1DA",
+    "value": "#F7A1DA",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-300)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-400",
+    "scss": "$c-pink-400",
+    "hex": "#F07AC9",
+    "value": "#F07AC9",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-400)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-500",
+    "scss": "$c-pink-500",
+    "hex": "#E84DB4",
+    "value": "#E84DB4",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-500)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-600",
+    "scss": "$c-pink-600",
+    "hex": "#D3379F",
+    "value": "#D3379F",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-600)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-700",
+    "scss": "$c-pink-700",
+    "hex": "#B32D87",
+    "value": "#B32D87",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-700)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-800",
+    "scss": "$c-pink-800",
+    "hex": "#9A196F",
+    "value": "#9A196F",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-800)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-900",
+    "scss": "$c-pink-900",
+    "hex": "#761A57",
+    "value": "#761A57",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-900)"
+    }
+  },
+  {
+    "token": "--hmc-color-pink-1000",
+    "scss": "$c-pink-1000",
+    "hex": "#571140",
+    "value": "#571140",
+    "style": {
+      "backgroundColor": "var(--hmc-color-pink-1000)"
+    }
+  }
+]
