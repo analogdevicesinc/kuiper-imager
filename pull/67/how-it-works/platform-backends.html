@@ -365,12 +365,26 @@ core:</p>
 </tr>
 <tr class="row-even"><td><p>Windows</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code></p></td>
-<td><p>Run from an elevated (Administrator) prompt</p></td>
+<td><p>CLI: run from an elevated prompt. GUI: a per-write <code class="docutils literal notranslate"><span class="pre">runas</span></code> (UAC) helper</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <p>* macOS is still planned — see below.</p>
+<p>The GUI goes further than “run elevated”: it stays unprivileged and elevates only a
+tiny <code class="docutils literal notranslate"><span class="pre">kuiper-imager-helper</span></code> for the duration of a single write. On Linux that
+helper is launched with <code class="docutils literal notranslate"><span class="pre">pkexec</span></code> and inherits stdio; on Windows UAC elevation
+(<code class="docutils literal notranslate"><span class="pre">ShellExecuteEx</span></code> <code class="docutils literal notranslate"><span class="pre">&quot;runas&quot;</span></code>) routes the helper through the AppInfo service, so it
+is <strong>not</strong> a child of the GUI and cannot inherit stdio. The Windows GUI therefore
+opens a <strong>named pipe</strong> (a <code class="docutils literal notranslate"><span class="pre">QLocalServer</span></code> with its DACL limited to the current user,
+named with a fresh GUID) and passes the name to the helper, which connects back. The
+pipe carries the <strong>same NDJSON protocol</strong> as the Linux stdio transport — only the
+transport differs. Crucially, the write parameters (verb, image, drive) travel as
+<strong>command-line arguments at elevation time</strong>, which UAC consents to; the pipe only
+ever carries progress/result/error out and <code class="docutils literal notranslate"><span class="pre">cancel</span></code> in. A hijacked pipe can thus
+at most cancel the write or spoof progress text — it can never change <em>what</em> is
+written <em>where</em>. The helper carries a <code class="docutils literal notranslate"><span class="pre">requireAdministrator</span></code> manifest (UAC shield
++ defense in depth); the GUI stays <code class="docutils literal notranslate"><span class="pre">asInvoker</span></code>.</p>
 </section>
 <hr class="docutils" />
 <section id="the-windows-backend">
