@@ -35,3 +35,5 @@ void BackgroundTask::run(Job job) {
 void BackgroundTask::cancel() { cancel_->store(true); }
 
 bool BackgroundTask::busy() const { return watcher_.isRunning(); }
+
+bool BackgroundTask::cancelRequested() const { return cancel_->load(); }

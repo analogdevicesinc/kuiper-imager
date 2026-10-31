@@ -27,6 +27,7 @@ class HmcSegmentedControl;
 class HmcSpinner;
 class HmcTag;
 class BackgroundTask;
+class HelperProcess;
 
 // The main app window: pick an image (local file or downloaded stable release),
 // pick a storage device, then Write — or, when the card is already a flashed
@@ -64,7 +65,9 @@ private:
     QWidget* buildStorageCard();
     QWidget* buildActionArea();
 
-    void refreshDrives();
+    // Re-enumerate drives. If preferNode names a drive still present, keep it
+    // selected across the refresh (used to re-probe the just-written card).
+    void refreshDrives(const QString& preferNode = QString());
     void onDriveChanged();
     void probeCurrentDrive();
     const kuiper::Drive* currentDrive() const;
@@ -87,10 +90,15 @@ private:
     void showResult(const QString& status, const QString& title,
                     const QString& message);
 
+    // True while any operation is in flight — thread-based (task_) or the
+    // elevated helper (helper_). All the start guards and applyState use this.
+    bool busy() const;
+
     kuiper::DriveService drives_;
     kuiper::ImageService images_;
     kuiper::ConfigurationService config_;
     BackgroundTask* task_;
+    HelperProcess* helper_;
 
     std::vector<kuiper::Drive> driveList_;
     std::optional<BootContext> bootCtx_;
@@ -98,6 +106,13 @@ private:
     QString imagePath_;
     QString imageLabel_;
     bool probing_ = false;
+
+    // Post-write re-probe retry: after a flash, re-enumerate + re-probe the
+    // written card until it is recognised as Kuiper 2 or the budget runs out.
+    // The helper settles the new partition table before exiting, so this almost
+    // always succeeds on the first try; the retry only covers a slow udisks.
+    QString writeReprobeNode_;
+    int writeReprobeLeft_ = 0;
 
     HmcSegmentedControl* source_;
     QLabel* imageValue_;
@@ -128,5 +143,5 @@ private:
     std::shared_ptr<std::optional<kuiper::Result<std::vector<kuiper::Release>>>>
         releasesOut_;
     std::shared_ptr<std::optional<kuiper::Result<kuiper::FetchSummary>>> fetchOut_;
-    std::shared_ptr<std::optional<kuiper::Result<kuiper::FlashSummary>>> flashOut_;
+    // Note: the flash result lives in helper_->result() (it runs elevated).
 };

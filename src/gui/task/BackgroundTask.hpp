@@ -39,6 +39,9 @@ public:
     void run(Job job);
     void cancel();
     bool busy() const;
+    // Whether cancel() was called since the current (or last) run() began —
+    // for owners that chain follow-up work from finished().
+    bool cancelRequested() const;
 
 signals:
     void progress(kuiper::Progress p);

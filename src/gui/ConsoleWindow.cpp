@@ -15,6 +15,7 @@
 #include <QSignalBlocker>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include <utility>
@@ -24,6 +25,7 @@
 #include "dialogs/ReleasePickerDialog.hpp"
 #include "kuiper/Version.hpp"
 #include "task/BackgroundTask.hpp"
+#include "task/HelperProcess.hpp"
 #include "theme/ThemeManager.hpp"
 #include "util/Format.hpp"
 #include "widgets/HmcBanner.hpp"
@@ -37,6 +39,12 @@
 #include "widgets/HmcTag.hpp"
 
 namespace {
+
+// Post-write re-probe budget: up to kWriteReprobeTries attempts spaced
+// kWriteReprobeIntervalMs apart (~3s total) while the just-written card's BOOT
+// partition settles enough for udisks2 to mount and readRelease to succeed.
+constexpr int kWriteReprobeTries = 8;
+constexpr int kWriteReprobeIntervalMs = 400;
 
 QString phaseLabel(kuiper::Progress::Phase p) {
     using P = kuiper::Progress::Phase;
@@ -73,12 +81,12 @@ QLabel* caption(const QString& text) {
 ConsoleWindow::ConsoleWindow(QWidget* parent)
     : QMainWindow(parent),
       task_(new BackgroundTask(this)),
+      helper_(new HelperProcess(this)),
       drivesOut_(std::make_shared<std::optional<kuiper::Result<kuiper::DriveList>>>()),
       probeOut_(std::make_shared<ProbeResult>()),
       releasesOut_(std::make_shared<
                    std::optional<kuiper::Result<std::vector<kuiper::Release>>>>()),
-      fetchOut_(std::make_shared<std::optional<kuiper::Result<kuiper::FetchSummary>>>()),
-      flashOut_(std::make_shared<std::optional<kuiper::Result<kuiper::FlashSummary>>>()) {
+      fetchOut_(std::make_shared<std::optional<kuiper::Result<kuiper::FetchSummary>>>()) {
     setWindowTitle("Kuiper Imager");
     setFixedSize(900, 700);
 
@@ -135,8 +143,9 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
                                  .arg(kuiper::version())
                                  .arg(drives_.backendName()));
 
-    // Persistent progress sink for every operation.
-    connect(task_, &BackgroundTask::progress, this, [this](kuiper::Progress p) {
+    // Persistent progress sink, shared by the thread runner and the elevated
+    // helper (both emit kuiper::Progress with the same meaning).
+    auto onProgress = [this](kuiper::Progress p) {
         progress_->setPhase(phaseLabel(p.phase));
         if (p.bytesTotal > 0)
             progress_->setDetail(kuiper::gui::formatBytes(p.bytesDone) + " / " +
@@ -145,7 +154,9 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
             progress_->setDetail(
                 QString("%1%").arg(static_cast<int>(p.fraction * 100 + 0.5)));
         progress_->setFraction(p.fraction);
-    });
+    };
+    connect(task_, &BackgroundTask::progress, this, onProgress);
+    connect(helper_, &HelperProcess::progress, this, onProgress);
 
     // Center on screen.
     if (auto* scr = QGuiApplication::primaryScreen()) {
@@ -156,10 +167,12 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
     // Deferred close (see closeEvent): retry once the running job is done.
     // Queued so the job's own finished handler runs first; if it chained a
     // follow-up job (a scan chains a probe), close() cancels that one too.
-    connect(task_, &BackgroundTask::finished, this, [this] {
+    auto retryClose = [this] {
         if (closePending_)
             QMetaObject::invokeMethod(this, [this] { close(); }, Qt::QueuedConnection);
-    });
+    };
+    connect(task_, &BackgroundTask::finished, this, retryClose);
+    connect(helper_, &HelperProcess::finished, this, retryClose);
 
     refreshDrives();
     applyState();
@@ -271,6 +284,7 @@ QWidget* ConsoleWindow::buildActionArea() {
     cancelBtn_ = new HmcButton("Cancel");
     cancelBtn_->setKind("secondary");
     connect(cancelBtn_, &HmcButton::clicked, this, [this] {
+        if (helper_->busy()) helper_->cancel();
         task_->cancel();
         cancelBtn_->setEnabled(false);
     });
@@ -281,12 +295,12 @@ QWidget* ConsoleWindow::buildActionArea() {
     return area;
 }
 
-void ConsoleWindow::refreshDrives() {
-    if (task_->busy()) return;
+void ConsoleWindow::refreshDrives(const QString& preferNode) {
+    if (busy()) return;
     auto out = drivesOut_;
     connect(
         task_, &BackgroundTask::finished, this,
-        [this, out] {
+        [this, out, preferNode] {
             setBusyUi(false);
             if (!out->has_value()) return;
             const auto& r = **out;
@@ -311,6 +325,13 @@ void ConsoleWindow::refreshDrives() {
             }
             if (driveCombo_->count() == 0)
                 driveCombo_->addItem("No drives found", -1);
+            if (!preferNode.isEmpty()) {
+                for (int i = 0; i < static_cast<int>(driveList_.size()); ++i)
+                    if (QString::fromStdString(driveList_[i].node) == preferNode) {
+                        driveCombo_->setCurrentIndex(i);
+                        break;
+                    }
+            }
             block.unblock();
             onDriveChanged();
         },
@@ -346,7 +367,7 @@ ConsoleWindow::takeBootContext() {
 void ConsoleWindow::probeCurrentDrive() {
     auto stale = takeBootContext();
     const kuiper::Drive* d = currentDrive();
-    if (!d || task_->busy()) {
+    if (!d || busy()) {
         removableTag_->setVisible(false);
         systemTag_->setVisible(false);
         // Nothing to probe, but still release the old mount off the GUI thread.
@@ -396,6 +417,20 @@ void ConsoleWindow::probeCurrentDrive() {
             }
             kuiperTag_->setVisible(kuiper2);
             applyState();
+
+            // Post-write re-probe: a just-flashed card may need a moment before
+            // its BOOT partition mounts and reads clean. Retry until recognised
+            // as Kuiper 2 or the budget is spent (then the ↻ button remains).
+            if (writeReprobeLeft_ > 0) {
+                if (kuiper2 || --writeReprobeLeft_ <= 0) {
+                    writeReprobeLeft_ = 0;
+                    writeReprobeNode_.clear();
+                } else {
+                    const QString node = writeReprobeNode_;
+                    QTimer::singleShot(kWriteReprobeIntervalMs, this,
+                                       [this, node] { refreshDrives(node); });
+                }
+            }
         },
         Qt::SingleShotConnection);
 
@@ -442,7 +477,7 @@ void ConsoleWindow::setLocalImage(const QString& path) {
 }
 
 void ConsoleWindow::chooseRelease() {
-    if (task_->busy()) return;
+    if (busy()) return;
     auto out = releasesOut_;
     *out = std::nullopt;
     connect(
@@ -512,7 +547,7 @@ void ConsoleWindow::startFetch(const QString& id, const QString& label) {
 
 void ConsoleWindow::startWrite() {
     const kuiper::Drive* d = currentDrive();
-    if (imagePath_.isEmpty() || !d || task_->busy()) return;
+    if (imagePath_.isEmpty() || !d || busy()) return;
 
     const QString target = QString("%1 (%2) · %3")
                                .arg(QString::fromStdString(d->description),
@@ -521,24 +556,22 @@ void ConsoleWindow::startWrite() {
     ConfirmWriteDialog dlg(target, imageLabel_, this);
     if (dlg.exec() != QDialog::Accepted) return;
 
-    const std::string node = d->node;
-    const std::string img = imagePath_.toStdString();
+    const QString node = QString::fromStdString(d->node);
     const bool verify = verify_->isChecked();
-    bootCtx_.reset();  // writing invalidates any mount we hold
-    auto out = flashOut_;
-    *out = std::nullopt;
 
-    connect(
-        task_, &BackgroundTask::finished, this,
-        [this, out] {
+    // The write is the one privileged step: it runs in the elevated helper
+    // (pkexec / UAC), not in-process. The result lands in helper_->result().
+    const QMetaObject::Connection onHelperDone = connect(
+        helper_, &HelperProcess::finished, this,
+        [this, node] {
             setBusyUi(false);
-            if (!out->has_value()) return;
-            const auto& r = **out;
-            if (!r) {
-                if (r.error().code != kuiper::ErrorCode::UserCancelled)
+            const auto& r = helper_->result();
+            if (!r.has_value()) return;
+            if (!*r) {
+                if (r->error().code != kuiper::ErrorCode::UserCancelled)
                     showResult("danger", "Write failed",
-                               QString::fromStdString(r.error().message) + "\n" +
-                                   QString::fromStdString(r.error().details));
+                               QString::fromStdString(r->error().message) + "\n" +
+                                   QString::fromStdString(r->error().details));
                 else
                     showResult("warning", "Write cancelled",
                                "The card was left non-bootable.");
@@ -546,29 +579,56 @@ void ConsoleWindow::startWrite() {
             }
             showResult("success", "Write complete",
                        QString("%1 written · sha256 %2")
-                           .arg(kuiper::gui::formatBytes(r->bytesWritten),
-                                QString::fromStdString(r->sha256.substr(0, 12))));
-            probeCurrentDrive();  // re-probe: it may now be a Kuiper 2 card
+                           .arg(kuiper::gui::formatBytes((*r)->bytesWritten),
+                                QString::fromStdString((*r)->sha256.substr(0, 12))));
+            // The card now holds a fresh image. The helper settled the new
+            // partition table before exiting, so BOOT is normally mountable at
+            // once; re-enumerate (driveList_ is stale) and re-probe the same
+            // device immediately, retrying briefly until the Kuiper 2 tag /
+            // Configure reappear (see the probe-finished handler).
+            writeReprobeNode_ = node;
+            writeReprobeLeft_ = kWriteReprobeTries;
+            refreshDrives(node);
         },
         Qt::SingleShotConnection);
 
     setBusyUi(true);
     progress_->setIndeterminate(false);
-    task_->run([this, node, img, verify, out](kuiper::ProgressFn p,
-                                              kuiper::CancelToken c) {
-        kuiper::WriteOptions o;
-        o.force = false;
-        o.verify = verify;
-        *out = drives_.flash(node, img, o, std::move(p), c);
+
+    // Writing invalidates any mount we hold, and it must be released *before*
+    // the write: a handle dropped later would unmount the freshly written
+    // partition by node. Releasing can block (udisksctl), so it runs on the
+    // worker and the helper launches when it is done — unless Cancel was hit
+    // meanwhile, in which case nothing has been written yet.
+    auto stale = takeBootContext();
+    if (!*stale) {
+        helper_->runFlash(node, imagePath_, verify);
+        return;
+    }
+    progress_->setPhase("Preparing…");
+    connect(
+        task_, &BackgroundTask::finished, this,
+        [this, node, verify, onHelperDone] {
+            if (task_->cancelRequested() || closePending_) {
+                disconnect(onHelperDone);  // no helper will run
+                setBusyUi(false);
+                showResult("info", "Write cancelled", "Nothing was written.");
+                return;
+            }
+            helper_->runFlash(node, imagePath_, verify);
+        },
+        Qt::SingleShotConnection);
+    task_->run([stale](kuiper::ProgressFn, kuiper::CancelToken) {
+        stale->reset();
     });
 }
 
 void ConsoleWindow::openConfigure() {
-    if (!bootCtx_ || bootCtx_->projects.empty() || task_->busy()) return;
+    if (!bootCtx_ || bootCtx_->projects.empty() || busy()) return;
 
-    // Composition root: wire the Intel-only raw preloader write to DriveService,
-    // keeping ConfigurationService portable. The partition comes from the
-    // identified layout, never a composed node string (mirrors the CLI).
+    // Composition root: wire the Intel-only raw preloader write, keeping
+    // ConfigurationService portable. The partition comes from the identified
+    // layout, never a composed node string (mirrors the CLI).
 #ifdef Q_OS_WIN
     // Also mirrors the CLI: the Windows backend can't yet do the raw preloader
     // write (a base-offset write into a partition of the physical drive). An
@@ -576,28 +636,19 @@ void ConsoleWindow::openConfigure() {
     // before copying anything, instead of failing half-way through.
     kuiper::PreloaderSink sink{};
 #else
-    const std::optional<std::string> bootloaderNode =
-        bootCtx_->layout.bootloader
-            ? std::optional<std::string>(bootCtx_->layout.bootloader->node)
-            : std::nullopt;
-    auto* drives = &drives_;
-    kuiper::PreloaderSink sink =
-        [drives, bootloaderNode](
-            const std::string& preloader,
-            kuiper::ProgressFn prog) -> kuiper::Result<void> {
-        if (!bootloaderNode)
+    // The raw write itself runs in the elevated helper, like the flash: the
+    // unprivileged GUI cannot open the partition.
+    kuiper::PreloaderSink sink;
+    if (bootCtx_->layout.bootloader) {
+        sink = makeElevatedPreloaderSink(this, bootCtx_->layout.bootloader->node);
+    } else {
+        sink = [](const std::string&, kuiper::ProgressFn) -> kuiper::Result<void> {
             return kuiper::Err(kuiper::ErrorCode::NotFound,
                                "No bootloader partition on this card",
                                "This Intel project needs a raw preloader "
                                "partition, which this card doesn't have.");
-        kuiper::WriteOptions po;
-        po.force = false;
-        po.verify = true;
-        auto r = drives->writePreloader(*bootloaderNode, preloader, po,
-                                        std::move(prog));
-        if (!r) return std::unexpected(r.error());
-        return {};
-    };
+        };
+    }
 #endif
 
     ConfigureDialog dlg(QString::fromStdString(bootCtx_->boot.path()),
@@ -606,7 +657,7 @@ void ConsoleWindow::openConfigure() {
 }
 
 void ConsoleWindow::applyState() {
-    const bool busy = task_->busy();
+    const bool busy = this->busy();
     const bool hasImage = !imagePath_.isEmpty();
     const bool hasDrive = currentDrive() != nullptr;
     const bool kuiper2 = bootCtx_ && bootCtx_->release.has_value();
@@ -648,6 +699,10 @@ void ConsoleWindow::applyState() {
     }
 }
 
+bool ConsoleWindow::busy() const {
+    return task_->busy() || helper_->busy();
+}
+
 void ConsoleWindow::setBusyUi(bool busy) {
     buttonRow_->setVisible(!busy);
     progressRow_->setVisible(busy);
@@ -675,7 +730,7 @@ void ConsoleWindow::showResult(const QString& status, const QString& title,
 }
 
 void ConsoleWindow::closeEvent(QCloseEvent* event) {
-    if (!task_->busy()) {
+    if (!busy()) {
         event->accept();
         return;
     }
@@ -689,11 +744,12 @@ void ConsoleWindow::closeEvent(QCloseEvent* event) {
                                   "and quit?") != QMessageBox::Yes)
             return;
         closePending_ = true;
-        if (!task_->busy()) {  // it finished while we were asking
+        if (!busy()) {  // it finished while we were asking
             event->accept();
             return;
         }
     }
+    if (helper_->busy()) helper_->cancel();
     task_->cancel();
     cancelBtn_->setEnabled(false);
 }
