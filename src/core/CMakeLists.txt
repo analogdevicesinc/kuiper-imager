@@ -21,6 +21,7 @@ add_library(kuiper STATIC
     src/DriveService.cpp
     src/Layout.cpp
     src/ConfigurationService.cpp
+    src/ipc/HelperProtocol.cpp
     src/ImageService.cpp
     src/http/CurlHttpClient.cpp
     src/image/GitHubActionsProvider.cpp
