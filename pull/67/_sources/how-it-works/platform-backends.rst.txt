@@ -1,0 +1,267 @@
+.. _platform-backends:
+
+Platform Backends
+=================
+
+.. description::
+
+   The IDriveBackend seam and the Linux implementation: raw device I/O,
+   privilege, and the kernel quirks the backend absorbs
+
+Every operating-system difference in Kuiper Imager lives behind one interface,
+``IDriveBackend``. It is the bottom of the :ref:`funnel <architecture>`: the
+only place that touches device nodes, syscalls, and ioctls. The portable
+services above it never see a file descriptor. This page covers the interface
+contract, how the factory selects an implementation, and the Linux backend —
+including the kernel quirks it absorbs so the rest of the code doesn't have to.
+
+----
+
+The IDriveBackend Contract
+--------------------------
+
+``IDriveBackend`` exposes exactly what the flash and preloader pipelines need,
+grouped into three areas:
+
+**Enumeration and mounting**
+
+- ``listDrives()`` — one platform call returning every whole disk with its
+  partitions filled in, each tagged ``isSystem`` and ``isRemovable`` (derived
+  independently — see the Linux backend below). Non-system disks are the flash
+  candidates.
+- ``mount(partition)`` — mount a partition and return an RAII
+  :ref:`MountedPartition <core-library>` handle. If the partition is already
+  mounted the handle *borrows* it (and leaves it alone on destruction);
+  otherwise the backend mounts it and the handle unmounts on destruction. How the
+  backend mounts is its own concern (see the Linux backend's unprivileged udisks2
+  path below). A partition with no filesystem is an error.
+
+**Raw device I/O** (an RAII handle, via ``openForWrite`` / ``openForRead``)
+
+``openForWrite`` / ``openForRead`` open the device and hand back a
+``std::unique_ptr<IRawDevice>`` — an owning handle whose lifetime *is* the open
+session. The destructor closes the underlying handle, so exactly one device is open
+for as long as the handle lives; there is no separate ``close()`` to forget and no
+"one-open-at-a-time" convention to police. The handle carries the byte-stream
+surface:
+
+- ``seek`` / ``write`` / ``read`` — a byte-stream abstraction. Callers pass
+  arbitrary offsets and lengths; the backend does all short-write, short-read,
+  and ``EINTR`` looping internally, so ``write()`` is all-or-error and ``read()``
+  fills the buffer. **All block alignment is the backend's concern** — the one
+  rule for callers is that ``seek()`` offsets must be block-aligned, which the
+  flash caller satisfies (it only ever seeks to 0 and the 1-MiB defer-head).
+- ``deviceSize`` — capacity, the source of truth for the size guard.
+- ``wipeSignatures`` — zero the first 4 MiB and last 1 MiB.
+- ``flushAndSync`` — flush the staged tail, ``fsync``, and drop the page cache
+  so verification reads media, not cache.
+- ``rereadPartTable`` — ask the kernel to re-read the table (best-effort).
+
+Splitting the open session into its own type keeps ``IDriveBackend`` small — a new
+OS implements a handful of drive-level operations, not a fused I/O session — and
+lets the raw pipeline be unit-tested against an in-memory ``IRawDevice`` with no
+hardware.
+
+The preloader safety check needs no separate topology methods: it derives the
+owning drive and the target's mount state directly from ``listDrives()`` — the
+drive that lists a partition is its owner, and each partition row already carries
+its own mountpoint — so no ``/dev/Xp1`` string surgery leaks into the contract.
+
+**Unsupported operations.** An operation a backend does not implement returns an
+``UnsupportedPlatform`` error rather than failing deep in a pipeline: the macOS
+stub returns it from every method, and on Windows only the raw *intel preloader*
+write is unimplemented (``configure`` refuses an intel project up front, before
+touching the card). A front-end surfaces that error directly, so the user sees a
+clear message without a machine-wide capability table to keep in sync.
+
+----
+
+Selecting a Backend
+-------------------
+
+A single factory, ``makeDriveBackend()``, returns the backend for the host
+platform. It is defined once per operating system, so **only the current
+platform's implementation is compiled and linked** — the Linux build never
+contains Windows code, and adding an OS is one more definition of this factory
+plus one ``IDriveBackend`` implementation. Nothing above the funnel changes.
+
+----
+
+The Linux Backend
+-----------------
+
+The Linux backend enumerates with ``lsblk`` and does raw I/O with direct
+syscalls. A few of its behaviors are load-bearing and worth knowing.
+
+**Enumeration.** ``lsblk -b -J -p`` gives byte sizes, JSON, and full device
+paths. Columns are restricted to what the tool consumes. When attaching
+partitions to a disk the backend reads the ``children`` array but **does not
+recurse** into nested children: Kuiper cards use a simple partition table, and
+recursing would pull LVM/LUKS/RAID mapper nodes into the partition list where
+they don't belong. (The *system* check below is separate and does walk the full
+tree.) Only ``type == "disk"`` nodes are candidates; loop, ram, zram, and optical
+nodes are skipped. Every partition ``node`` is taken **verbatim** from ``lsblk``
+— never composed by string surgery — the whole point of enumerating instead of
+guessing (see the two-card bug in :ref:`core-library`).
+
+**System vs removable.** Each disk carries two facts, derived **independently**
+— inferring one from the other ("non-removable means system") is wrong both ways:
+a built-in SD reader reads as non-removable, and a USB-booted OS lives on
+removable media.
+
+*isSystem* — "does this disk host the **running** OS?" — is the safety-critical
+signal, and a system disk is **never** a flash candidate (see
+:ref:`the flash safety model <flash>`). A disk is system if any node in its full
+subtree (a partition, or a mapper stacked above one via LVM/LUKS/RAID) is mounted
+at ``/``, under ``/boot`` / ``/usr`` / ``/var`` / ``/etc``, or is swap — **or**
+its ``MAJ:MIN`` matches the device backing ``/`` (from ``stat("/")``; skipped if
+that fails). The walk recurses, so a root behind stacked LVM/LUKS is still found.
+
+*isRemovable* — "can the user pull this media?" — is advisory only; a false
+negative is overridable with ``--force``. ``RM`` alone is unreliable (``0`` for a
+card in a built-in reader), so a disk counts as removable if ``RM`` or
+``HOTPLUG`` is set, the transport is USB, or it is an SD card in an MMC slot
+(``/sys/block/<dev>/device/type`` is ``SD``, not soldered-eMMC ``MMC``).
+
+**O_DIRECT and alignment.** Devices are opened ``O_DIRECT`` where possible, so
+reads and writes bypass the page cache and go straight to media — which is what
+makes read-back verification trustworthy. O_DIRECT requires the buffer, the file
+offset, and the transfer length all to be block-aligned; the backend owns an
+aligned staging buffer (``posix_memalign``, aligned to ``max(block size, 4096)``)
+and stages/bounces every transfer through it so callers can pass any offset or
+length. If a target rejects O_DIRECT (``EINVAL`` — some file-backed loop
+devices), the backend transparently falls back to buffered I/O and, on the read
+path, drops cached pages (``posix_fadvise(DONTNEED)``) so verification still hits
+the media.
+
+**Exclusive open and the udev race.** Devices are opened ``O_EXCL`` so the flash
+fails fast if anything else holds the disk. This collides with desktop udev,
+which auto-mounts removable media the instant it appears — including right after
+the pipeline unmounts it. The backend beats this race with a bounded retry loop
+(~25 attempts, 200 ms apart, ~5 s total): on ``EBUSY`` it re-runs the full
+unmount and tries again. Unmounting is deliberately **non-lazy** — a lazy
+unmount would defer the release and defeat ``O_EXCL``; a genuinely busy mount is
+caught here and surfaced as ``DeviceBusy`` rather than silently deferred. A
+device stacked under LVM/RAID/LUKS is refused outright with ``DeviceBusy``,
+since it cannot be safely released.
+
+**Sync and cache.** ``flushAndSync`` runs ``fsync``, then ``BLKFLSBUF`` to drop
+the block device's page cache and ``posix_fadvise(DONTNEED)`` as
+belt-and-suspenders for the buffered fallback — together forcing the verify pass
+to re-read from media. Under O_DIRECT these are near-free no-ops.
+
+**Mounting.** ``configure`` and ``list-projects`` need the BOOT partition mounted,
+not raw access — and mounting a filesystem, unlike raw block I/O, has an
+unprivileged path. ``mount`` first tries ``udisksctl mount`` (the same udisks2 +
+polkit mechanism a file manager uses), so these commands work **without sudo**
+right after a flash. This matters because a freshly written card is present but
+not auto-mounted — the desktop auto-mounts on *media insertion*, and rewriting the
+partition table in place (even after ``BLKRRPART``) is not one — so without this
+the only way to mount it would be the privileged ``mount(2)`` syscall. udisks2's
+output is localized, so the mountpoint is read back from ``lsblk`` rather than
+parsed from it; the handle unmounts via ``udisksctl`` on destruction. When udisks2
+is absent (headless / minimal systems) ``mount`` falls back to ``mount(2)`` into a
+private temp dir, where the caller is root anyway.
+
+----
+
+Privilege
+---------
+
+Raw device access requires root. On Linux the tool opens the device directly and
+expects to be run with ``sudo``; an ``EACCES`` / ``EPERM`` is mapped to
+``PermissionDenied`` with a "run with sudo" hint. This "open the raw node with
+elevated privilege" approach is deliberately simple and dependency-free: it takes
+no *hard* dependency on ``udisks2`` / D-Bus. Mounting is the one exception, and a
+deliberate one: ``mount`` uses ``udisksctl`` when it is present (so ``configure``
+needs no sudo) but treats it as *optional*, falling back to ``mount(2)`` when it is
+not — raw flashing still always goes through the direct, elevated open.
+
+The other platforms follow the same shape with their own elevation mechanism,
+which is why privilege sits behind ``IDriveBackend`` rather than in the portable
+core:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 30 52
+
+   * - Platform
+     - Raw device
+     - Elevation
+   * - Linux
+     - ``/dev/sdX`` opened directly
+     - Run under ``sudo`` (root)
+   * - macOS*
+     - ``/dev/rdiskN``
+     - ``authopen`` hands back an fd over ``SCM_RIGHTS``
+   * - Windows
+     - ``\\.\PhysicalDriveN``
+     - Run from an elevated (Administrator) prompt
+
+\* macOS is still planned — see below.
+
+----
+
+The Windows Backend
+-------------------
+
+The Windows backend implements enumeration, flashing, and ``mount`` (so
+``list-projects`` and ``configure`` work for ordinary boards); only the raw intel
+preloader write is Linux-only for now. It uses Win32 directly — no subprocess.
+
+**Enumeration.** SetupAPI (``GUID_DEVINTERFACE_DISK``) lists the disk device
+interfaces; ``IOCTL_STORAGE_GET_DEVICE_NUMBER`` maps each to its
+``\\.\PhysicalDriveN`` node. ``IOCTL_STORAGE_QUERY_PROPERTY`` gives the model and
+bus type (USB / SD / MMC ⇒ removable), and ``IOCTL_DISK_GET_DRIVE_GEOMETRY_EX`` the
+size — the zero-access enumeration handle can't use ``IOCTL_DISK_GET_LENGTH_INFO``,
+which needs read access and is reserved for the open write/verify session.
+Partitions come from ``IOCTL_DISK_GET_DRIVE_LAYOUT_EX``; each is enriched by
+walking the system's volumes and matching them to a disk + starting offset via
+``IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS`` (drive letter, filesystem, label). The
+disk backing ``%SystemDrive%`` is flagged ``isSystem`` so the two-tier guard
+protects it. Because Windows has no ``/dev/sdXN``, a partition's ``node`` is a
+backend-owned opaque identifier: the volume GUID path (``\\?\Volume{...}``) for a
+recognized volume, or a synthetic token for a raw slot. It is never opened as a
+raw device — the flash path only ever opens the whole-disk ``\\.\PhysicalDriveN``.
+
+**Mounting.** Windows auto-mounts recognized filesystems, so ``mount`` has nothing
+to mount — it *borrows*, exactly as the Linux backend borrows an already-mounted
+partition. It hands back the drive letter the volume carries (``E:\``), or, when a
+mounted volume has no letter, its volume GUID path — both are valid filesystem
+roots for the portable ``ConfigurationService``, and the handle releases nothing on
+destruction. A raw slot (no filesystem) returns ``NotFound``. This is what makes
+``list-projects`` and ``configure`` work on Windows for ordinary boards; only the
+raw intel preloader write, which still needs a base-offset device write, is absent.
+
+**Raw I/O and locking.** ``openForWrite`` locks and dismounts every volume on the
+target disk (``FSCTL_LOCK_VOLUME`` + ``FSCTL_DISMOUNT_VOLUME``) and *holds* the
+locks for the whole session — the equivalent of Linux's unmount + ``O_EXCL`` —
+then opens ``\\.\PhysicalDriveN`` with ``FILE_FLAG_NO_BUFFERING |
+FILE_FLAG_WRITE_THROUGH`` (the O_DIRECT analog) and
+``FSCTL_ALLOW_EXTENDED_DASD_IO``. The handle is wrapped in the shared
+``AlignedRawDevice`` engine, so all the alignment, defer-head, and verify logic is
+identical to Linux; only the thin positioned-I/O primitive (``WindowsBlockIo``:
+``ReadFile`` / ``WriteFile`` over ``OVERLAPPED``, ``FlushFileBuffers``,
+``IOCTL_DISK_UPDATE_PROPERTIES``) is Windows-specific. Raw device access needs an
+elevated prompt; ``ERROR_ACCESS_DENIED`` maps to ``PermissionDenied`` with a "run
+as Administrator" hint.
+
+The C libraries (libarchive, OpenSSL, libcurl) come from vcpkg on Windows; the
+Linux build keeps using the distro packages.
+
+----
+
+macOS (Planned)
+---------------
+
+The macOS backend is still a **structural stub**: it implements
+``IDriveBackend``'s methods so the tool compiles and links, but every operation
+returns ``UnsupportedPlatform``. A front-end surfaces that error, so the platform
+reads as unsupported up front. The port
+(see :ref:`roadmap`) will add enumeration via DiskArbitration + IOKit and a raw
+open of ``/dev/rdiskN`` using a descriptor from ``authopen`` passed over
+``SCM_RIGHTS`` (``DKIOCGETBLOCKCOUNT`` for size) — reusing the same
+``AlignedRawDevice`` engine behind a macOS ``BlockIo``.
+
+Because it sits behind the funnel, filling it in touches nothing in
+``ImageService``, ``ConfigurationService``, or either front-end.
