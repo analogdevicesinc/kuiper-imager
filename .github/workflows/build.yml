@@ -83,12 +83,14 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item build-ci/src/cli/kli.exe dist
           Copy-Item build-ci/src/gui/kuiper-imager.exe dist
+          Copy-Item build-ci/src/helper/kuiper-imager-helper.exe dist
           $vcpkgBin = "build-ci/vcpkg_installed/x64-windows/bin"
           if (Test-Path $vcpkgBin) { Copy-Item "$vcpkgBin/*.dll" dist }
           Copy-Item build-ci/src/cli/*.dll dist -ErrorAction SilentlyContinue
           Copy-Item build-ci/src/gui/*.dll dist -ErrorAction SilentlyContinue
           windeployqt --release --no-translations --compiler-runtime dist/kli.exe
           windeployqt --release --no-translations --compiler-runtime dist/kuiper-imager.exe
+          windeployqt --release --no-translations --compiler-runtime dist/kuiper-imager-helper.exe
 
       # Prove the bundle is self-contained: run it with PATH stripped to the
       # system dirs, so every dependency must resolve from the bundle itself.
@@ -109,6 +111,7 @@ jobs:
           path: |
             build-ci/src/cli/kli
             build-ci/src/gui/kuiper-imager
+            build-ci/src/helper/kuiper-imager-helper
           if-no-files-found: error
           retention-days: 14
 
