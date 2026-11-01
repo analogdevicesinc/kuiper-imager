@@ -5,7 +5,9 @@ qt_standard_project_setup()
 # Compile theme/theme.qrc (the generated stylesheet bundle) into the binary.
 set(CMAKE_AUTORCC ON)
 
-qt_add_executable(kuiper-imager
+# WIN32: build as a GUI-subsystem app on Windows, so launching it doesn't open a
+# console window alongside it. Ignored elsewhere.
+qt_add_executable(kuiper-imager WIN32
     main.cpp
     ConsoleWindow.cpp
     ConsoleWindow.hpp
