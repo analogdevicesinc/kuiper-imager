@@ -372,12 +372,16 @@ core:</p>
 </div>
 <p>* macOS is still planned — see below.</p>
 <p>The GUI goes further than “run elevated”: it stays unprivileged and elevates only a
-tiny <code class="docutils literal notranslate"><span class="pre">kuiper-imager-helper</span></code> for the duration of a single write. On Linux that
-helper is launched with <code class="docutils literal notranslate"><span class="pre">pkexec</span></code> and inherits stdio; on Windows UAC elevation
-(<code class="docutils literal notranslate"><span class="pre">ShellExecuteEx</span></code> <code class="docutils literal notranslate"><span class="pre">&quot;runas&quot;</span></code>) routes the helper through the AppInfo service, so it
-is <strong>not</strong> a child of the GUI and cannot inherit stdio. The Windows GUI therefore
-opens a <strong>named pipe</strong> (a <code class="docutils literal notranslate"><span class="pre">QLocalServer</span></code> with its DACL limited to the current user,
-named with a fresh GUID) and passes the name to the helper, which connects back. The
+tiny <code class="docutils literal notranslate"><span class="pre">kuiper-imager-helper</span></code> for the duration of a single write — the flash, and
+the raw Intel preloader write during <code class="docutils literal notranslate"><span class="pre">configure</span></code>. On Linux that helper is launched
+with <code class="docutils literal notranslate"><span class="pre">pkexec</span></code> and inherits stdio; on Windows UAC elevation (<code class="docutils literal notranslate"><span class="pre">ShellExecuteEx</span></code>
+<code class="docutils literal notranslate"><span class="pre">&quot;runas&quot;</span></code>) routes the helper through the AppInfo service, so it is <strong>not</strong> a child
+of the GUI and cannot inherit stdio. The Windows GUI therefore creates a <strong>named
+pipe</strong> and passes its name to the helper, which connects back. The pipe is
+single-instance, local-only, named with a fresh GUID, and created with a DACL that
+admits only the current user and <code class="docutils literal notranslate"><span class="pre">BUILTIN\Administrators</span></code> (the latter so an
+over-the-shoulder elevation, which runs the helper as a different admin account,
+can still connect); the GUI then accepts only the exact process it launched. The
 pipe carries the <strong>same NDJSON protocol</strong> as the Linux stdio transport — only the
 transport differs. Crucially, the write parameters (verb, image, drive) travel as
 <strong>command-line arguments at elevation time</strong>, which UAC consents to; the pipe only
@@ -385,6 +389,11 @@ ever carries progress/result/error out and <code class="docutils literal notrans
 at most cancel the write or spoof progress text — it can never change <em>what</em> is
 written <em>where</em>. The helper carries a <code class="docutils literal notranslate"><span class="pre">requireAdministrator</span></code> manifest (UAC shield
 + defense in depth); the GUI stays <code class="docutils literal notranslate"><span class="pre">asInvoker</span></code>.</p>
+<p>On both transports the helper never runs a write nobody is watching. If its input
+stream ends (the GUI exited or crashed), it treats that as <code class="docutils literal notranslate"><span class="pre">cancel</span></code> and stops at
+the next cancellation point. If it was told to use a pipe it cannot connect to, it
+writes nothing and exits with a dedicated code (<code class="docutils literal notranslate"><span class="pre">ipc::kExitNoChannel</span></code>), which the
+GUI reports.</p>
 </section>
 <hr class="docutils" />
 <section id="the-windows-backend">

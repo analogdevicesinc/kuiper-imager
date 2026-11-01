@@ -201,12 +201,16 @@ core:
 \* macOS is still planned — see below.
 
 The GUI goes further than "run elevated": it stays unprivileged and elevates only a
-tiny ``kuiper-imager-helper`` for the duration of a single write. On Linux that
-helper is launched with ``pkexec`` and inherits stdio; on Windows UAC elevation
-(``ShellExecuteEx`` ``"runas"``) routes the helper through the AppInfo service, so it
-is **not** a child of the GUI and cannot inherit stdio. The Windows GUI therefore
-opens a **named pipe** (a ``QLocalServer`` with its DACL limited to the current user,
-named with a fresh GUID) and passes the name to the helper, which connects back. The
+tiny ``kuiper-imager-helper`` for the duration of a single write — the flash, and
+the raw Intel preloader write during ``configure``. On Linux that helper is launched
+with ``pkexec`` and inherits stdio; on Windows UAC elevation (``ShellExecuteEx``
+``"runas"``) routes the helper through the AppInfo service, so it is **not** a child
+of the GUI and cannot inherit stdio. The Windows GUI therefore creates a **named
+pipe** and passes its name to the helper, which connects back. The pipe is
+single-instance, local-only, named with a fresh GUID, and created with a DACL that
+admits only the current user and ``BUILTIN\Administrators`` (the latter so an
+over-the-shoulder elevation, which runs the helper as a different admin account,
+can still connect); the GUI then accepts only the exact process it launched. The
 pipe carries the **same NDJSON protocol** as the Linux stdio transport — only the
 transport differs. Crucially, the write parameters (verb, image, drive) travel as
 **command-line arguments at elevation time**, which UAC consents to; the pipe only
@@ -214,6 +218,12 @@ ever carries progress/result/error out and ``cancel`` in. A hijacked pipe can th
 at most cancel the write or spoof progress text — it can never change *what* is
 written *where*. The helper carries a ``requireAdministrator`` manifest (UAC shield
 + defense in depth); the GUI stays ``asInvoker``.
+
+On both transports the helper never runs a write nobody is watching. If its input
+stream ends (the GUI exited or crashed), it treats that as ``cancel`` and stops at
+the next cancellation point. If it was told to use a pipe it cannot connect to, it
+writes nothing and exits with a dedicated code (``ipc::kExitNoChannel``), which the
+GUI reports.
 
 ----
 
