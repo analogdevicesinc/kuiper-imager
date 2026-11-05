@@ -1,0 +1,36 @@
+Source: kuiper-imager
+Section: utils
+Priority: optional
+Maintainer: Alisa-Dariana Roman <alisa.roman@analog.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake,
+               ninja-build,
+               pkg-config,
+               qt6-base-dev,
+               libarchive-dev,
+               libssl-dev,
+               libcurl4-openssl-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/analogdevicesinc/kuiper-imager
+Rules-Requires-Root: no
+
+Package: kuiper-imager-cli
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: ADI Kuiper Imager (command-line interface)
+ kli fetches, flashes, and configures Kuiper Linux images for Analog Devices
+ hardware. This is the command-line front-end; it links the distro's Qt 6 Core
+ at runtime and pulls in no GUI or desktop stack, so it is suitable for headless
+ servers, CI runners, and scripted flashing.
+
+Package: kuiper-imager
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, pkexec
+Description: ADI Kuiper Imager (graphical interface)
+ Kuiper Imager fetches, flashes, and configures Kuiper Linux images for Analog
+ Devices hardware. This is the Qt Widgets desktop front-end. Privileged writes
+ to storage devices are performed by a small bundled helper, elevated through
+ polkit (pkexec) with a branded authentication prompt.
+ .
+ Qt 6 is linked dynamically against the distribution's packages; nothing from Qt
+ is bundled.

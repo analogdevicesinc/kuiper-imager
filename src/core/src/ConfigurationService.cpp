@@ -91,6 +91,42 @@ std::string resolveSource(const std::string& manifestPath,
 
 }  // namespace
 
+Result<KuiperRelease> ConfigurationService::readRelease(const std::string& bootPath) {
+    const fs::path file = fs::path(bootPath) / "kuiper-release.json";
+    std::error_code ec;
+    if (!fs::is_regular_file(file, ec)) {
+        return Err(ErrorCode::NotKuiper2,
+                   "No kuiper-release.json on the BOOT partition",
+                   "This card isn't a kuiper-imager-supported Kuiper 2 image; "
+                   "flash one first.");
+    }
+
+    std::ifstream in(file, std::ios::binary);
+    if (!in) {
+        // Present but unreadable is an I/O problem, not "not a Kuiper card" —
+        // keep the two apart so callers don't misreport a permissions issue.
+        return Err(ErrorCode::Unknown, "Cannot read kuiper-release.json",
+                   "The file exists on the BOOT partition but could not be "
+                   "opened.");
+    }
+    const std::string content((std::istreambuf_iterator<char>(in)),
+                              std::istreambuf_iterator<char>());
+    const QJsonDocument doc =
+        QJsonDocument::fromJson(QByteArray::fromStdString(content));
+    if (!doc.isObject()) {
+        return Err(ErrorCode::NotKuiper2,
+                   "kuiper-release.json is not a valid release marker",
+                   "The file exists but isn't a JSON object.");
+    }
+
+    const QJsonObject obj = doc.object();
+    KuiperRelease r;
+    r.version = stringField(obj, "version");
+    r.variant = stringField(obj, "variant");
+    r.architecture = stringField(obj, "architecture");
+    return r;
+}
+
 Result<ProjectList> ConfigurationService::listProjects(const std::string& bootPath) {
     std::error_code ec;
     if (!fs::is_directory(bootPath, ec)) {

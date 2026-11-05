@@ -83,12 +83,14 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item build-ci/src/cli/kli.exe dist
           Copy-Item build-ci/src/gui/kuiper-imager.exe dist
+          Copy-Item build-ci/src/helper/kuiper-imager-helper.exe dist
           $vcpkgBin = "build-ci/vcpkg_installed/x64-windows/bin"
           if (Test-Path $vcpkgBin) { Copy-Item "$vcpkgBin/*.dll" dist }
           Copy-Item build-ci/src/cli/*.dll dist -ErrorAction SilentlyContinue
           Copy-Item build-ci/src/gui/*.dll dist -ErrorAction SilentlyContinue
           windeployqt --release --no-translations --compiler-runtime dist/kli.exe
           windeployqt --release --no-translations --compiler-runtime dist/kuiper-imager.exe
+          windeployqt --release --no-translations --compiler-runtime dist/kuiper-imager-helper.exe
 
       # Prove the bundle is self-contained: run it with PATH stripped to the
       # system dirs, so every dependency must resolve from the bundle itself.
@@ -109,6 +111,7 @@ jobs:
           path: |
             build-ci/src/cli/kli
             build-ci/src/gui/kuiper-imager
+            build-ci/src/helper/kuiper-imager-helper
           if-no-files-found: error
           retention-days: 14
 
@@ -124,7 +127,9 @@ jobs:
   package-deb:
     name: package (deb, ${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    container: debian:12
+    # Pinned by digest (manifest list) for reproducible, attestable builds — the
+    # .deb anchors the distribution's component versions. Refresh deliberately.
+    container: debian:12@sha256:268fb24c39bca92d326dd83ea3abebe4a3f7751c804ffef23bb6d857dd343ff8
     strategy:
       fail-fast: false
       matrix:
@@ -134,42 +139,62 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install build + packaging dependencies
+      - name: Install packaging toolchain + build dependencies
         run: |
           apt-get update
+          # Packaging/test tooling; the package build-dependencies themselves come
+          # from debian/control via mk-build-deps, so the list stays single-sourced.
           apt-get install -y --no-install-recommends \
             build-essential \
-            cmake \
-            ninja-build \
-            git \
+            devscripts \
+            equivs \
+            lintian \
+            desktop-file-utils \
+            xvfb \
+            xauth \
             ca-certificates \
-            qt6-base-dev \
-            libarchive-dev \
-            libssl-dev \
-            libcurl4-openssl-dev \
-            dpkg-dev \
-            lintian
+            git
+          mk-build-deps --install --remove \
+            --tool 'apt-get -y --no-install-recommends' debian/control
 
-      - name: Configure
-        run: cmake --preset deb-linux
+      - name: Build binary packages (dpkg-buildpackage)
+        run: dpkg-buildpackage -us -uc -b
 
-      - name: Build
-        run: cmake --build --preset deb-linux
+      - name: Collect packages into the workspace
+        run: |
+          mkdir -p dist
+          mv ../*.deb dist/
+          ls -l dist
 
-      - name: Smoke test (kli version)
-        run: ./build-deb/src/cli/kli version
+      - name: Validate desktop entry
+        run: desktop-file-validate packaging/linux/com.analogdevices.kuiperimager.desktop
 
-      - name: Package (cpack -G DEB)
-        working-directory: build-deb
-        run: cpack -G DEB
+      - name: Lint packages (lintian, fail on error)
+        run: lintian --fail-on error dist/*.deb
 
-      - name: Lint package (lintian)
-        run: lintian build-deb/*.deb || true
+      - name: Install built packages (deps only, no Recommends)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ./dist/kuiper-imager-cli_*.deb ./dist/kuiper-imager_*.deb
 
-      - name: Upload .deb
+      - name: Smoke test — CLI
+        run: kli version
+
+      - name: Smoke test — GUI launches with only declared deps
+        run: |
+          # Installed without Recommends above, so a successful render proves every
+          # runtime dependency (notably the xcb QPA plugin) is declared in Depends.
+          xvfb-run -a env QT_QPA_PLATFORM=xcb KUIPER_SHOT=/tmp/shot.png kuiper-imager
+          test -s /tmp/shot.png
+
+      - name: Upload .debs
         uses: actions/upload-artifact@v7
         with:
-          name: kuiper-imager-cli-deb-${{ matrix.arch }}
-          path: build-deb/*.deb
+          name: kuiper-imager-deb-${{ matrix.arch }}
+          # The two installable packages only; debhelper's auto-generated -dbgsym
+          # companions stay out of the published artifact.
+          path: |
+            dist/*.deb
+            !dist/*-dbgsym_*.deb
           if-no-files-found: error
           retention-days: 14

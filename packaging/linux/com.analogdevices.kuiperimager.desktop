@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Kuiper Imager
+GenericName=Image Writer
+Comment=Write Kuiper Linux images to storage devices
+Exec=kuiper-imager
+Icon=com.analogdevices.kuiperimager
+Terminal=false
+Categories=Utility;
+Keywords=flash;image;sd;usb;kuiper;adi;
+StartupNotify=true
+StartupWMClass=kuiper-imager

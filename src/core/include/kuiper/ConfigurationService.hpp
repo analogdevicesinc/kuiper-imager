@@ -16,6 +16,16 @@ namespace kuiper {
 using PreloaderSink =
     std::function<Result<void>(const std::string& preloaderFile, ProgressFn)>;
 
+// The on-card release marker, parsed from `kuiper-release.json`. A
+// kuiper-imager-supported Kuiper 2 image carries this file at the BOOT-partition
+// root (and mirrors it at /etc on the rootfs). Its presence is what identifies a
+// supported card; the fields are best-effort and may be empty on older images.
+struct KuiperRelease {
+    std::string version;       // e.g. "2026.1.1"
+    std::string variant;       // e.g. "basic"
+    std::string architecture;  // e.g. "arm64"
+};
+
 // Options for configureProject.
 struct ConfigureOptions {
     bool dryRun = false;  // compute the copy plan without touching the card
@@ -41,6 +51,14 @@ struct ConfigureSummary {
 class ConfigurationService {
 public:
     ConfigurationService() = default;
+
+    // Read the `kuiper-release.json` marker at the BOOT-partition root. Its
+    // presence identifies a kuiper-imager-supported Kuiper 2 card; returns
+    // NotKuiper2 when the file is absent or not a JSON object, and Unknown when
+    // it is present but cannot be read (an I/O error, not a verdict on the card).
+    // Parsing is defensive — a present-but-sparse file still succeeds with the
+    // recognised fields left empty.
+    Result<KuiperRelease> readRelease(const std::string& bootPath = "/boot");
 
     // Recursively scan `bootPath` for *.json manifests and collect every project
     // they declare. Malformed/non-manifest JSON is skipped silently; an empty
