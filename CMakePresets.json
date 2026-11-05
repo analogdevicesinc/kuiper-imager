@@ -24,14 +24,13 @@
     },
     {
       "name": "deb-linux",
-      "displayName": "Debian package (distro Qt, CLI only)",
-      "description": "Builds kli against the distro's Qt (6.4+) with CPack DEB packaging enabled. Distinct from ci-linux, which builds against aqtinstall Qt 6.8. Intended for the debian:12 packaging container.",
+      "displayName": "Debian build (distro Qt, GUI on)",
+      "description": "Release build of the CLI + GUI + helper against the distro's Qt (6.4+), mirroring what the debian/ debhelper tree configures. Use it to reproduce the packaged build locally; the actual .deb is produced by dpkg-buildpackage, not CPack. Distinct from ci-linux, which builds against aqtinstall Qt 6.8.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-deb",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "KUIPER_IMAGER_GUI": "OFF",
-        "KUIPER_IMAGER_PACKAGE": "ON"
+        "KUIPER_IMAGER_GUI": "ON"
       }
     },
     {

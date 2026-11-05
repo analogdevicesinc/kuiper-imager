@@ -80,19 +80,31 @@ still build the CLI. See :ref:`development` for all presets.
 
 ----
 
-Debian Package
---------------
+Debian Packages
+---------------
 
-A ``.deb`` of ``kli`` is produced by the ``deb-linux`` preset, which builds a
-release CLI against the **distro's** Qt (6.4+) with CPack DEB packaging enabled
-(distinct from the CI build, which uses a newer Qt):
+The Debian packaging lives in the native ``debian/`` tree (debhelper driving the
+CMake build) and produces **two** binary packages from a single build against the
+**distro's** Qt (6.4+):
+
+- ``kuiper-imager-cli`` — just ``kli``. Depends only on the distro's Qt Core, plus
+  libarchive, OpenSSL, and libcurl — no GUI or desktop stack, so it suits headless
+  servers, CI runners, and scripted flashing.
+- ``kuiper-imager`` — the Qt Widgets GUI, the privileged write helper, the polkit
+  policy, and a desktop entry + icon. Depends additionally on Qt Widgets/Network
+  and ``pkexec``.
+
+Build both with ``dpkg-buildpackage`` (ideally inside the ``debian:12`` container
+so the packages link the same Qt the target users have):
 
 .. code-block:: bash
 
-   cmake --preset deb-linux
-   cmake --build build-deb
-   cd build-deb && cpack
+   # install build-deps from debian/control, then build binary-only, unsigned
+   mk-build-deps --install --remove --tool 'apt-get -y' debian/control
+   dpkg-buildpackage -us -uc -b
+   # kuiper-imager-cli_*.deb and kuiper-imager_*.deb land in the parent directory
 
-The resulting package installs ``kli`` and depends on the distro's Qt Core,
-libarchive, OpenSSL, libcurl, and util-linux. The GUI is not part of the
-package.
+Qt is linked dynamically against the distribution's packages (posture A): nothing
+from Qt is bundled, so the ``.deb`` carries no LGPL source-availability obligation.
+To reproduce the packaged build locally without ``dpkg-buildpackage``, the
+``deb-linux`` CMake preset configures the same CLI + GUI + helper build.

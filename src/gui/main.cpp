@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QDir>
+#include <QGuiApplication>
 #include <QFontDatabase>
 #include <QTimer>
 #include <memory>
@@ -22,6 +23,10 @@ void loadBundledFonts() {
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
+    // Tie the process to its installed .desktop so the compositor can resolve the
+    // app's icon and group its windows — the reliable mechanism under Wayland
+    // (StartupWMClass in the .desktop covers the X11 case). Harmless if unset.
+    QGuiApplication::setDesktopFileName("com.analogdevices.kuiperimager");
     loadBundledFonts();
     kuiper::theme::applyTheme(app, kuiper::theme::Theme::Light);
 

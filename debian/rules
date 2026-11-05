@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+# Native debhelper packaging for kuiper-imager.
+# One source build (CMake, GUI on) -> two binary packages split by *.install:
+#   kuiper-imager-cli : usr/bin/kli
+#   kuiper-imager     : the GUI, the privileged helper, polkit/desktop/icon
+# Qt is system-provided (posture A) -> dh_shlibdeps pulls libqt6*; nothing bundled.
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --buildsystem=cmake+ninja
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DKUIPER_IMAGER_GUI=ON \
+		-DKUIPER_IMAGER_HELPER=ON
+
+# No CTest/CMake tests are wired, so there is no `ninja test` target. The CI job
+# exercises the built packages instead (kli version + a headless GUI launch).
+override_dh_auto_test:

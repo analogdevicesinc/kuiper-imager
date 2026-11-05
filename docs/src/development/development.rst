@@ -68,8 +68,9 @@ The build is driven by CMake presets:
      - Ninja, Debug, GUI **off** — headless / CLI-only.
    * - ``deb-linux``
      - ``build-deb``
-     - Release CLI against the distro Qt (6.4+) with CPack DEB packaging (see
-       :ref:`installation`).
+     - Release CLI + GUI + helper against the distro Qt (6.4+), mirroring the
+       ``debian/`` debhelper build; the ``.deb`` packages themselves are produced
+       by ``dpkg-buildpackage`` (see :ref:`installation`).
    * - ``ci-linux`` / ``ci-macos`` / ``ci-windows``
      - ``build-ci``
      - Release CI builds. ``ci-linux`` and ``ci-windows`` are exercised by CI
