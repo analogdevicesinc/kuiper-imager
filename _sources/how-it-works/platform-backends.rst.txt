@@ -32,8 +32,9 @@ grouped into three areas:
 - ``mount(partition)`` — mount a partition and return an RAII
   :ref:`MountedPartition <core-library>` handle. If the partition is already
   mounted the handle *borrows* it (and leaves it alone on destruction);
-  otherwise the backend mounts to a private temp dir and the handle unmounts and
-  cleans up. A partition with no filesystem is an error.
+  otherwise the backend mounts it and the handle unmounts on destruction. How the
+  backend mounts is its own concern (see the Linux backend's unprivileged udisks2
+  path below). A partition with no filesystem is an error.
 
 **Raw device I/O** (an RAII handle, via ``openForWrite`` / ``openForRead``)
 
@@ -68,10 +69,10 @@ its own mountpoint — so no ``/dev/Xp1`` string surgery leaks into the contract
 
 **Unsupported operations.** An operation a backend does not implement returns an
 ``UnsupportedPlatform`` error rather than failing deep in a pipeline: the macOS
-stub returns it from every method, and the Windows backend returns it from
-``mount`` (``configure`` is Linux-only for now). A front-end surfaces that error
-directly, so the user sees a clear message without a machine-wide capability
-table to keep in sync.
+stub returns it from every method, and on Windows only the raw *intel preloader*
+write is unimplemented (``configure`` refuses an intel project up front, before
+touching the card). A front-end surfaces that error directly, so the user sees a
+clear message without a machine-wide capability table to keep in sync.
 
 ----
 
@@ -149,6 +150,19 @@ the block device's page cache and ``posix_fadvise(DONTNEED)`` as
 belt-and-suspenders for the buffered fallback — together forcing the verify pass
 to re-read from media. Under O_DIRECT these are near-free no-ops.
 
+**Mounting.** ``configure`` and ``list-projects`` need the BOOT partition mounted,
+not raw access — and mounting a filesystem, unlike raw block I/O, has an
+unprivileged path. ``mount`` first tries ``udisksctl mount`` (the same udisks2 +
+polkit mechanism a file manager uses), so these commands work **without sudo**
+right after a flash. This matters because a freshly written card is present but
+not auto-mounted — the desktop auto-mounts on *media insertion*, and rewriting the
+partition table in place (even after ``BLKRRPART``) is not one — so without this
+the only way to mount it would be the privileged ``mount(2)`` syscall. udisks2's
+output is localized, so the mountpoint is read back from ``lsblk`` rather than
+parsed from it; the handle unmounts via ``udisksctl`` on destruction. When udisks2
+is absent (headless / minimal systems) ``mount`` falls back to ``mount(2)`` into a
+private temp dir, where the caller is root anyway.
+
 ----
 
 Privilege
@@ -157,9 +171,11 @@ Privilege
 Raw device access requires root. On Linux the tool opens the device directly and
 expects to be run with ``sudo``; an ``EACCES`` / ``EPERM`` is mapped to
 ``PermissionDenied`` with a "run with sudo" hint. This "open the raw node with
-elevated privilege" approach is deliberately simple and dependency-free: it
-avoids taking a hard runtime dependency on ``udisks2`` / D-Bus and the policy
-surface that comes with it, in exchange for requiring explicit elevation.
+elevated privilege" approach is deliberately simple and dependency-free: it takes
+no *hard* dependency on ``udisks2`` / D-Bus. Mounting is the one exception, and a
+deliberate one: ``mount`` uses ``udisksctl`` when it is present (so ``configure``
+needs no sudo) but treats it as *optional*, falling back to ``mount(2)`` when it is
+not — raw flashing still always goes through the direct, elevated open.
 
 The other platforms follow the same shape with their own elevation mechanism,
 which is why privilege sits behind ``IDriveBackend`` rather than in the portable
@@ -180,18 +196,43 @@ core:
      - ``authopen`` hands back an fd over ``SCM_RIGHTS``
    * - Windows
      - ``\\.\PhysicalDriveN``
-     - Run from an elevated (Administrator) prompt
+     - CLI: run from an elevated prompt. GUI: a per-write ``runas`` (UAC) helper
 
 \* macOS is still planned — see below.
+
+The GUI goes further than "run elevated": it stays unprivileged and elevates only a
+tiny ``kuiper-imager-helper`` for the duration of a single write — the flash, and
+the raw Intel preloader write during ``configure``. On Linux that helper is launched
+with ``pkexec`` and inherits stdio; on Windows UAC elevation (``ShellExecuteEx``
+``"runas"``) routes the helper through the AppInfo service, so it is **not** a child
+of the GUI and cannot inherit stdio. The Windows GUI therefore creates a **named
+pipe** and passes its name to the helper, which connects back. The pipe is
+single-instance, local-only, named with a fresh GUID, and created with a DACL that
+admits only the current user and ``BUILTIN\Administrators`` (the latter so an
+over-the-shoulder elevation, which runs the helper as a different admin account,
+can still connect); the GUI then accepts only the exact process it launched. The
+pipe carries the **same NDJSON protocol** as the Linux stdio transport — only the
+transport differs. Crucially, the write parameters (verb, image, drive) travel as
+**command-line arguments at elevation time**, which UAC consents to; the pipe only
+ever carries progress/result/error out and ``cancel`` in. A hijacked pipe can thus
+at most cancel the write or spoof progress text — it can never change *what* is
+written *where*. The helper carries a ``requireAdministrator`` manifest (UAC shield
++ defense in depth); the GUI stays ``asInvoker``.
+
+On both transports the helper never runs a write nobody is watching. If its input
+stream ends (the GUI exited or crashed), it treats that as ``cancel`` and stops at
+the next cancellation point. If it was told to use a pipe it cannot connect to, it
+writes nothing and exits with a dedicated code (``ipc::kExitNoChannel``), which the
+GUI reports.
 
 ----
 
 The Windows Backend
 -------------------
 
-The Windows backend implements enumeration and flashing (``configure`` is
-Linux-only for now, so ``mount`` returns ``UnsupportedPlatform``). It uses Win32
-directly — no subprocess.
+The Windows backend implements enumeration, flashing, and ``mount`` (so
+``list-projects`` and ``configure`` work for ordinary boards); only the raw intel
+preloader write is Linux-only for now. It uses Win32 directly — no subprocess.
 
 **Enumeration.** SetupAPI (``GUID_DEVINTERFACE_DISK``) lists the disk device
 interfaces; ``IOCTL_STORAGE_GET_DEVICE_NUMBER`` maps each to its
@@ -204,8 +245,18 @@ walking the system's volumes and matching them to a disk + starting offset via
 ``IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS`` (drive letter, filesystem, label). The
 disk backing ``%SystemDrive%`` is flagged ``isSystem`` so the two-tier guard
 protects it. Because Windows has no ``/dev/sdXN``, a partition's ``node`` is a
-backend-owned opaque identifier (the volume GUID path, or a synthetic token) — it
-is populated for display but not opened in this scope.
+backend-owned opaque identifier: the volume GUID path (``\\?\Volume{...}``) for a
+recognized volume, or a synthetic token for a raw slot. It is never opened as a
+raw device — the flash path only ever opens the whole-disk ``\\.\PhysicalDriveN``.
+
+**Mounting.** Windows auto-mounts recognized filesystems, so ``mount`` has nothing
+to mount — it *borrows*, exactly as the Linux backend borrows an already-mounted
+partition. It hands back the drive letter the volume carries (``E:\``), or, when a
+mounted volume has no letter, its volume GUID path — both are valid filesystem
+roots for the portable ``ConfigurationService``, and the handle releases nothing on
+destruction. A raw slot (no filesystem) returns ``NotFound``. This is what makes
+``list-projects`` and ``configure`` work on Windows for ordinary boards; only the
+raw intel preloader write, which still needs a base-offset device write, is absent.
 
 **Raw I/O and locking.** ``openForWrite`` locks and dismounts every volume on the
 target disk (``FSCTL_LOCK_VOLUME`` + ``FSCTL_DISMOUNT_VOLUME``) and *holds* the
