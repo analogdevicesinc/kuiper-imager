@@ -1,0 +1,105 @@
+.. _customize:
+
+Customize: Add ADI Features to an Image
+=======================================
+
+.. description::
+
+   Add the ADI "full-image" features (desktop, libraries, applications) to a
+   prebuilt basic Kuiper .img, in place
+
+A Kuiper image is **basic** or **full** only by which features were enabled when
+it was built: the "full" variant is the basic image with most of its ``CONFIG_*``
+switches turned on. ``customize`` closes that gap after the fact — it takes a
+prebuilt basic ``.img`` and installs the ADI features you pick (an XFCE desktop,
+the ADI libraries, the ADI applications) straight into it, so you can turn a
+small download into exactly the image you need without rebuilding from source.
+
+This works because **every** Kuiper image already carries the ADI apt repository,
+its signing key, and apt pinning (set up at build time). Each feature is therefore
+just an ``apt-get install`` run inside the image — the same path the Kuiper build
+itself uses. ``customize`` loop-mounts the image, runs those installs in the
+image's chroot, restamps the image identity, and unmounts.
+
+.. note::
+
+   ``customize`` is **Linux only** and modifies the ``.img`` **in place**. It
+   needs root. Because the Kuiper rootfs is ARM, customizing on an x86 host also
+   needs ``qemu-user-static`` and ``binfmt-support`` (``sudo apt install
+   qemu-user-static binfmt-support``); on a native-ARM host no emulation is
+   needed. The ``.deb`` recommends these on amd64/i386.
+
+----
+
+list-features
+-------------
+
+.. code-block:: bash
+
+   kli customize --list-features
+
+Lists the installable features — their ``ID`` (what you pass to ``--feature``),
+``GROUP`` (Desktop / Libraries / Applications), name, and a rough installed-size
+estimate. Needs neither root nor an image.
+
+----
+
+customize
+---------
+
+.. code-block:: bash
+
+   sudo kli customize --image <file> [--feature <id> ...] [--all] \
+                      [--grow <size> | --no-grow] [--arch armhf|arm64] \
+                      [--dry-run] [--yes]
+
+Install two features, letting the rootfs auto-grow to fit:
+
+.. code-block:: bash
+
+   sudo kli customize --image kuiper_basic.img \
+       --feature libiio --feature iio-oscilloscope
+
+Build the "full" preset (every feature):
+
+.. code-block:: bash
+
+   sudo kli customize --image kuiper_basic.img --all --grow 6G -y
+
+Key behaviors:
+
+- **In-place, with confirmation.** The image is modified where it sits. Unless
+  ``--yes`` is given, ``customize`` prints what it will do and waits for you to
+  type ``y`` (Ctrl-C or declining aborts, exit code 3, touching nothing).
+- **Auto-grow.** The full ADI stack is multiple GB, so the rootfs is enlarged
+  before installing. By default the grow is sized from your selection; ``--grow
+  <size>`` (e.g. ``4G``) sets it explicitly and ``--no-grow`` disables it. The
+  rootfs must be the last partition on the image for a grow to be possible.
+- **Dry run.** ``--dry-run`` prints the plan — the features, the resulting image
+  size — without touching the image, as root or not.
+- **No state tracking.** ``customize`` installs what you select; apt is idempotent
+  and resolves inter-package dependencies itself, so selecting a tool pulls in the
+  libraries it needs and re-running is harmless.
+
+On success it reports the features installed, the detected architecture, and the
+final image size, then hints at the matching :ref:`flash <flash>` command.
+
+----
+
+Architecture detection and the chroot
+-------------------------------------
+
+``customize`` reads the image's architecture from its ``/etc/kuiper-release``
+marker to pick the right emulator (``arm64`` → ``qemu-aarch64-static``, ``armhf``
+→ ``qemu-arm-static``). For an image without that marker, pass ``--arch``. On an
+x86 host the matching ``qemu-*-static`` must be installed and registered with
+``binfmt_misc``; ``customize`` checks both up front and fails with a clear hint if
+either is missing — before it changes anything.
+
+After the installs, ``customize`` restamps the image identity so the result
+reports itself honestly: ``KUIPER_VARIANT`` becomes ``custom`` in both
+``/etc/kuiper-release`` and the BOOT partition's ``kuiper-release.json``, and
+``/etc/kuiper-packages`` is refreshed with the new package list. Everything added
+only to run the chroot (the emulator binary, a working ``resolv.conf``) is removed
+again, and the loop device and mounts are torn down on every exit path — success,
+failure, or Ctrl-C.

@@ -71,6 +71,7 @@ Documentation
    using-the-cli/fetch
    using-the-cli/flash
    using-the-cli/configure
+   using-the-cli/customize
 
 .. toctree::
    :maxdepth: 2
