@@ -83,6 +83,14 @@ Key behaviors:
 On success it reports the features installed, the detected architecture, and the
 final image size, then hints at the matching :ref:`flash <flash>` command.
 
+.. note::
+
+   The GUI exposes the same feature on Linux: select a local ``.img`` and click
+   **Customize…** on the Image card. The dialog lists the catalog grouped by
+   Desktop / Libraries / Applications with size estimates, lets you auto-grow (or
+   set an explicit size), and runs the install in the elevated helper with live
+   per-feature progress — the same core ``ImageCustomizer`` the CLI drives.
+
 ----
 
 The Desktop Feature

@@ -252,6 +252,14 @@ and resolves inter-package dependencies itself.</p></li>
 </ul>
 <p>On success it reports the features installed, the detected architecture, and the
 final image size, then hints at the matching <a class="reference internal" href="flash.html#flash"><span class="std std-ref">flash</span></a> command.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The GUI exposes the same feature on Linux: select a local <code class="docutils literal notranslate"><span class="pre">.img</span></code> and click
+<strong>Customize…</strong> on the Image card. The dialog lists the catalog grouped by
+Desktop / Libraries / Applications with size estimates, lets you auto-grow (or
+set an explicit size), and runs the install in the elevated helper with live
+per-feature progress — the same core <code class="docutils literal notranslate"><span class="pre">ImageCustomizer</span></code> the CLI drives.</p>
+</div>
 </section>
 <hr class="docutils" />
 <section id="the-desktop-feature">
