@@ -1,7 +1,6 @@
 #include <QApplication>
 #include <QDir>
 #include <QFontDatabase>
-#include <QTimer>
 #include <memory>
 
 #include "ConsoleWindow.hpp"
@@ -28,14 +27,5 @@ int main(int argc, char** argv) {
     auto window = std::make_unique<ConsoleWindow>();
     window->show();
 
-    // Dev aid for designing by hand: KUIPER_SHOT=<path> renders the window to a
-    // PNG and exits, so screens can be iterated headlessly (QT_QPA_PLATFORM=
-    // offscreen) without a display. No effect unless the variable is set.
-    if (qEnvironmentVariableIsSet("KUIPER_SHOT")) {
-        QTimer::singleShot(300, [&] {
-            window->grab().save(qEnvironmentVariable("KUIPER_SHOT"));
-            app.quit();
-        });
-    }
     return app.exec();
 }
