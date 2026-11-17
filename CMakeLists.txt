@@ -21,7 +21,6 @@ option(KUIPER_IMAGER_GUI "Build the Qt Widgets GUI front-end" ON)
 cmake_dependent_option(KUIPER_IMAGER_HELPER
     "Build the privileged write helper used by the GUI for elevation" ON
     "KUIPER_IMAGER_GUI" OFF)
-option(KUIPER_IMAGER_PACKAGE "Enable CPack packaging config (.deb)" OFF)
 
 include(GNUInstallDirs)
 # Unix: installed path of the privileged helper — shared by the helper install
@@ -62,25 +61,11 @@ if(KUIPER_IMAGER_HELPER AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
 endif()
 
-message(STATUS "kuiper-imager ${PROJECT_VERSION} | GUI: ${KUIPER_IMAGER_GUI} | helper: ${KUIPER_IMAGER_HELPER}")
-
-if(KUIPER_IMAGER_PACKAGE)
-    set(CPACK_PACKAGE_NAME "kuiper-imager-cli")
-    set(CPACK_PACKAGE_VENDOR "Analog Devices")
-    set(CPACK_PACKAGE_CONTACT "Alisa-Dariana Roman <alisa.roman@analog.com>")
-    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION} (CLI)")
-    set(CPACK_PACKAGE_DESCRIPTION
-        "kli fetches, flashes, and configures Kuiper Linux images for Analog\nDevices hardware. This is the command-line front-end; it links the distro's\nQt 6 Core at runtime.")
-    set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-    set(CPACK_STRIP_FILES ON)
-
-    set(CPACK_GENERATOR "DEB")
-    set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
-    set(CPACK_DEBIAN_PACKAGE_RELEASE "1")
-    set(CPACK_DEBIAN_PACKAGE_HOMEPAGE
-        "https://github.com/analogdevicesinc/kuiper-imager")
-    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-    set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-
-    include(CPack)
+if(KUIPER_IMAGER_GUI AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    install(FILES packaging/linux/com.analogdevices.kuiperimager.desktop
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    install(FILES packaging/linux/com.analogdevices.kuiperimager.png
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
 endif()
+
+message(STATUS "kuiper-imager ${PROJECT_VERSION} | GUI: ${KUIPER_IMAGER_GUI} | helper: ${KUIPER_IMAGER_HELPER}")

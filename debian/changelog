@@ -1,0 +1,10 @@
+kuiper-imager (0.1.0) unstable; urgency=medium
+
+  * Package the Qt Widgets GUI (kuiper-imager) and its privileged write helper
+    alongside the CLI, split into two binary packages: kuiper-imager-cli (lean,
+    CLI only) and kuiper-imager (GUI + helper + polkit + desktop integration).
+  * Ship a desktop entry and hicolor icon for the GUI.
+  * Qt 6 is system-provided and dynamically linked; nothing from Qt is bundled
+    in the .deb.
+
+ -- Alisa-Dariana Roman <alisa.roman@analog.com>  Thu, 05 Nov 2026 18:16:14 +0200

@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QDir>
+#include <QGuiApplication>
 #include <QFontDatabase>
 #include <memory>
 
@@ -21,6 +22,7 @@ void loadBundledFonts() {
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
+    QGuiApplication::setDesktopFileName("com.analogdevices.kuiperimager");
     loadBundledFonts();
     kuiper::theme::applyTheme(app, kuiper::theme::Theme::Light);
 

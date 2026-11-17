@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --buildsystem=cmake+ninja
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DKUIPER_IMAGER_GUI=ON \
+		-DKUIPER_IMAGER_HELPER=ON
+
+override_dh_auto_test:
