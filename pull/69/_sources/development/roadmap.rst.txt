@@ -42,14 +42,12 @@ Phase Status
        macOS postponed — compilable stub (see :ref:`platform-backends`)
    * - 5
      - GUI wire-up and image customization
-     - In progress — ``kli customize`` (Linux, CLI) **done** (:ref:`customize`);
-       GUI wire-up and the privileged-helper path for customize postponed
+     - Postponed
 
 What works today: the ``kli`` CLI on **Linux** ``list-drives``, ``flash`` of a
-local image, ``list-projects`` / ``configure``, ``list-releases`` / ``fetch``,
-and ``customize`` (add ADI features to a local image); on **Windows**
-``list-drives``, ``flash``, ``list-releases`` / ``fetch``. The GUI builds on both
-but currently lists drives only.
+local image, ``list-projects`` / ``configure``, ``list-releases`` / ``fetch``;
+on **Windows** ``list-drives``, ``flash``, ``list-releases`` / ``fetch``. The
+GUI builds on both but currently lists drives only.
 
 ----
 

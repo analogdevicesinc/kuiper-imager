@@ -22,7 +22,6 @@ codes. Every command follows the conventions on this page.
    kli fetch     --image <id>   --output <path> [--force]
    kli flash     --image <file> --drive <dev>   [--yes] [--force] [--no-verify] [--timings]
    kli configure --drive <dev>  --project <name> --board <carrier> [--dry-run] [--force]
-   kli customize --image <file> [--feature <id> ...] [--all] [--grow <size>] [--dry-run]
    kli help
 
 ----
