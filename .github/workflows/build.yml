@@ -127,7 +127,7 @@ jobs:
   package-deb:
     name: package (deb, ${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    container: debian:12
+    container: debian:12@sha256:268fb24c39bca92d326dd83ea3abebe4a3f7751c804ffef23bb6d857dd343ff8
     strategy:
       fail-fast: false
       matrix:
@@ -137,42 +137,49 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install build + packaging dependencies
+      - name: Install packaging toolchain + build dependencies
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
             build-essential \
-            cmake \
-            ninja-build \
-            git \
+            devscripts \
+            equivs \
+            lintian \
+            desktop-file-utils \
             ca-certificates \
-            qt6-base-dev \
-            libarchive-dev \
-            libssl-dev \
-            libcurl4-openssl-dev \
-            dpkg-dev \
-            lintian
+            git
+          mk-build-deps --install --remove \
+            --tool 'apt-get -y --no-install-recommends' debian/control
 
-      - name: Configure
-        run: cmake --preset deb-linux
+      - name: Build binary packages (dpkg-buildpackage)
+        run: dpkg-buildpackage -us -uc -b
 
-      - name: Build
-        run: cmake --build --preset deb-linux
+      - name: Collect packages into the workspace
+        run: |
+          mkdir -p dist
+          mv ../*.deb dist/
+          ls -l dist
 
-      - name: Smoke test (kli version)
-        run: ./build-deb/src/cli/kli version
+      - name: Validate desktop entry
+        run: desktop-file-validate packaging/linux/com.analogdevices.kuiperimager.desktop
 
-      - name: Package (cpack -G DEB)
-        working-directory: build-deb
-        run: cpack -G DEB
+      - name: Lint packages (lintian, fail on error)
+        run: lintian --fail-on error dist/*.deb
 
-      - name: Lint package (lintian)
-        run: lintian build-deb/*.deb || true
+      - name: Install built packages (deps only, no Recommends)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ./dist/kuiper-imager-cli_*.deb ./dist/kuiper-imager_*.deb
 
-      - name: Upload .deb
+      - name: Smoke test — CLI
+        run: kli version
+
+      - name: Upload .debs
         uses: actions/upload-artifact@v7
         with:
-          name: kuiper-imager-cli-deb-${{ matrix.arch }}
-          path: build-deb/*.deb
+          name: kuiper-imager-deb-${{ matrix.arch }}
+          path: |
+            dist/*.deb
+            !dist/*-dbgsym_*.deb
           if-no-files-found: error
           retention-days: 14
