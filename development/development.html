@@ -8,8 +8,8 @@
 
     <title>Development &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
-    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=a3ee7af8" />
-    <script async="async" src="../_static/app.umd.js?v=048c1170"></script>
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=07ad7716" />
+    <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
     <link rel="icon" href="../_static/icon.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -262,8 +262,9 @@ docker<span class="w"> </span>compose<span class="w"> </span>run<span class="w">
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">deb-linux</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">build-deb</span></code></p></td>
-<td><p>Release CLI against the distro Qt (6.4+) with CPack DEB packaging (see
-<a class="reference internal" href="../getting-started/installation.html#installation"><span class="std std-ref">Installation</span></a>).</p></td>
+<td><p>Release CLI + GUI + helper against the distro Qt (6.4+), mirroring the
+<code class="docutils literal notranslate"><span class="pre">debian/</span></code> debhelper build; the <code class="docutils literal notranslate"><span class="pre">.deb</span></code> packages themselves are produced
+by <code class="docutils literal notranslate"><span class="pre">dpkg-buildpackage</span></code> (see <a class="reference internal" href="../getting-started/installation.html#installation"><span class="std std-ref">Installation</span></a>).</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ci-linux</span></code> / <code class="docutils literal notranslate"><span class="pre">ci-macos</span></code> / <code class="docutils literal notranslate"><span class="pre">ci-windows</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">build-ci</span></code></p></td>

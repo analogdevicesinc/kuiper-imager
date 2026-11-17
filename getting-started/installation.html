@@ -8,8 +8,8 @@
 
     <title>Installation &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
-    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=a3ee7af8" />
-    <script async="async" src="../_static/app.umd.js?v=048c1170"></script>
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=07ad7716" />
+    <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
     <link rel="icon" href="../_static/icon.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -97,7 +97,7 @@
 <li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
 <li><a class="reference internal" href="#build-from-source-docker">Build from Source (Docker)</a></li>
 <li><a class="reference internal" href="#build-from-source-native">Build from Source (Native)</a></li>
-<li><a class="reference internal" href="#debian-package">Debian Package</a></li>
+<li><a class="reference internal" href="#debian-packages">Debian Packages</a></li>
 </ul>
 </li>
 </ul>
@@ -246,19 +246,31 @@ Docker:</p>
 still build the CLI. See <a class="reference internal" href="../development/development.html#development"><span class="std std-ref">Development</span></a> for all presets.</p>
 </section>
 <hr class="docutils" />
-<section id="debian-package">
-<h2>Debian Package<a class="headerlink" href="#debian-package" title="Link to this heading"></a></h2>
-<p>A <code class="docutils literal notranslate"><span class="pre">.deb</span></code> of <code class="docutils literal notranslate"><span class="pre">kli</span></code> is produced by the <code class="docutils literal notranslate"><span class="pre">deb-linux</span></code> preset, which builds a
-release CLI against the <strong>distro’s</strong> Qt (6.4+) with CPack DEB packaging enabled
-(distinct from the CI build, which uses a newer Qt):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>--preset<span class="w"> </span>deb-linux
-cmake<span class="w"> </span>--build<span class="w"> </span>build-deb
-<span class="nb">cd</span><span class="w"> </span>build-deb<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>cpack
+<section id="debian-packages">
+<h2>Debian Packages<a class="headerlink" href="#debian-packages" title="Link to this heading"></a></h2>
+<p>The Debian packaging lives in the native <code class="docutils literal notranslate"><span class="pre">debian/</span></code> tree (debhelper driving the
+CMake build) and produces <strong>two</strong> binary packages from a single build against the
+<strong>distro’s</strong> Qt (6.4+):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">kuiper-imager-cli</span></code> — just <code class="docutils literal notranslate"><span class="pre">kli</span></code>. Depends only on the distro’s Qt Core, plus
+libarchive, OpenSSL, and libcurl — no GUI or desktop stack, so it suits headless
+servers, CI runners, and scripted flashing.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">kuiper-imager</span></code> — the Qt Widgets GUI, the privileged write helper, the polkit
+policy, and a desktop entry + icon. Depends additionally on Qt Widgets/Network
+and <code class="docutils literal notranslate"><span class="pre">pkexec</span></code>.</p></li>
+</ul>
+<p>Build both with <code class="docutils literal notranslate"><span class="pre">dpkg-buildpackage</span></code> (ideally inside the <code class="docutils literal notranslate"><span class="pre">debian:12</span></code> container
+so the packages link the same Qt the target users have):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># install build-deps from debian/control, then build binary-only, unsigned</span>
+mk-build-deps<span class="w"> </span>--install<span class="w"> </span>--remove<span class="w"> </span>--tool<span class="w"> </span><span class="s1">'apt-get -y'</span><span class="w"> </span>debian/control
+dpkg-buildpackage<span class="w"> </span>-us<span class="w"> </span>-uc<span class="w"> </span>-b
+<span class="c1"># kuiper-imager-cli_*.deb and kuiper-imager_*.deb land in the parent directory</span>
 </pre></div>
 </div>
-<p>The resulting package installs <code class="docutils literal notranslate"><span class="pre">kli</span></code> and depends on the distro’s Qt Core,
-libarchive, OpenSSL, libcurl, and util-linux. The GUI is not part of the
-package.</p>
+<p>Qt is linked dynamically against the distribution’s packages (posture A): nothing
+from Qt is bundled, so the <code class="docutils literal notranslate"><span class="pre">.deb</span></code> carries no LGPL source-availability obligation.
+To reproduce the packaged build locally without <code class="docutils literal notranslate"><span class="pre">dpkg-buildpackage</span></code>, the
+<code class="docutils literal notranslate"><span class="pre">deb-linux</span></code> CMake preset configures the same CLI + GUI + helper build.</p>
 </section>
 </section>
 
