@@ -42,7 +42,10 @@ Phase Status
        macOS postponed — compilable stub (see :ref:`platform-backends`)
    * - 5
      - GUI wire-up and image customization
-     - Postponed
+     - In progress — image customization **done** on Linux in both front-ends:
+       ``kli customize`` (CLI) and a "Customize…" dialog in the GUI, sharing the
+       core ``ImageCustomizer`` and running the install in the elevated helper
+       (:ref:`customize`); the rest of the GUI wire-up continues
 
 What works today: the ``kli`` CLI on **Linux** ``list-drives``, ``flash`` of a
 local image, ``list-projects`` / ``configure``, ``list-releases`` / ``fetch``;
