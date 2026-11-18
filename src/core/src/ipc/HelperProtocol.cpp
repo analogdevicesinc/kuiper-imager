@@ -1,8 +1,10 @@
 #include "kuiper/ipc/HelperProtocol.hpp"
 
 #include <QByteArray>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonValue>
 #include <QLatin1String>
 #include <QString>
 
@@ -92,6 +94,19 @@ std::string encodeResult(const FlashSummary& summary) {
     return compact(o);
 }
 
+std::string encodeCustomizeResult(const CustomizeSummary& summary) {
+    QJsonObject o;
+    o["t"] = "customize-result";
+    QJsonArray installed;
+    for (const auto& id : summary.installed)
+        installed.append(QString::fromStdString(id));
+    o["installed"] = installed;
+    o["arch"] = QString::fromStdString(summary.detectedArch);
+    o["finalBytes"] = static_cast<double>(summary.finalImageBytes);
+    o["ranScript"] = QString::fromStdString(summary.ranScript);
+    return compact(o);
+}
+
 std::string encodeError(const Error& e) {
     QJsonObject o;
     o["t"] = "error";
@@ -125,6 +140,14 @@ HelperMessage parseLine(const std::string& line) {
         msg.bytesWritten =
             static_cast<std::uint64_t>(o.value("bytesWritten").toDouble());
         msg.sha256 = field(o, "sha256");
+    } else if (t == "customize-result") {
+        msg.type = HelperMessage::Type::CustomizeResult;
+        for (const QJsonValue& v : o.value("installed").toArray())
+            msg.customize.installed.push_back(v.toString().toStdString());
+        msg.customize.detectedArch = field(o, "arch");
+        msg.customize.finalImageBytes =
+            static_cast<std::uint64_t>(o.value("finalBytes").toDouble());
+        msg.customize.ranScript = field(o, "ranScript");
     } else if (t == "error") {
         msg.type = HelperMessage::Type::Error;
         msg.error.code = codeFromName(field(o, "code"));
