@@ -71,6 +71,7 @@ Documentation
    using-the-cli/fetch
    using-the-cli/flash
    using-the-cli/configure
+   using-the-cli/customize
 
 .. toctree::
    :maxdepth: 2
@@ -79,6 +80,7 @@ Documentation
    how-it-works/architecture
    how-it-works/core-library
    how-it-works/flash-pipeline
+   how-it-works/customize-pipeline
    how-it-works/platform-backends
    how-it-works/releases-and-sources
 
