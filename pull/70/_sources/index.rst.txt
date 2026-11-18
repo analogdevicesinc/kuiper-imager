@@ -80,6 +80,7 @@ Documentation
    how-it-works/architecture
    how-it-works/core-library
    how-it-works/flash-pipeline
+   how-it-works/customize-pipeline
    how-it-works/platform-backends
    how-it-works/releases-and-sources
 
