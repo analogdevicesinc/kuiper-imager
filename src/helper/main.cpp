@@ -28,9 +28,12 @@
 #include <utility>
 #include <vector>
 
+#include <cstring>
+
 #include "Channel.hpp"
 #include "kuiper/DriveService.hpp"
 #include "kuiper/Error.hpp"
+#include "kuiper/ImageCustomizer.hpp"
 #include "kuiper/Progress.hpp"
 #include "kuiper/ipc/HelperProtocol.hpp"
 
@@ -151,6 +154,59 @@ int runWritePreloader(const std::vector<std::string>& args) {
     return 0;
 }
 
+int runCustomize(const std::vector<std::string>& args) {
+    std::string image, grow, arch, script;
+    std::vector<std::string> features;
+    bool noGrow = false;
+    for (std::size_t i = 1; i < args.size(); ++i) {
+        std::string v;
+        if (takeValue(args, i, "--image", image)) continue;
+        if (takeValue(args, i, "--feature", v)) {
+            features.push_back(v);
+            continue;
+        }
+        if (takeValue(args, i, "--grow", grow)) continue;
+        if (takeValue(args, i, "--arch", arch)) continue;
+        if (takeValue(args, i, "--script", script)) continue;
+        if (args[i] == "--no-grow") {
+            noGrow = true;
+            continue;
+        }
+        return fail(kuiper::ErrorCode::Unknown, "Unexpected argument: " + args[i]);
+    }
+    if (image.empty() || (features.empty() && script.empty()))
+        return fail(kuiper::ErrorCode::Unknown,
+                    "customize requires --image and at least one --feature or "
+                    "--script");
+
+    kuiper::CustomizePlan plan;
+    plan.imagePath = image;
+    plan.featureIds = features;
+    if (!script.empty()) plan.scriptPath = script;
+    if (noGrow)
+        plan.growBytes = 0;  // 0 => don't grow; nullopt => auto-size
+    else if (!grow.empty()) {
+        const auto g = kuiper::customize::parseSize(grow);
+        if (!g) return fail(kuiper::ErrorCode::Unknown,
+                            "invalid --grow size: " + grow);
+        plan.growBytes = *g;
+    }
+    if (!arch.empty()) plan.archOverride = arch;
+
+    auto customizer = kuiper::makeImageCustomizer();
+    auto result =
+        customizer->customize(plan, makeProgressSink(), makeCancelToken());
+    if (!result) {
+        // Emit the full error (preserving the recovery hint, which customize
+        // leans on — e.g. the qemu/binfmt install suggestion), not fail()'s
+        // hint-less form.
+        emitLine(kuiper::ipc::encodeError(result.error()));
+        return 1;
+    }
+    emitLine(kuiper::ipc::encodeCustomizeResult(*result));
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -204,6 +260,8 @@ int main(int argc, char** argv) {
             code = runFlash(args);
         else if (verb == "write-preloader")
             code = runWritePreloader(args);
+        else if (verb == "customize")
+            code = runCustomize(args);
         else
             code = fail(kuiper::ErrorCode::Unknown, "unknown verb: " + verb);
     }
