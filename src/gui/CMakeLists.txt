@@ -22,6 +22,8 @@ qt_add_executable(kuiper-imager WIN32
     dialogs/ReleasePickerDialog.hpp
     dialogs/ConfigureDialog.cpp
     dialogs/ConfigureDialog.hpp
+    dialogs/CustomizeDialog.cpp
+    dialogs/CustomizeDialog.hpp
     util/Format.hpp
     util/Repolish.hpp
     theme/ThemeManager.cpp
@@ -44,6 +46,8 @@ qt_add_executable(kuiper-imager WIN32
     widgets/HmcBanner.hpp
     widgets/HmcSpinner.cpp
     widgets/HmcSpinner.hpp
+    widgets/HmcLogView.cpp
+    widgets/HmcLogView.hpp
     theme/theme.qrc)
 
 # Per-OS elevation session behind IHelperSession: pkexec+stdio on Unix,

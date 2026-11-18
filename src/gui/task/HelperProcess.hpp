@@ -10,6 +10,7 @@
 
 #include "kuiper/ConfigurationService.hpp"
 #include "kuiper/DriveService.hpp"
+#include "kuiper/ImageCustomizer.hpp"
 #include "kuiper/Progress.hpp"
 #include "task/IHelperSession.hpp"
 
@@ -35,14 +36,29 @@ public:
     void runFlash(const QString& driveNode, const QString& imagePath, bool verify);
     void runWritePreloader(const QString& partitionNode, const QString& imagePath);
 
+    // Customize a local .img in place: install the given feature ids, growing the
+    // rootfs (auto when growBytes is nullopt and !noGrow; explicit when set; not at
+    // all when noGrow). archOverride is used only for images lacking the arch
+    // marker. scriptPath, when non-empty, is a host script run as root inside the
+    // image chroot after the features. The outcome lands in customizeResult().
+    void runCustomize(const QString& imagePath, const QStringList& featureIds,
+                      std::optional<quint64> growBytes, bool noGrow,
+                      const QString& archOverride, const QString& scriptPath);
+
     // Cooperative cancel: asks the session to deliver "cancel" to the helper (the
     // GUI cannot signal a root process). No-op if nothing is running.
     void cancel();
     bool busy() const;
 
-    // Valid once finished() has fired: the outcome of the last run.
+    // Valid once finished() has fired, for a flash / preloader write.
     const std::optional<kuiper::Result<kuiper::FlashSummary>>& result() const {
         return result_;
+    }
+
+    // Valid once finished() has fired, for a customize run.
+    const std::optional<kuiper::Result<kuiper::CustomizeSummary>>&
+    customizeResult() const {
+        return customizeResult_;
     }
 
 signals:
@@ -50,14 +66,21 @@ signals:
     void finished();
 
 private:
-    void start(const QStringList& verbArgs);
+    // Which operation is running — selects the result holder a terminal error (or
+    // the process-level backstop) is written to.
+    enum class Verb { Flash, Preloader, Customize };
+
+    void start(Verb verb, const QStringList& verbArgs);
     void feed(const QByteArray& chunk);  // parse buffered NDJSON lines
     void onFinished(int exitCode, IHelperSession::Outcome outcome);
+    void setError(const kuiper::Error& e);  // route to the current verb's holder
     static QString resolveHelperPath();
 
     IHelperSession* session_;
     QByteArray buf_;  // accumulates partial NDJSON lines
+    Verb verb_ = Verb::Flash;
     std::optional<kuiper::Result<kuiper::FlashSummary>> result_;
+    std::optional<kuiper::Result<kuiper::CustomizeSummary>> customizeResult_;
     bool sawTerminal_ = false;  // a result/error line was parsed
 };
 

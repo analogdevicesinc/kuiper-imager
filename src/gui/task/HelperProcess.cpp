@@ -61,8 +61,10 @@ QString HelperProcess::resolveHelperPath() {
 #endif
 }
 
-void HelperProcess::start(const QStringList& verbArgs) {
+void HelperProcess::start(Verb verb, const QStringList& verbArgs) {
+    verb_ = verb;
     result_.reset();
+    customizeResult_.reset();
     buf_.clear();
     sawTerminal_ = false;
     session_->start(resolveHelperPath(), verbArgs);
@@ -72,13 +74,30 @@ void HelperProcess::runFlash(const QString& driveNode, const QString& imagePath,
                              bool verify) {
     QStringList args{"flash", "--image", imagePath, "--drive", driveNode};
     if (!verify) args << "--no-verify";
-    start(args);
+    start(Verb::Flash, args);
 }
 
 void HelperProcess::runWritePreloader(const QString& partitionNode,
                                       const QString& imagePath) {
-    start(QStringList{"write-preloader", "--partition", partitionNode, "--image",
+    start(Verb::Preloader,
+          QStringList{"write-preloader", "--partition", partitionNode, "--image",
                       imagePath});
+}
+
+void HelperProcess::runCustomize(const QString& imagePath,
+                                 const QStringList& featureIds,
+                                 std::optional<quint64> growBytes, bool noGrow,
+                                 const QString& archOverride,
+                                 const QString& scriptPath) {
+    QStringList args{"customize", "--image", imagePath};
+    for (const QString& id : featureIds) args << "--feature" << id;
+    if (noGrow)
+        args << "--no-grow";
+    else if (growBytes)
+        args << "--grow" << QString::number(*growBytes);
+    if (!archOverride.isEmpty()) args << "--arch" << archOverride;
+    if (!scriptPath.isEmpty()) args << "--script" << scriptPath;
+    start(Verb::Customize, args);
 }
 
 void HelperProcess::cancel() {
@@ -108,8 +127,12 @@ void HelperProcess::feed(const QByteArray& chunk) {
                 sawTerminal_ = true;
                 break;
             }
+            case kuiper::ipc::HelperMessage::Type::CustomizeResult:
+                customizeResult_ = msg.customize;
+                sawTerminal_ = true;
+                break;
             case kuiper::ipc::HelperMessage::Type::Error:
-                result_ = std::unexpected(msg.error);
+                setError(msg.error);
                 sawTerminal_ = true;
                 break;
             case kuiper::ipc::HelperMessage::Type::Unknown:
@@ -118,48 +141,60 @@ void HelperProcess::feed(const QByteArray& chunk) {
     }
 }
 
+void HelperProcess::setError(const kuiper::Error& e) {
+    // Route a terminal error / backstop to the holder the caller will read, so a
+    // customize failure doesn't masquerade as a flash result (and vice-versa).
+    if (verb_ == Verb::Customize)
+        customizeResult_ = std::unexpected(e);
+    else
+        result_ = std::unexpected(e);
+}
+
 void HelperProcess::onFinished(int exitCode, IHelperSession::Outcome outcome) {
     // If the helper produced a terminal line, that is the authoritative result;
     // the process-level outcome is only a backstop for when it did not.
     if (!sawTerminal_) {
         using Outcome = IHelperSession::Outcome;
         if (outcome == Outcome::Ok && exitCode == kuiper::ipc::kExitNoChannel) {
-            result_ = kuiper::Err(
+            setError(kuiper::Err(
                 kuiper::ErrorCode::Unknown,
-                "The write helper could not connect back to Kuiper Imager",
-                "It was started but could not report progress, so it wrote "
-                "nothing.");
+                "The helper could not connect back to Kuiper Imager",
+                "It was started but could not report progress, so it did "
+                "nothing.").error());
             emit finished();
             return;
         }
         switch (outcome) {
             case Outcome::AuthCancelled:
-                result_ = kuiper::Err(
+                setError(kuiper::Err(
                     kuiper::ErrorCode::PermissionDenied,
                     "Authentication was cancelled",
-                    "Elevated access is required to write to the device.");
+                    "Elevated access is required for this operation.").error());
                 break;
             case Outcome::HelperNotFound:
-                result_ = kuiper::Err(
-                    kuiper::ErrorCode::NotFound, "The write helper was not found",
-                    "kuiper-imager-helper is missing; reinstall Kuiper Imager.");
+                setError(kuiper::Err(
+                    kuiper::ErrorCode::NotFound, "The privileged helper was not found",
+                    "kuiper-imager-helper is missing; reinstall Kuiper Imager.")
+                             .error());
                 break;
             case Outcome::Crashed:
-                result_ = kuiper::Err(kuiper::ErrorCode::Unknown,
-                                      "The write helper crashed",
-                                      "The elevated helper exited abnormally.");
+                setError(kuiper::Err(kuiper::ErrorCode::Unknown,
+                                     "The privileged helper crashed",
+                                     "The elevated helper exited abnormally.")
+                             .error());
                 break;
             case Outcome::LaunchFailed:
-                result_ = kuiper::Err(
+                setError(kuiper::Err(
                     kuiper::ErrorCode::Unknown,
-                    "The write helper could not be launched",
+                    "The privileged helper could not be launched",
                     "The elevation tool (pkexec on Linux, UAC on Windows) failed "
-                    "to start it.");
+                    "to start it.").error());
                 break;
             case Outcome::Ok:
-                result_ = kuiper::Err(kuiper::ErrorCode::Unknown,
-                                      "The write helper failed",
-                                      "It exited without reporting a result.");
+                setError(kuiper::Err(kuiper::ErrorCode::Unknown,
+                                     "The privileged helper failed",
+                                     "It exited without reporting a result.")
+                             .error());
                 break;
         }
     }
