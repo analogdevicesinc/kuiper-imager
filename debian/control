@@ -16,6 +16,7 @@ Rules-Requires-Root: no
 Package: kuiper-imager-cli
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: qemu-user-static | qemu-user-binfmt [amd64 i386], binfmt-support [amd64 i386]
 Description: ADI Kuiper Imager (command-line interface)
  kli fetches, flashes, and configures Kuiper Linux images for Analog Devices
  hardware. This is the command-line front-end; it links the distro's Qt 6 Core
@@ -25,6 +26,7 @@ Description: ADI Kuiper Imager (command-line interface)
 Package: kuiper-imager
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, pkexec, qt6-qpa-plugins
+Recommends: qemu-user-static | qemu-user-binfmt [amd64 i386], binfmt-support [amd64 i386]
 Description: ADI Kuiper Imager (graphical interface)
  Kuiper Imager fetches, flashes, and configures Kuiper Linux images for Analog
  Devices hardware. This is the Qt Widgets desktop front-end. Privileged writes
