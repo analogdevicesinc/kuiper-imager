@@ -2,6 +2,7 @@
 #include <QProcess>
 #include <QString>
 
+#include <algorithm>
 #include <atomic>
 #include <csignal>
 #include <cstdio>
@@ -14,6 +15,7 @@
 
 #include "kuiper/ConfigurationService.hpp"
 #include "kuiper/DriveService.hpp"
+#include "kuiper/ImageCustomizer.hpp"
 #include "kuiper/ImageService.hpp"
 #include "kuiper/Layout.hpp"
 #include "kuiper/Progress.hpp"
@@ -61,6 +63,9 @@ void printUsage() {
         "            [--no-verify] [--timings]\n"
         "  kli configure --drive <dev> --project <name> --board <carrier>\n"
         "                [--dry-run] [--force]\n"
+        "  kli customize --image <file> [--feature <id> ...] [--all]\n"
+        "                [--script <file>] [--grow <size> | --no-grow]\n"
+        "                [--arch armhf|arm64] [--dry-run] [--list-features] [--yes]\n"
         "  kli help\n\n"
         "A <dev> is always a whole drive, e.g. %s.\n"
         "Kuiper Imager finds the BOOT / rootfs / bootloader partitions itself.\n\n"
@@ -98,6 +103,22 @@ void printUsage() {
         "      --dry-run        Show the copy plan without touching the card\n"
         "      --force          Bypass the removable/mounted-target heuristic for\n"
         "                       the bootloader partition (intel). Never the system disk.\n\n"
+        "customize options:  (Linux only; modifies the .img file in place)\n"
+        "  -i, --image <file>   Local Kuiper .img to add features to\n"
+        "  -f, --feature <id>   Feature to install (repeatable; see --list-features)\n"
+        "      --all            Install every feature (the 'full' image preset)\n"
+        "      --grow <size>    Enlarge the rootfs by <size> (e.g. 4G) before\n"
+        "                       installing; default auto-sizes from the selection\n"
+        "      --no-grow        Do not resize the rootfs\n"
+        "      --arch <a>       Image arch (armhf|arm64) if it has no release marker\n"
+        "      --script <file>  Host script run as root in the image chroot after\n"
+        "                       the features (copied in, run, removed). Usable on\n"
+        "                       its own, with no --feature.\n"
+        "      --dry-run        Show the plan without touching the image\n"
+        "      --list-features  List the installable features and exit\n"
+        "  -y, --yes            Skip the in-place-modification confirmation\n"
+        "                       Needs root, plus qemu-user-binfmt + binfmt-support to\n"
+        "                       customize an ARM image on an x86 host.\n\n"
         "%s\n",
         kDriveExampleLong, kDriveExampleShort, kPrivilegeNote);
 }
@@ -634,6 +655,161 @@ int cmdConfigure(const std::vector<std::string>& args) {
     return 0;
 }
 
+void printFeatures() {
+    std::printf("%-20s %-14s %-28s %7s\n", "ID", "GROUP", "FEATURE", "~MB");
+    for (const auto& f : kuiper::featureCatalog())
+        std::printf("%-20s %-14s %-28s %7d\n", f.id.c_str(), f.group.c_str(),
+                    f.label.c_str(), f.sizeEstimateMB);
+}
+
+int cmdCustomize(const std::vector<std::string>& args) {
+    std::string image, arch, growStr, feat, script;
+    std::vector<std::string> features;
+    bool all = false, dryRun = false, listFeatures = false, assumeYes = false,
+         noGrow = false;
+
+    for (std::size_t i = 1; i < args.size(); ++i) {
+        const std::string& a = args[i];
+        if (takeValue(args, i, "--image", "-i", image)) continue;
+        if (takeValue(args, i, "--feature", "-f", feat)) {
+            features.push_back(feat);
+            continue;
+        }
+        if (a == "--all") { all = true; continue; }
+        if (takeValue(args, i, "--grow", nullptr, growStr)) continue;
+        if (a == "--no-grow") { noGrow = true; continue; }
+        if (takeValue(args, i, "--arch", nullptr, arch)) continue;
+        if (takeValue(args, i, "--script", nullptr, script)) continue;
+        if (a == "--dry-run") { dryRun = true; continue; }
+        if (a == "--list-features") { listFeatures = true; continue; }
+        if (a == "--yes" || a == "-y") { assumeYes = true; continue; }
+        std::fprintf(stderr, "customize: unexpected argument '%s'\n", a.c_str());
+        return 2;
+    }
+
+    if (listFeatures) {
+        printFeatures();
+        return 0;
+    }
+    if (all) {
+        features.clear();
+        for (const auto& f : kuiper::featureCatalog())
+            features.push_back(f.id);
+    }
+    if (image.empty()) {
+        std::fprintf(stderr, "customize: --image is required\n");
+        printUsage();
+        return 2;
+    }
+    if (features.empty() && script.empty()) {
+        std::fprintf(stderr,
+                     "customize: select at least one --feature, --all, or "
+                     "--script <file> (see --list-features)\n");
+        return 2;
+    }
+    for (const auto& id : features) {
+        const auto& cat = kuiper::featureCatalog();
+        const bool known = std::any_of(cat.begin(), cat.end(),
+            [&](const kuiper::FeatureDef& f) { return f.id == id; });
+        if (!known) {
+            std::fprintf(stderr,
+                         "customize: unknown feature '%s' (see --list-features)\n",
+                         id.c_str());
+            return 2;
+        }
+    }
+
+    kuiper::CustomizePlan plan;
+    plan.imagePath = image;
+    plan.featureIds = features;
+    plan.dryRun = dryRun;
+    if (!arch.empty()) plan.archOverride = arch;
+    if (!script.empty()) plan.scriptPath = script;
+    if (noGrow) {
+        plan.growBytes = 0;
+    } else if (!growStr.empty()) {
+        const auto g = kuiper::customize::parseSize(growStr);
+        if (!g) {
+            std::fprintf(stderr, "customize: invalid --grow size '%s'\n",
+                         growStr.c_str());
+            return 2;
+        }
+        plan.growBytes = *g;
+    }
+
+    if (!dryRun && !assumeYes) {
+        std::fprintf(stderr,
+                     "This MODIFIES '%s' IN PLACE (installs %zu feature(s)%s, may "
+                     "enlarge it).\n"
+                     "Type 'y' to continue: ",
+                     image.c_str(), features.size(),
+                     script.empty() ? "" : " and runs your script as root");
+        std::fflush(stderr);
+        char line[16] = {0};
+        if (!std::fgets(line, sizeof(line), stdin) ||
+            (line[0] != 'y' && line[0] != 'Y')) {
+            std::fprintf(stderr, "Aborted.\n");
+            return 3;
+        }
+    }
+
+    std::signal(SIGINT, onSigint);
+
+    kuiper::ProgressFn onProgress = [&](const kuiper::Progress& p) {
+        if (!p.message.empty())
+            std::fprintf(stderr, "%s %s\n", phaseLabel(p.phase), p.message.c_str());
+    };
+    kuiper::CancelToken cancel;
+    cancel.cancelled = [] { return g_cancel.load(); };
+
+    auto customizer = kuiper::makeImageCustomizer();
+    const auto result = customizer->customize(plan, std::move(onProgress), cancel);
+    if (!result) {
+        printError(result.error());
+        return exitCodeFor(result.error().code);
+    }
+
+    std::printf(dryRun ? "Dry run for %s:\n" : "Customized %s:\n", image.c_str());
+    std::printf("  Features (%zu): ", result->installed.size());
+    for (std::size_t i = 0; i < result->installed.size(); ++i)
+        std::printf("%s%s", i ? ", " : "", result->installed[i].c_str());
+    std::printf("\n  Architecture: %s\n", result->detectedArch.c_str());
+    if (!result->ranScript.empty())
+        std::printf("  Script: %s\n", result->ranScript.c_str());
+    std::printf("  Image size: %.2f GiB\n",
+                static_cast<double>(result->finalImageBytes) /
+                    (1024.0 * 1024.0 * 1024.0));
+
+    if (dryRun) {
+        std::printf("\nPlan (per feature):\n");
+        for (const auto& f : kuiper::featureCatalog()) {
+            const bool sel = std::any_of(
+                result->installed.begin(), result->installed.end(),
+                [&](const std::string& id) { return id == f.id; });
+            if (!sel) continue;
+            std::printf("  [%s]\n", f.id.c_str());
+            if (!f.packages.empty()) {
+                std::printf("    apt-get install -y%s",
+                            f.withRecommends ? "" : " --no-install-recommends");
+                for (const auto& p : f.packages) std::printf(" %s", p.c_str());
+                std::printf("\n");
+            }
+            for (const auto& file : f.files)
+                std::printf("    install %s\n", file.path.c_str());
+            for (const auto& s : f.chrootPost)
+                std::printf("    sh -c: %s\n", s.c_str());
+        }
+        if (!script.empty())
+            std::printf("  [custom script]\n    bash /tmp/%s  (run as root in the "
+                        "chroot)\n",
+                        result->ranScript.c_str());
+    }
+
+    if (!dryRun)
+        std::printf("Next: kli flash --image %s --drive <dev>\n", image.c_str());
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -673,6 +849,9 @@ int main(int argc, char** argv) {
     }
     if (cmd == "configure") {
         return cmdConfigure(args);
+    }
+    if (cmd == "customize") {
+        return cmdCustomize(args);
     }
 
     std::fprintf(stderr, "Unknown command: %s\n", cmd.c_str());
