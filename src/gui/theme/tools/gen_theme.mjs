@@ -312,6 +312,17 @@ function componentsBlock(t) {
   out.push(`QProgressBar[hmcProgress="true"][status="success"]::chunk { background-color: ${c('c-progress-success-content')}; }`);
   out.push(`QProgressBar[hmcProgress="true"][status="danger"]::chunk { background-color: ${c('c-progress-danger-content')}; }`);
 
+  // --- Log view (QPlainTextEdit): recessed monospace console surface ---
+  out.push(`/* --- HmcLogView --- */`);
+  out.push(`QPlainTextEdit[hmcLog="true"] {`);
+  out.push(`    background-color: ${c('c-input-background')};`);
+  out.push(`    color: ${c('c-content-medium')};`);
+  out.push(`    border: 1px solid ${c('c-input-border')};`);
+  out.push(`    border-radius: 4px;`);
+  out.push(`    selection-background-color: ${c('c-interactive-primary')};`);
+  out.push(`    selection-color: ${c('c-layout-container')};`);
+  out.push(`}`);
+
   // HmcSpinner is custom-painted (QPainter), so it reads its arc colour from a
   // styleable property rather than QSS rules — this keeps it theme-aware.
   out.push(`/* --- HmcSpinner --- */`);
@@ -374,6 +385,25 @@ function componentsBlock(t) {
   out.push(`    selection-background-color: ${c('c-action-strong-background')};`);
   out.push(`    selection-color: ${c('c-action-strong-content')};`);
   out.push(`    outline: none;`);
+  out.push(`}`);
+
+  // --- Line edit (QLineEdit) — same Harmonic input skin as the combo, so a bare
+  // text field follows the app theme instead of the fallback palette ---
+  out.push(`/* --- QLineEdit (Harmonic input skin) --- */`);
+  out.push(`QLineEdit {`);
+  out.push(`    background-color: ${c('c-input-background')};`);
+  out.push(`    color: ${c('c-content')};`);
+  out.push(`    border: 1px solid ${c('c-input-border')};`);
+  out.push(`    border-radius: 4px; padding: 4px 8px; min-height: 30px; font-size: 14px;`);
+  out.push(`    selection-background-color: ${c('c-interactive-primary')};`);
+  out.push(`    selection-color: ${c('c-layout-canvas')};`);
+  out.push(`}`);
+  out.push(`QLineEdit:hover { border-color: ${c('c-input-border-hover')}; }`);
+  out.push(`QLineEdit:focus { border: 2px solid ${c('c-interactive-focus')}; padding: 3px 7px; }`);
+  out.push(`QLineEdit:disabled {`);
+  out.push(`    background-color: ${c('c-input-background-disabled')};`);
+  out.push(`    color: ${c('c-input-data-disabled')};`);
+  out.push(`    border-color: ${c('c-input-border-disabled')};`);
   out.push(`}`);
 
   // --- Banner message (QFrame, subtle emphasis) ---
@@ -443,7 +473,15 @@ const ident = (name) =>
 // it needs as a literal, so emitting the whole table (~730 per theme) would just
 // add dead globals. Add a name here when a custom-painted widget needs one.
 const PAINTER_TOKENS = [
-  'c-interactive-primary',  // HmcSpinner arc fallback
+  'c-interactive-primary',  // HmcSpinner arc fallback; palette Highlight
+  // Palette roles (ThemeManager::applyTheme) — so palette-driven widgets (a bare
+  // QLineEdit, text-edit viewports, tooltips, message boxes) follow the app theme
+  // instead of the platform's default light palette.
+  'c-layout-canvas',     // Window / HighlightedText
+  'c-layout-container',  // Button, ToolTipBase, AlternateBase
+  'c-content',           // WindowText / Text / ButtonText / ToolTipText
+  'c-content-weak',      // PlaceholderText
+  'c-input-background',  // Base (input field surface)
 ];
 
 function tokensNamespace(t) {

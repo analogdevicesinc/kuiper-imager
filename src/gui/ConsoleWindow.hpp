@@ -84,6 +84,7 @@ private:
     void setLocalImage(const QString& path);
     void startWrite();
     void openConfigure();
+    void openCustomize();  // Linux only: add ADI features to the selected .img
 
     void applyState();
     void setBusyUi(bool busy);
@@ -119,6 +120,7 @@ private:
     QLabel* imageCaption_;
     HmcTag* imageTag_;
     HmcButton* imageBtn_;
+    HmcButton* customizeBtn_ = nullptr;  // Linux only; nullptr elsewhere
 
     QComboBox* driveCombo_;
     HmcButton* rescanBtn_;

@@ -162,6 +162,15 @@ QProgressBar[hmcProgress="true"] {
 QProgressBar[hmcProgress="true"]::chunk { background-color: #0067b9; border-radius: 4px; }
 QProgressBar[hmcProgress="true"][status="success"]::chunk { background-color: #2e9e6f; }
 QProgressBar[hmcProgress="true"][status="danger"]::chunk { background-color: #c81a28; }
+/* --- HmcLogView --- */
+QPlainTextEdit[hmcLog="true"] {
+    background-color: #ffffff;
+    color: #5e6773;
+    border: 1px solid #848b95;
+    border-radius: 4px;
+    selection-background-color: #0067b9;
+    selection-color: #ffffff;
+}
 /* --- HmcSpinner --- */
 HmcSpinner { qproperty-arcColor: #0067b9; }
 /* --- HmcSegmentedControl --- */
@@ -215,6 +224,22 @@ QComboBox QAbstractItemView {
     selection-background-color: #0067b9;
     selection-color: #ffffff;
     outline: none;
+}
+/* --- QLineEdit (Harmonic input skin) --- */
+QLineEdit {
+    background-color: #ffffff;
+    color: #101820;
+    border: 1px solid #848b95;
+    border-radius: 4px; padding: 4px 8px; min-height: 30px; font-size: 14px;
+    selection-background-color: #0067b9;
+    selection-color: #f0f1f3;
+}
+QLineEdit:hover { border-color: #5e6773; }
+QLineEdit:focus { border: 2px solid #b16ee0; padding: 3px 7px; }
+QLineEdit:disabled {
+    background-color: rgba(183, 187, 195, 0.2);
+    color: #848b95;
+    border-color: rgba(132, 139, 149, 0.58);
 }
 /* --- HmcBanner (subtle) --- */
 QFrame[hmcBanner="true"][status="info"] {

@@ -22,6 +22,7 @@
 
 #include "dialogs/ConfigureDialog.hpp"
 #include "dialogs/ConfirmWriteDialog.hpp"
+#include "dialogs/CustomizeDialog.hpp"
 #include "dialogs/ReleasePickerDialog.hpp"
 #include "kuiper/Version.hpp"
 #include "task/BackgroundTask.hpp"
@@ -211,6 +212,17 @@ QWidget* ConsoleWindow::buildImageCard() {
             pickImage();
     });
     card->addWidget(imageBtn_);
+
+#ifdef Q_OS_LINUX
+    // Privileged, Linux-only in-place edit of a local .img; offered only here and
+    // gated to a raw local image by applyState(). See docs: customize-pipeline.
+    customizeBtn_ = new HmcButton("Customize…");
+    customizeBtn_->setKind("secondary");
+    customizeBtn_->setToolTip(
+        "Add ADI full-image features (desktop, libraries, apps) to this image");
+    connect(customizeBtn_, &HmcButton::clicked, this, [this] { openCustomize(); });
+    card->addWidget(customizeBtn_);
+#endif
     return card;
 }
 
@@ -656,6 +668,14 @@ void ConsoleWindow::openConfigure() {
     dlg.exec();
 }
 
+void ConsoleWindow::openCustomize() {
+    if (imagePath_.isEmpty() || busy()) return;
+    CustomizeDialog dlg(imagePath_, this);
+    dlg.exec();
+    // The image may have grown / changed identity; refresh its caption.
+    if (!imagePath_.isEmpty()) setLocalImage(imagePath_);
+}
+
 void ConsoleWindow::applyState() {
     const bool busy = this->busy();
     const bool hasImage = !imagePath_.isEmpty();
@@ -676,6 +696,15 @@ void ConsoleWindow::applyState() {
                                    ? "Download a stable release."
                                    : "Choose a local image file.");
         imageTag_->setVisible(false);
+    }
+
+    // Customize applies only to a raw local .img (not a compressed download), and
+    // only on Linux (the button exists only there).
+    if (customizeBtn_) {
+        const bool rawLocalImg =
+            hasImage && source_->value() == "local" &&
+            QFileInfo(imagePath_).suffix().compare("img", Qt::CaseInsensitive) == 0;
+        customizeBtn_->setEnabled(rawLocalImg && !busy);
     }
 
     configureBtn_->setVisible(kuiper2);
@@ -715,6 +744,7 @@ void ConsoleWindow::setBusyUi(bool busy) {
     }
     source_->setEnabled(!busy);
     imageBtn_->setEnabled(!busy);
+    if (customizeBtn_) customizeBtn_->setEnabled(!busy);
     driveCombo_->setEnabled(!busy);
     rescanBtn_->setEnabled(!busy);
     verify_->setEnabled(!busy);

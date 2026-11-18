@@ -8,9 +8,19 @@
 #include <QColor>
 
 namespace kuiper::theme::light {
+    inline const QColor content{16, 24, 32, 255};  // $c-content
+    inline const QColor contentWeak{132, 139, 149, 255};  // $c-content-weak
+    inline const QColor inputBackground{255, 255, 255, 255};  // $c-input-background
     inline const QColor interactivePrimary{0, 103, 185, 255};  // $c-interactive-primary
+    inline const QColor layoutCanvas{240, 241, 243, 255};  // $c-layout-canvas
+    inline const QColor layoutContainer{255, 255, 255, 255};  // $c-layout-container
 }  // namespace kuiper::theme::light
 
 namespace kuiper::theme::dark {
+    inline const QColor content{255, 255, 255, 255};  // $c-content
+    inline const QColor contentWeak{132, 139, 149, 255};  // $c-content-weak
+    inline const QColor inputBackground{41, 48, 56, 255};  // $c-input-background
     inline const QColor interactivePrimary{146, 190, 252, 255};  // $c-interactive-primary
+    inline const QColor layoutCanvas{16, 24, 32, 255};  // $c-layout-canvas
+    inline const QColor layoutContainer{41, 48, 56, 255};  // $c-layout-container
 }  // namespace kuiper::theme::dark
