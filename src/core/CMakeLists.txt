@@ -7,7 +7,9 @@ configure_file(src/version.cpp.in
                ${CMAKE_CURRENT_BINARY_DIR}/version.cpp @ONLY)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(KUIPER_PLATFORM_SOURCES src/platform/linux/LinuxDriveBackend.cpp)
+    set(KUIPER_PLATFORM_SOURCES
+        src/platform/linux/LinuxDriveBackend.cpp
+        src/customize/LinuxImageCustomizer.cpp)
 elseif(WIN32)
     set(KUIPER_PLATFORM_SOURCES src/platform/windows/WindowsDriveBackend.cpp)
 elseif(APPLE)
@@ -21,6 +23,11 @@ add_library(kuiper STATIC
     src/DriveService.cpp
     src/Layout.cpp
     src/ConfigurationService.cpp
+    src/customize/FeatureCatalog.cpp
+    src/customize/CustomizePlanner.cpp
+    src/customize/QProcessCommandRunner.cpp
+    src/customize/ImageCustomizerFactory.cpp
+    assets/kuiper_assets.qrc
     src/ipc/HelperProtocol.cpp
     src/ImageService.cpp
     src/http/CurlHttpClient.cpp
@@ -29,6 +36,9 @@ add_library(kuiper STATIC
     src/platform/common/AlignedRawDevice.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
     ${KUIPER_PLATFORM_SOURCES})
+
+# Compile the embedded asset resources (assets/kuiper_assets.qrc) into the lib.
+set_target_properties(kuiper PROPERTIES AUTORCC ON)
 
 target_include_directories(kuiper PUBLIC include PRIVATE src)
 
