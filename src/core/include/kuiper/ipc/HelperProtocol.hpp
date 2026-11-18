@@ -5,6 +5,7 @@
 
 #include "kuiper/DriveService.hpp"
 #include "kuiper/Error.hpp"
+#include "kuiper/ImageCustomizer.hpp"
 #include "kuiper/Progress.hpp"
 
 // Wire protocol between the unprivileged GUI and the privileged helper process
@@ -27,15 +28,17 @@ inline constexpr int kExitNoChannel = 3;
 
 // One decoded message from the helper's stream.
 struct HelperMessage {
-    enum class Type { Progress, Result, Error, Unknown };
+    enum class Type { Progress, Result, CustomizeResult, Error, Unknown };
 
     Type type = Type::Unknown;
 
     Progress progress;  // valid iff type == Progress
 
-    // valid iff type == Result
+    // valid iff type == Result (a flash / preloader write)
     std::uint64_t bytesWritten = 0;
     std::string sha256;
+
+    CustomizeSummary customize;  // valid iff type == CustomizeResult
 
     Error error;  // valid iff type == Error
 };
@@ -43,6 +46,7 @@ struct HelperMessage {
 // --- Encoders (helper side): produce a single NDJSON line, no trailing '\n'. ---
 std::string encodeProgress(const Progress& p);
 std::string encodeResult(const FlashSummary& summary);
+std::string encodeCustomizeResult(const CustomizeSummary& summary);
 std::string encodeError(const Error& e);
 
 // --- Decoder (GUI side): parse one line. Non-JSON / unknown shapes yield a
