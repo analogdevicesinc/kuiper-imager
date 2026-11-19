@@ -30,9 +30,9 @@ class BackgroundTask;
 class HelperProcess;
 
 // The main app window: pick an image (local file or downloaded stable release),
-// pick a storage device, then Write — or, when the card is already a flashed
-// Kuiper 2, Configure it. Write and Configure trade primary emphasis based on
-// what the user has selected (see applyState()). All blocking core calls run on
+// pick a storage device, then Write. Each card owns the action that edits its
+// object — Customize edits the image, Configure edits a flashed Kuiper 2 card —
+// while Write is the single commit action below. All blocking core calls run on
 // a BackgroundTask worker.
 class ConsoleWindow : public QMainWindow {
     Q_OBJECT
