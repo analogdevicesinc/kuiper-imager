@@ -1,5 +1,6 @@
 #include "kuiper/ImageService.hpp"
 
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -10,22 +11,50 @@
 #include <system_error>
 #include <utility>
 
+#include <QStandardPaths>
+#include <QString>
+
 #include "image/GitHubActionsProvider.hpp"
 #include "image/StableReleaseProvider.hpp"
 #include "kuiper/ReleaseProvider.hpp"
 #include "util/Sha256.hpp"
 
 namespace kuiper {
+namespace {
+
+// Case-insensitive compare of two hex digests.
+bool equalHex(const std::string& a, const std::string& b) {
+    if (a.size() != b.size()) return false;
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        if (std::tolower(static_cast<unsigned char>(a[i])) !=
+            std::tolower(static_cast<unsigned char>(b[i])))
+            return false;
+    }
+    return true;
+}
+
+}  // namespace
 
 ImageService::ImageService(std::unique_ptr<IHttpClient> http,
-                           std::optional<std::string> githubToken)
-    : http_(std::move(http)), githubToken_(std::move(githubToken)) {}
+                           std::optional<std::string> githubToken,
+                           std::string manifestCacheDir)
+    : http_(std::move(http)),
+      githubToken_(std::move(githubToken)),
+      manifestCacheDir_(std::move(manifestCacheDir)) {
+    if (manifestCacheDir_.empty()) {
+        const QString base = QStandardPaths::writableLocation(
+            QStandardPaths::GenericCacheLocation);
+        if (!base.isEmpty())
+            manifestCacheDir_ = (base + "/kuiper-imager").toStdString();
+    }
+}
 
 std::unique_ptr<ReleaseProvider> ImageService::makeProvider(
     std::string_view channel) {
     if (channel == "unstable")
         return std::make_unique<GitHubActionsProvider>(*http_, githubToken_);
-    if (channel == "stable") return std::make_unique<StableReleaseProvider>();
+    if (channel == "stable")
+        return std::make_unique<StableReleaseProvider>(*http_, manifestCacheDir_);
     return nullptr;
 }
 
@@ -181,6 +210,16 @@ Result<FetchSummary> ImageService::fetch(const std::string& id,
                           "Download failed (HTTP " + std::to_string(s) + ")", src->url});
     }
 
+    const std::string digest = hash.hex();
+    if (src->expectedSha256 && !src->expectedSha256->empty() &&
+        !equalHex(digest, *src->expectedSha256)) {
+        return fail(Error{ErrorCode::HashMismatch,
+                          "The downloaded image failed SHA-256 verification",
+                          "expected " + *src->expectedSha256 + ", got " + digest,
+                          "The download may be corrupt or tampered with — re-run "
+                          "fetch."});
+    }
+
     // Success — publish atomically (fall back to copy across filesystems).
     std::error_code renec;
     fs::rename(partPath, outPath, renec);
@@ -200,7 +239,7 @@ Result<FetchSummary> ImageService::fetch(const std::string& id,
         prog.fraction = 1.0;
         onProgress(prog);
     }
-    return FetchSummary{outPath.string(), written, hash.hex()};
+    return FetchSummary{outPath.string(), written, digest};
 }
 
 Result<std::string> ImageService::artifactPath(const std::string& id,

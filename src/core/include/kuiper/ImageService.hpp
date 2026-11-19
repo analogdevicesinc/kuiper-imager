@@ -29,8 +29,12 @@ struct FetchSummary {
 // and its providers are unit-testable with a fake. See docs: releases-and-sources.
 class ImageService {
 public:
+    // `manifestCacheDir` holds the cached stable-release manifest; empty (the
+    // default) resolves to a shared per-user cache dir. See docs:
+    // releases-and-sources.
     explicit ImageService(std::unique_ptr<IHttpClient> http = makeHttpClient(),
-                          std::optional<std::string> githubToken = std::nullopt);
+                          std::optional<std::string> githubToken = std::nullopt,
+                          std::string manifestCacheDir = {});
 
     Result<std::vector<Release>> listReleases(const ReleaseQuery& query = {});
 
@@ -55,6 +59,7 @@ private:
 
     std::unique_ptr<IHttpClient> http_;
     std::optional<std::string> githubToken_;
+    std::string manifestCacheDir_;
 };
 
 }  // namespace kuiper

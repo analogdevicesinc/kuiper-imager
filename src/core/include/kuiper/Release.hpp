@@ -30,6 +30,8 @@ struct Release {
     std::uint64_t sizeBytes = 0;
     bool available = true;                 // false once the artifact has expired
     std::optional<std::string> expiresAt;  // ISO-8601 (unstable only)
+    bool recommended = false;              // manifest-curated default for its arch (stable)
+    std::optional<std::string> sha256;     // expected image hash, for fetch verification (stable)
     std::string sourceUri;                 // opaque download URL (the actual bytes)
 };
 

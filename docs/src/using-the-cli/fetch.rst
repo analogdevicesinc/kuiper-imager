@@ -23,9 +23,8 @@ list-releases
 
 Lists available images as a table. The channel selects the source:
 
-- Without ``--unstable`` the **stable** channel is queried. It is not wired up
-  yet and reports cleanly that no official source is available — use
-  ``--unstable`` for now.
+- Without ``--unstable`` the **stable** channel is queried — published Kuiper
+  releases from a hosted manifest, listed recommended-first (no token needed).
 - ``--unstable`` lists **Kuiper 2.0 CI builds** from GitHub Actions.
 
 Options for the unstable channel:
@@ -78,6 +77,13 @@ leaves a partial file at the destination. A best-effort free-space check aborts
 early with ``DiskFull`` once the total size is known, and when ``--output`` is a
 directory the artifact name is reduced to a bare filename so an unexpected name
 can never write outside it.
+
+For a **stable** image whose manifest entry carries a ``sha256``, ``fetch``
+verifies the downloaded bytes against it **before** moving the file into place,
+so a corrupt or tampered download never lands at the destination: a mismatch
+fails with ``HashMismatch`` and the ``.part`` file is removed. CI artifacts (and
+stable entries without a published hash) have nothing to verify against, so the
+check is skipped.
 
 On success ``fetch`` prints the bytes written, the SHA-256 of the downloaded
 file, and a ``Next:`` hint suggesting the matching ``flash`` command.
