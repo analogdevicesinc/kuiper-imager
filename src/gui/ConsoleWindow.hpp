@@ -78,10 +78,20 @@ private:
     // returned holder first, ordering the unmount before anything it mounts.
     std::shared_ptr<std::optional<BootContext>> takeBootContext();
 
-    void pickImage();       // run the current source's picker
-    void chooseRelease();   // list releases → pick → fetch
+    // How the currently selected image was obtained — drives the provenance tag
+    // and gates Customize (raw local .img only).
+    enum class ImageOrigin { None, Local, Downloaded };
+
+    void pickImage();       // choose a local image file
+    void chooseRelease();   // list releases → pick → reuse-cached-or-fetch
     void startFetch(const QString& id, const QString& label);
-    void setLocalImage(const QString& path);
+    void setLocalImage(const QString& path, ImageOrigin origin);
+    void clearImage();      // drop the selection and reset the Image card display
+
+    // The per-user cache directory downloads land in, and the path a given
+    // release id would occupy there if present (empty if it isn't cached).
+    QString imageCacheDir() const;
+    QString cachedImagePath(const QString& id);
     void startWrite();
     void showWriteComplete();              // show the deferred post-write banner
     void startEject(const QString& node);  // unmount + power off for safe removal
@@ -108,6 +118,7 @@ private:
     bool closePending_ = false;  // close requested while busy; finish when idle
     QString imagePath_;
     QString imageLabel_;
+    ImageOrigin imageOrigin_ = ImageOrigin::None;
     bool probing_ = false;
 
     // Post-write re-probe retry: after a flash, re-enumerate + re-probe the
@@ -122,11 +133,11 @@ private:
     QString pendingWriteMsg_;
     QString pendingEjectNode_;  // non-empty => offer "Safe eject" for this node
 
-    HmcSegmentedControl* source_;
     QLabel* imageValue_;
     QLabel* imageCaption_;
-    HmcTag* imageTag_;
-    HmcButton* imageBtn_;
+    HmcTag* imageTag_;                   // provenance pill: Local | Downloaded
+    HmcButton* chooseFileBtn_;
+    HmcButton* downloadBtn_;
     HmcButton* customizeBtn_ = nullptr;  // Linux only; nullptr elsewhere
 
     QComboBox* driveCombo_;
