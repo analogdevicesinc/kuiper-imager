@@ -8,6 +8,7 @@
 
 #include <windows.h>
 //
+#include <cfgmgr32.h>
 #include <setupapi.h>
 #include <winioctl.h>
 
@@ -493,6 +494,85 @@ Result<std::unique_ptr<IRawDevice>> openSession(const std::string& node,
     return std::move(dev);
 }
 
+// Resolve the PnP devnode behind \\.\PhysicalDriveN by device number, via a
+// zero-access query handle (no admin). false if not found.
+bool diskDevInst(int driveNo, DEVINST& out) {
+    HDEVINFO di = ::SetupDiGetClassDevsW(&kDiskInterfaceGuid, nullptr, nullptr,
+                                         DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+    if (di == INVALID_HANDLE_VALUE) return false;
+    bool found = false;
+    SP_DEVICE_INTERFACE_DATA ifd{};
+    ifd.cbSize = sizeof(ifd);
+    for (DWORD idx = 0; ::SetupDiEnumDeviceInterfaces(
+             di, nullptr, &kDiskInterfaceGuid, idx, &ifd);
+         ++idx) {
+        DWORD needed = 0;
+        ::SetupDiGetDeviceInterfaceDetailW(di, &ifd, nullptr, 0, &needed, nullptr);
+        if (!needed) continue;
+        std::vector<BYTE> buf(needed);
+        auto* detail =
+            reinterpret_cast<SP_DEVICE_INTERFACE_DETAIL_DATA_W*>(buf.data());
+        detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W);
+        SP_DEVINFO_DATA info{};
+        info.cbSize = sizeof(info);
+        if (!::SetupDiGetDeviceInterfaceDetailW(di, &ifd, detail, needed, nullptr,
+                                                &info))
+            continue;
+        Handle h(::CreateFileW(detail->DevicePath, 0,
+                               FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                               OPEN_EXISTING, 0, nullptr));
+        if (!h.valid()) continue;
+        STORAGE_DEVICE_NUMBER sdn{};
+        DWORD br = 0;
+        if (::DeviceIoControl(h.get(), IOCTL_STORAGE_GET_DEVICE_NUMBER, nullptr, 0,
+                              &sdn, sizeof(sdn), &br, nullptr) &&
+            static_cast<int>(sdn.DeviceNumber) == driveNo) {
+            out = info.DevInst;
+            found = true;
+            break;
+        }
+    }
+    ::SetupDiDestroyDeviceInfoList(di);
+    return found;
+}
+
+// Unprivileged safe-removal via PnP CM_Request_Device_Eject (the shell's "Safely
+// Remove Hardware" path). See docs: platform-backends (Windows backend, Ejecting).
+Result<void> pnpEjectDrive(int driveNo) {
+    DEVINST disk{};
+    if (!diskDevInst(driveNo, disk))
+        return Err(ErrorCode::DeviceRemoved, "Could not find the drive to eject");
+
+    // The ejectable unit is the nearest removable ancestor, not the (fixed)
+    // GenDisk node.
+    DEVINST target = disk;
+    for (DEVINST node = disk;;) {
+        ULONG caps = 0, len = sizeof(caps);
+        if (::CM_Get_DevNode_Registry_PropertyW(node, CM_DRP_CAPABILITIES, nullptr,
+                                                &caps, &len, 0) == CR_SUCCESS &&
+            (caps & CM_DEVCAP_REMOVABLE)) {
+            target = node;
+            break;
+        }
+        DEVINST parent = 0;
+        if (::CM_Get_Parent(&parent, node, 0) != CR_SUCCESS) break;
+        node = parent;
+    }
+
+    // Retry briefly: a transient handle can veto the first attempt, then let go.
+    for (int i = 0; i < 3; ++i) {
+        PNP_VETO_TYPE veto = PNP_VetoTypeUnknown;
+        wchar_t vetoName[MAX_PATH] = {0};
+        if (::CM_Request_Device_EjectW(target, &veto, vetoName, MAX_PATH, 0) ==
+                CR_SUCCESS &&
+            veto == PNP_VetoTypeUnknown)
+            return {};
+        ::Sleep(300);
+    }
+    return Err(ErrorCode::DeviceBusy, "Windows would not release the drive",
+               "Close anything using the card, then try again");
+}
+
 }  // namespace
 
 namespace {
@@ -625,11 +705,11 @@ public:
         return {};
     }
 
-    // Not yet implemented; the GUI only offers eject where the backend supports
-    // it. See docs: platform-backends (eject).
-    Result<void> eject(const std::string&) override {
-        return Err(ErrorCode::UnsupportedPlatform,
-                   "Eject is not implemented on Windows yet");
+    Result<void> eject(const std::string& node) override {
+        const int driveNo = driveNumberOf(node);
+        if (driveNo < 0)
+            return Err(ErrorCode::InvalidImage, "Not a physical drive: " + node);
+        return pnpEjectDrive(driveNo);
     }
 
     Result<std::unique_ptr<IRawDevice>> openForWrite(
