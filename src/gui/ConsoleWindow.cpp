@@ -201,42 +201,35 @@ QWidget* ConsoleWindow::buildImageCard() {
     auto* card = new HmcCard(this);
     card->addWidget(new HmcContainerHeader("Image", "Choose what to write"));
 
-    source_ = new HmcSegmentedControl(card);
-    source_->addSegment("Local file", "local");
-    source_->addSegment("Download", "download");
-    connect(source_, &HmcSegmentedControl::valueChanged, this,
-            [this](const QString&) { applyState(); });
-    card->addWidget(source_);
-
+    // Name + provenance pill (Local | Downloaded). See docs: gui-console.
+    auto* nameLine = new QHBoxLayout();
+    nameLine->setContentsMargins(0, 0, 0, 0);
     imageValue_ = valueLabel("No image selected");
-    card->addWidget(imageValue_);
-
-    auto* tagLine = new QHBoxLayout();
-    tagLine->setContentsMargins(0, 0, 0, 0);
-    imageCaption_ = caption("Choose a local image file.");
     imageTag_ = new HmcTag("", "info");
     imageTag_->setVisible(false);
-    tagLine->addWidget(imageCaption_);
-    tagLine->addWidget(imageTag_);
-    tagLine->addStretch(1);
-    card->addLayout(tagLine);
+    nameLine->addWidget(imageValue_, 1);
+    nameLine->addWidget(imageTag_, 0, Qt::AlignVCenter);
+    card->addLayout(nameLine);
 
-    // Both actions on the image sit in one row so they read as siblings that act
-    // on the image above (pick/replace it, then edit it).
+    imageCaption_ = caption("Choose a local image file or download a release.");
+    card->addWidget(imageCaption_);
+
+    // Two explicit sources plus the Linux-only in-place edit, acting on the image.
     auto* actionRow = new QHBoxLayout();
     actionRow->setContentsMargins(0, 0, 0, 0);
     actionRow->setSpacing(12);
 
-    imageBtn_ = new HmcButton("Choose…");
-    imageBtn_->setKind("secondary");
-    imageBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(imageBtn_, &HmcButton::clicked, this, [this] {
-        if (source_->value() == "download")
-            chooseRelease();
-        else
-            pickImage();
-    });
-    actionRow->addWidget(imageBtn_, 1);
+    chooseFileBtn_ = new HmcButton("Choose file…");
+    chooseFileBtn_->setKind("secondary");
+    chooseFileBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    connect(chooseFileBtn_, &HmcButton::clicked, this, [this] { pickImage(); });
+    actionRow->addWidget(chooseFileBtn_, 1);
+
+    downloadBtn_ = new HmcButton("Download release…");
+    downloadBtn_->setKind("secondary");
+    downloadBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    connect(downloadBtn_, &HmcButton::clicked, this, [this] { chooseRelease(); });
+    actionRow->addWidget(downloadBtn_, 1);
 
 #ifdef Q_OS_LINUX
     // Privileged, Linux-only in-place edit of a local .img; offered only here and
@@ -504,21 +497,40 @@ void ConsoleWindow::probeCurrentDrive() {
 }
 
 void ConsoleWindow::pickImage() {
+    if (busy()) return;
     const QString path = QFileDialog::getOpenFileName(
         this, "Choose image", QString(),
         "Disk images (*.img *.zip *.xz *.zst *.gz);;All files (*)");
-    if (!path.isEmpty()) setLocalImage(path);
+    if (!path.isEmpty()) setLocalImage(path, ImageOrigin::Local);
 }
 
-void ConsoleWindow::setLocalImage(const QString& path) {
+void ConsoleWindow::setLocalImage(const QString& path, ImageOrigin origin) {
     imagePath_ = path;
+    imageOrigin_ = origin;
     QFileInfo fi(path);
     imageLabel_ = fi.fileName();
     imageValue_->setText(fi.fileName());
     imageCaption_->setText(kuiper::gui::formatBytes(fi.size()));
-    imageTag_->setText("." + fi.suffix());
-    imageTag_->setVisible(!fi.suffix().isEmpty());
     applyState();
+}
+
+void ConsoleWindow::clearImage() {
+    imagePath_.clear();
+    imageLabel_.clear();
+    imageOrigin_ = ImageOrigin::None;
+    applyState();
+}
+
+QString ConsoleWindow::imageCacheDir() const {
+    return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
+           "/images";
+}
+
+QString ConsoleWindow::cachedImagePath(const QString& id) {
+    auto p = images_.artifactPath(id.toStdString(), imageCacheDir().toStdString());
+    if (!p) return QString();
+    const QString path = QString::fromStdString(*p);
+    return QFileInfo::exists(path) ? path : QString();
 }
 
 void ConsoleWindow::chooseRelease() {
@@ -540,9 +552,27 @@ void ConsoleWindow::chooseRelease() {
                 showResult("info", "No releases available", QString());
                 return;
             }
-            ReleasePickerDialog dlg(*r, this);
-            if (dlg.exec() == QDialog::Accepted && !dlg.selectedId().isEmpty())
-                startFetch(dlg.selectedId(), dlg.selectedLabel());
+            // The picker badges/deletes cached releases; tell it where each lives.
+            ReleasePickerDialog dlg(
+                *r, [this](const kuiper::Release& rel) {
+                    return cachedImagePath(QString::fromStdString(rel.id));
+                },
+                this);
+            const int code = dlg.exec();
+            // A delete in the picker may have removed our current selection.
+            if (!imagePath_.isEmpty() && !QFileInfo::exists(imagePath_))
+                clearImage();
+            if (code != QDialog::Accepted || dlg.selectedId().isEmpty()) return;
+
+            // Reuse a cached artifact instead of re-fetching.
+            const QString cached = cachedImagePath(dlg.selectedId());
+            if (!cached.isEmpty()) {
+                setLocalImage(cached, ImageOrigin::Downloaded);
+                showResult("success", "Using " + dlg.selectedLabel(),
+                           "Already downloaded — reused from cache.");
+                return;
+            }
+            startFetch(dlg.selectedId(), dlg.selectedLabel());
         },
         Qt::SingleShotConnection);
     setBusyUi(true);
@@ -556,9 +586,7 @@ void ConsoleWindow::chooseRelease() {
 }
 
 void ConsoleWindow::startFetch(const QString& id, const QString& label) {
-    const QString dir =
-        QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
-        "/images";
+    const QString dir = imageCacheDir();
     QDir().mkpath(dir);
     const std::string outDir = dir.toStdString();
     const std::string fid = id.toStdString();
@@ -577,7 +605,8 @@ void ConsoleWindow::startFetch(const QString& id, const QString& label) {
                                QString::fromStdString(r.error().message));
                 return;
             }
-            setLocalImage(QString::fromStdString(r->outputPath));
+            setLocalImage(QString::fromStdString(r->outputPath),
+                          ImageOrigin::Downloaded);
             showResult("success", "Downloaded " + label, "Saved to " + dir);
         },
         Qt::SingleShotConnection);
@@ -760,8 +789,8 @@ void ConsoleWindow::openCustomize() {
     if (imagePath_.isEmpty() || busy()) return;
     CustomizeDialog dlg(imagePath_, this);
     dlg.exec();
-    // The image may have grown / changed identity; refresh its caption.
-    if (!imagePath_.isEmpty()) setLocalImage(imagePath_);
+    // Refresh the caption (the image may have grown), keeping its provenance.
+    if (!imagePath_.isEmpty()) setLocalImage(imagePath_, imageOrigin_);
 }
 
 void ConsoleWindow::applyState() {
@@ -771,18 +800,15 @@ void ConsoleWindow::applyState() {
     const bool kuiper2 = bootCtx_ && bootCtx_->release.has_value();
     const bool hasProjects = bootCtx_ && !bootCtx_->projects.empty();
 
-    // Image card: the picker label follows the source. "Choose…" covers both
-    // picking a first image and replacing one — the filename above already shows
-    // what is set, so a separate "Change…" wording would be redundant.
-    if (source_->value() == "download" && !hasImage)
-        imageBtn_->setText("Choose release…");
-    else
-        imageBtn_->setText("Choose…");
-    if (!hasImage) {
+    // Image card: a selection shows its provenance pill; none reverts to the hint.
+    if (hasImage) {
+        const bool downloaded = imageOrigin_ == ImageOrigin::Downloaded;
+        imageTag_->setText(downloaded ? "Downloaded" : "Local");
+        imageTag_->setStatus(downloaded ? "info" : "highlight");
+        imageTag_->setVisible(true);
+    } else {
         imageValue_->setText("No image selected");
-        imageCaption_->setText(source_->value() == "download"
-                                   ? "Download a stable release."
-                                   : "Choose a local image file.");
+        imageCaption_->setText("Choose a local image file or download a release.");
         imageTag_->setVisible(false);
     }
 
@@ -790,7 +816,7 @@ void ConsoleWindow::applyState() {
     // only on Linux (the button exists only there).
     if (customizeBtn_) {
         const bool rawLocalImg =
-            hasImage && source_->value() == "local" &&
+            hasImage && imageOrigin_ == ImageOrigin::Local &&
             QFileInfo(imagePath_).suffix().compare("img", Qt::CaseInsensitive) == 0;
         customizeBtn_->setEnabled(rawLocalImg && !busy);
     }
@@ -816,8 +842,8 @@ void ConsoleWindow::setBusyUi(bool busy) {
         progress_->setFraction(0);
         progress_->setDetail(QString());
     }
-    source_->setEnabled(!busy);
-    imageBtn_->setEnabled(!busy);
+    chooseFileBtn_->setEnabled(!busy);
+    downloadBtn_->setEnabled(!busy);
     if (customizeBtn_) customizeBtn_->setEnabled(!busy);
     driveCombo_->setEnabled(!busy);
     rescanBtn_->setEnabled(!busy);
