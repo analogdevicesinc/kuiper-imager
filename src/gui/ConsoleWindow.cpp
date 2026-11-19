@@ -678,7 +678,7 @@ void ConsoleWindow::showWriteComplete() {
     showResult("success", pendingWriteTitle_, pendingWriteMsg_);
     pendingWriteTitle_.clear();
     pendingWriteMsg_.clear();
-#ifdef Q_OS_LINUX
+#if defined(Q_OS_LINUX) || defined(Q_OS_WIN)
     // Offer Safe eject where the backend supports it (not macOS); the card is
     // left mounted so Configure keeps working. See docs: gui-console.
     if (!pendingEjectNode_.isEmpty()) {

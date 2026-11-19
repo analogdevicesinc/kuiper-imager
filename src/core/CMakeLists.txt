@@ -50,7 +50,8 @@ target_link_libraries(kuiper PUBLIC Qt6::Core
 
 # Native platform libraries for the per-OS drive backend.
 if(WIN32)
-    target_link_libraries(kuiper PRIVATE setupapi)
+    # setupapi: disk enumeration; cfgmgr32: CM_Request_Device_Eject (safe removal).
+    target_link_libraries(kuiper PRIVATE setupapi cfgmgr32)
 endif()
 
 add_library(kuiper::kuiper ALIAS kuiper)
