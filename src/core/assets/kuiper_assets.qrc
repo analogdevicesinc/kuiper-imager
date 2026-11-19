@@ -11,4 +11,9 @@
         <file alias="wallpaper.png">desktop/wallpaper.png</file>
         <file alias="org.xfce.panel.applicationsmenu.png">desktop/org.xfce.panel.applicationsmenu.png</file>
     </qresource>
+    <qresource prefix="/kuiper/releases">
+        <!-- Offline fallback for the stable channel when the hosted manifest is
+             unreachable and nothing is cached. See docs: releases-and-sources. -->
+        <file alias="seed.json">releases/seed.json</file>
+    </qresource>
 </RCC>
