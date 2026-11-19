@@ -418,6 +418,14 @@ Result<MountedPartition> DriveService::mount(const Partition& partition) {
     return backend_->mount(partition);
 }
 
+Result<void> DriveService::eject(const std::string& driveNode) {
+    if (!backend_) {
+        return Err(ErrorCode::UnsupportedPlatform,
+                   "No drive backend available for this platform");
+    }
+    return backend_->eject(driveNode);
+}
+
 Result<FlashSummary> DriveService::flash(const std::string& driveNode,
                                          const std::string& imagePath,
                                          const WriteOptions& options,

@@ -30,6 +30,11 @@ public:
     // on it. A live holder (md/LVM/LUKS) that cannot be released => DeviceBusy.
     virtual Result<void> unmountAll(const std::string& node) = 0;
 
+    // Unprivileged safe-removal via the OS session media manager: unmount, then
+    // power off where supported. DeviceBusy if a mount can't be released. Unlike
+    // unmountAll (root-only, write path). See docs: platform-backends.
+    virtual Result<void> eject(const std::string& node) = 0;
+
     // Open the device for writing (exclusive) and hand back an owning IRawDevice
     // handle whose lifetime is the open session. Opens exclusively and retries a
     // transient-busy target with a bounded loop (each backend handles its own

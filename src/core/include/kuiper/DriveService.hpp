@@ -59,6 +59,10 @@ public:
     // mount is valid for the handle's lifetime.
     Result<MountedPartition> mount(const Partition& partition);
 
+    // Unprivileged safe-removal of `driveNode` (unmount + power off). Blocking.
+    // See docs: platform-backends (eject).
+    Result<void> eject(const std::string& driveNode);
+
     // Flash a local image file (raw or .zip/.xz/.zst/.gz) onto `driveNode`,
     // then verify by reading it back and comparing SHA-256. Blocking; reports
     // progress via `onProgress` and polls `cancel` between chunks.
