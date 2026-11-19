@@ -206,10 +206,12 @@ restamps the image identity, and unmounts.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><code class="docutils literal notranslate"><span class="pre">customize</span></code> is <strong>Linux only</strong> and modifies the <code class="docutils literal notranslate"><span class="pre">.img</span></code> <strong>in place</strong>. It
-needs root. Because the Kuiper rootfs is ARM, customizing on an x86 host also
-needs <code class="docutils literal notranslate"><span class="pre">qemu-user-static</span></code> (a.k.a. <code class="docutils literal notranslate"><span class="pre">qemu-user-binfmt</span></code>) and
-<code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code>; on a native-ARM host no emulation is needed. The <code class="docutils literal notranslate"><span class="pre">.deb</span></code>
-recommends these.</p>
+needs root. Because the Kuiper rootfs is ARM, customizing needs
+<code class="docutils literal notranslate"><span class="pre">qemu-user-static</span></code> (a.k.a. <code class="docutils literal notranslate"><span class="pre">qemu-user-binfmt</span></code>) and <code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code>
+whenever the host cannot run the image’s binaries natively — an x86 host, or an
+<code class="docutils literal notranslate"><span class="pre">arm64</span></code> host customizing a 32-bit <code class="docutils literal notranslate"><span class="pre">armhf</span></code> image. Only a host whose execution
+state matches the image (<code class="docutils literal notranslate"><span class="pre">arm64</span></code> host ↔ <code class="docutils literal notranslate"><span class="pre">arm64</span></code> image, 32-bit ARM host ↔
+<code class="docutils literal notranslate"><span class="pre">armhf</span></code> image) needs no emulation. The <code class="docutils literal notranslate"><span class="pre">.deb</span></code> recommends these.</p>
 </div>
 <hr class="docutils" />
 <section id="list-features">
@@ -281,7 +283,10 @@ logs in as <code class="docutils literal notranslate"><span class="pre">analog</
 <h2>Architecture detection and the chroot<a class="headerlink" href="#architecture-detection-and-the-chroot" title="Link to this heading"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">customize</span></code> reads the image’s architecture from its <code class="docutils literal notranslate"><span class="pre">/etc/kuiper-release</span></code>
 marker to pick the right emulator (<code class="docutils literal notranslate"><span class="pre">arm64</span></code> → <code class="docutils literal notranslate"><span class="pre">qemu-aarch64</span></code>, <code class="docutils literal notranslate"><span class="pre">armhf</span></code> →
-<code class="docutils literal notranslate"><span class="pre">qemu-arm</span></code>). For an image without that marker, pass <code class="docutils literal notranslate"><span class="pre">--arch</span></code>. On an x86 host
+<code class="docutils literal notranslate"><span class="pre">qemu-arm</span></code>). For an image without that marker, pass <code class="docutils literal notranslate"><span class="pre">--arch</span></code>. Emulation kicks
+in whenever the host’s execution state does not match the image’s — an x86 host,
+or an <code class="docutils literal notranslate"><span class="pre">arm64</span></code> host with a 32-bit <code class="docutils literal notranslate"><span class="pre">armhf</span></code> image, since <code class="docutils literal notranslate"><span class="pre">arm64</span></code> and <code class="docutils literal notranslate"><span class="pre">armhf</span></code>
+are distinct states and such kernels do not run 32-bit binaries by default. Then
 the kernel’s <code class="docutils literal notranslate"><span class="pre">binfmt_misc</span></code> entry for the target must be registered and enabled;
 when it carries the <code class="docutils literal notranslate"><span class="pre">F</span></code> (fix_binary) flag — the default with
 <code class="docutils literal notranslate"><span class="pre">qemu-user-binfmt</span></code> + <code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code> — the kernel already holds the
