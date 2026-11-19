@@ -83,6 +83,8 @@ private:
     void startFetch(const QString& id, const QString& label);
     void setLocalImage(const QString& path);
     void startWrite();
+    void showWriteComplete();              // show the deferred post-write banner
+    void startEject(const QString& node);  // unmount + power off for safe removal
     void openConfigure();
     void openCustomize();  // Linux only: add ADI features to the selected .img
 
@@ -115,6 +117,11 @@ private:
     QString writeReprobeNode_;
     int writeReprobeLeft_ = 0;
 
+    // Completion banner deferred until the re-probe settles. See docs: gui-console.
+    QString pendingWriteTitle_;
+    QString pendingWriteMsg_;
+    QString pendingEjectNode_;  // non-empty => offer "Safe eject" for this node
+
     HmcSegmentedControl* source_;
     QLabel* imageValue_;
     QLabel* imageCaption_;
@@ -145,5 +152,6 @@ private:
     std::shared_ptr<std::optional<kuiper::Result<std::vector<kuiper::Release>>>>
         releasesOut_;
     std::shared_ptr<std::optional<kuiper::Result<kuiper::FetchSummary>>> fetchOut_;
+    std::shared_ptr<std::optional<kuiper::Result<void>>> ejectOut_;
     // Note: the flash result lives in helper_->result() (it runs elevated).
 };
