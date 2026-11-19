@@ -203,4 +203,26 @@ Result<FetchSummary> ImageService::fetch(const std::string& id,
     return FetchSummary{outPath.string(), written, hash.hex()};
 }
 
+Result<std::string> ImageService::artifactPath(const std::string& id,
+                                               const std::string& outputDir) {
+    namespace fs = std::filesystem;
+
+    std::string_view channel;
+    if (id.starts_with("gh:")) channel = "unstable";
+    else if (id.starts_with("adi:")) channel = "stable";
+    auto provider = makeProvider(channel);
+    if (!provider) {
+        return Err(ErrorCode::NotFound, "Unknown image identifier: " + id,
+                   "Expected 'gh:<id>' or 'adi:<version>/<variant>/<arch>'.");
+    }
+
+    auto src = provider->resolve(id);
+    if (!src) return std::unexpected(src.error());
+
+    // Compose exactly as fetch()'s into-a-directory branch does.
+    fs::path name = fs::path(src->filename).filename();
+    if (name.empty()) name = "artifact.zip";
+    return (fs::path(outputDir) / name).string();
+}
+
 }  // namespace kuiper

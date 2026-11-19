@@ -42,6 +42,12 @@ public:
                                const std::string& outputPath, bool force = false,
                                ProgressFn onProgress = {}, CancelToken cancel = {});
 
+    // The path fetch(id, outputDir) would write to, resolved WITHOUT downloading.
+    // Does not check existence — the caller tests the returned path (this is how
+    // the GUI caches downloads). See docs: releases-and-sources.
+    Result<std::string> artifactPath(const std::string& id,
+                                     const std::string& outputDir);
+
 private:
     // The provider serving a channel ("stable" | "unstable"), or nullptr if the
     // channel is unknown. fetch() maps an id's scheme to its channel first.
