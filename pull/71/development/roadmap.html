@@ -255,11 +255,6 @@ GUI builds on both but currently lists drives only.</p>
 <li><p><strong>Streaming flash</strong> — a download-straight-to-device seam (<code class="docutils literal notranslate"><span class="pre">ImageReader</span></code>) and
 a blob cache, so <code class="docutils literal notranslate"><span class="pre">fetch</span></code> and <code class="docutils literal notranslate"><span class="pre">flash</span></code> can fuse without an intermediate
 file. The current flash writes from a local file only.</p></li>
-<li><p><strong>A dynamic stable release source</strong> — the stable channel currently lists a
-compiled-in catalog of published releases. A hosted index (a manifest on
-<code class="docutils literal notranslate"><span class="pre">packages.analog.com</span></code>, or a repository listing API) would let new releases
-appear without an imager update, and could carry per-image SHA-256 for
-download verification. See <a class="reference internal" href="../how-it-works/releases-and-sources.html#releases-and-sources"><span class="std std-ref">Releases and Sources</span></a>.</p></li>
 <li><p><strong>The GUI privilege model</strong> — the GUI will elevate through a privileged helper
 rather than taking a hard dependency on <code class="docutils literal notranslate"><span class="pre">udisks2</span></code> / D-Bus, consistent with
 the CLI’s <a class="reference internal" href="../how-it-works/platform-backends.html#platform-backends"><span class="std std-ref">privilege approach</span></a>.</p></li>

@@ -97,7 +97,12 @@
 <li><a class="reference internal" href="#the-releaseprovider-seam">The ReleaseProvider Seam</a></li>
 <li><a class="reference internal" href="#channels-stable-and-unstable">Channels: stable and unstable</a></li>
 <li><a class="reference internal" href="#the-github-actions-provider">The GitHub Actions Provider</a></li>
-<li><a class="reference internal" href="#the-stable-provider">The Stable Provider</a></li>
+<li><a class="reference internal" href="#the-stable-provider">The Stable Provider</a><ul>
+<li><a class="reference internal" href="#the-manifest-format">The Manifest Format</a></li>
+<li><a class="reference internal" href="#caching-and-the-offline-seed">Caching and the Offline Seed</a></li>
+<li><a class="reference internal" href="#identifier-and-verification">Identifier and Verification</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#the-http-client">The HTTP Client</a></li>
 <li><a class="reference internal" href="#resolving-a-path-without-fetching">Resolving a Path Without Fetching</a></li>
 </ul>
@@ -224,10 +229,10 @@ commands, output format, and identifier plumbing are already source-agnostic.</p
 <p><code class="docutils literal notranslate"><span class="pre">list-releases</span></code> takes a channel:</p>
 <ul class="simple">
 <li><p><strong>stable</strong> (the default) — published Kuiper releases from
-<code class="docutils literal notranslate"><span class="pre">packages.analog.com</span></code>, served by <code class="docutils literal notranslate"><span class="pre">StableReleaseProvider</span></code>. The set of
-releases is a compiled-in catalog for now (see <a class="reference internal" href="../development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a> for the planned
-hosted index); each image’s download URL is derived from the release naming
-convention, so listing and resolution need no network and no token.</p></li>
+<code class="docutils literal notranslate"><span class="pre">packages.analog.com</span></code>, served by <code class="docutils literal notranslate"><span class="pre">StableReleaseProvider</span></code> from a hosted JSON
+manifest (cached on disk, with a compiled-in seed as the offline fallback). No
+token is involved; each image’s download URL and expected SHA-256 come from the
+manifest.</p></li>
 <li><p><strong>unstable</strong> — Kuiper 2.0 CI images, built by the <code class="docutils literal notranslate"><span class="pre">kuiper2_0-build.yml</span></code>
 GitHub Actions workflow in the ADI <code class="docutils literal notranslate"><span class="pre">kuiper</span></code> repository.</p></li>
 </ul>
@@ -267,19 +272,96 @@ message rather than handing back a dead URL.</p>
 <hr class="docutils" />
 <section id="the-stable-provider">
 <h2>The Stable Provider<a class="headerlink" href="#the-stable-provider" title="Link to this heading"></a></h2>
-<p>The stable channel is served by <code class="docutils literal notranslate"><span class="pre">StableReleaseProvider</span></code> from a compiled-in
-catalog — one entry per published <code class="docutils literal notranslate"><span class="pre">(version,</span> <span class="pre">variant,</span> <span class="pre">arch)</span></code>. A patch may ship
-fewer variants than its base release (<code class="docutils literal notranslate"><span class="pre">2026.1.1</span></code> is 64-bit only), so the
-catalog lists only what exists rather than cross-producing the combinations.</p>
+<p>The stable channel is served by <code class="docutils literal notranslate"><span class="pre">StableReleaseProvider</span></code> from a <strong>hosted JSON
+manifest</strong> at
+<code class="docutils literal notranslate"><span class="pre">https://packages.analog.com/public/raw/files/kuiper_releases.json</span></code> — one entry
+per published <code class="docutils literal notranslate"><span class="pre">(version,</span> <span class="pre">variant,</span> <span class="pre">arch)</span></code>. A new release reaches every imager by
+editing that one file; no imager update is needed. A patch may ship fewer
+variants than its base release (<code class="docutils literal notranslate"><span class="pre">2026.1.1</span></code> is 64-bit only), so the manifest
+lists only what exists.</p>
+<section id="the-manifest-format">
+<h3>The Manifest Format<a class="headerlink" href="#the-manifest-format" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">"schemaVersion"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"generated"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-11-19T00:00:00Z"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"baseUrl"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://packages.analog.com/public/raw/files"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"releases"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026.1.1"</span><span class="p">,</span><span class="w"> </span><span class="nt">"variant"</span><span class="p">:</span><span class="w"> </span><span class="s2">"full"</span><span class="p">,</span><span class="w"> </span><span class="nt">"arch"</span><span class="p">:</span><span class="w"> </span><span class="s2">"arm64"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"file"</span><span class="p">:</span><span class="w"> </span><span class="s2">"kuiper_full_64_image_2026.1.1.zip"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"sizeBytes"</span><span class="p">:</span><span class="w"> </span><span class="mi">7700000000</span><span class="p">,</span><span class="w"> </span><span class="nt">"sha256"</span><span class="p">:</span><span class="w"> </span><span class="s2">"…"</span><span class="p">,</span><span class="w"> </span><span class="nt">"recommended"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="table-wrapper colwidths-given docutils container">
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22.0%" />
+<col style="width: 78.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">schemaVersion</span></code></p></td>
+<td><p>The format version (currently <code class="docutils literal notranslate"><span class="pre">1</span></code>). An imager that does not recognise it
+rejects the manifest and falls back, so the shape can evolve safely.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">baseUrl</span></code></p></td>
+<td><p>The directory every image lives under. Factoring it out keeps the file
+naming convention in the manifest, not compiled into the imager — a mirror
+or host move is a one-line edit.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">releases[]</span></code></p></td>
+<td><p>One entry per image: <code class="docutils literal notranslate"><span class="pre">version</span></code> / <code class="docutils literal notranslate"><span class="pre">variant</span></code> / <code class="docutils literal notranslate"><span class="pre">arch</span></code> (which form the
+identifier), the <code class="docutils literal notranslate"><span class="pre">file</span></code> name (joined to <code class="docutils literal notranslate"><span class="pre">baseUrl</span></code> for the download
+URL), optional <code class="docutils literal notranslate"><span class="pre">sizeBytes</span></code> and <code class="docutils literal notranslate"><span class="pre">sha256</span></code>, and the <code class="docutils literal notranslate"><span class="pre">recommended</span></code> flag
+that marks an image as a curated default for its architecture.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The file is authored <strong>recommended-first</strong>, and <code class="docutils literal notranslate"><span class="pre">list()</span></code> preserves document
+order, so the recommended rows lead the listing. The release pipeline fills
+<code class="docutils literal notranslate"><span class="pre">sha256</span></code> (from <code class="docutils literal notranslate"><span class="pre">sha256sum</span></code> of each image) and <code class="docutils literal notranslate"><span class="pre">sizeBytes</span></code>; an empty or
+absent <code class="docutils literal notranslate"><span class="pre">sha256</span></code> simply means that image is not verified.</p>
+</section>
+<section id="caching-and-the-offline-seed">
+<h3>Caching and the Offline Seed<a class="headerlink" href="#caching-and-the-offline-seed" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">list()</span></code> and <code class="docutils literal notranslate"><span class="pre">resolve()</span></code> both resolve the catalog through four steps, in
+order, stopping at the first that yields a usable manifest:</p>
+<ol class="arabic simple">
+<li><p>a <strong>fresh on-disk cache</strong> — served with no network, within a six-hour window
+keyed off the cache file’s modification time;</p></li>
+<li><p>else a <strong>live GET</strong> of the manifest — cached atomically on success (write to a
+<code class="docutils literal notranslate"><span class="pre">.part</span></code> sibling, then rename);</p></li>
+<li><p>else <strong>any cached copy</strong>, even if stale;</p></li>
+<li><p>else the <strong>compiled-in seed</strong> — a minimal manifest embedded via
+<code class="docutils literal notranslate"><span class="pre">kuiper_assets.qrc</span></code> that lists the releases known at build time.</p></li>
+</ol>
+<p>The seed guarantees the stable channel is never empty just because the network
+is down. A body is accepted at any step only if it parses, declares a known
+<code class="docutils literal notranslate"><span class="pre">schemaVersion</span></code>, and has at least one usable entry — so a 404 page or a
+truncated download can never poison the cache. The refresh is a plain
+unconditional GET: the manifest is only a few KB, and a conditional GET
+(<code class="docutils literal notranslate"><span class="pre">ETag</span></code> / <code class="docutils literal notranslate"><span class="pre">If-Modified-Since</span></code>) would need response headers the
+<code class="docutils literal notranslate"><span class="pre">IHttpClient</span></code> seam does not expose. The cache lives in a shared,
+app-name-independent per-user cache directory (<code class="docutils literal notranslate"><span class="pre">GenericCacheLocation</span></code> +
+<code class="docutils literal notranslate"><span class="pre">/kuiper-imager</span></code>) so the CLI and GUI reuse one copy.</p>
+</section>
+<section id="identifier-and-verification">
+<h3>Identifier and Verification<a class="headerlink" href="#identifier-and-verification" title="Link to this heading"></a></h3>
 <p>A release’s <code class="docutils literal notranslate"><span class="pre">id</span></code> is <code class="docutils literal notranslate"><span class="pre">adi:&lt;version&gt;/&lt;variant&gt;/&lt;arch&gt;</span></code> (e.g.
 <code class="docutils literal notranslate"><span class="pre">adi:2026.1.1/full/arm64</span></code>). Unlike the unstable channel — where one commit
 yields several runs, forcing an opaque artifact id — this triple is unique, so
-the identifier is also human-readable. Both <code class="docutils literal notranslate"><span class="pre">list()</span></code> and <code class="docutils literal notranslate"><span class="pre">resolve()</span></code> derive
-the download URL from the release naming convention
-(<code class="docutils literal notranslate"><span class="pre">kuiper_&lt;variant&gt;_&lt;bits&gt;_image_&lt;version&gt;.zip</span></code> under the packages host), so
-neither makes a network request and no token is involved. When the catalog is
-replaced by a hosted index (see <a class="reference internal" href="../development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a>), only <em>how the entries are
-populated</em> changes — the <code class="docutils literal notranslate"><span class="pre">id</span></code> scheme and <code class="docutils literal notranslate"><span class="pre">resolve()</span></code> stay the same.</p>
+the identifier is also human-readable. <code class="docutils literal notranslate"><span class="pre">resolve()</span></code> finds the matching entry and
+returns its download URL, its canonical filename (the last path segment of the
+URL), and its <code class="docutils literal notranslate"><span class="pre">sha256</span></code> as the expected hash. That hash is what <a class="reference internal" href="../using-the-cli/fetch.html#fetch"><span class="std std-ref">fetch</span></a> checks the downloaded bytes against before saving them.</p>
+</section>
 </section>
 <hr class="docutils" />
 <section id="the-http-client">
