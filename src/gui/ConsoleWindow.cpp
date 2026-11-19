@@ -220,26 +220,35 @@ QWidget* ConsoleWindow::buildImageCard() {
     tagLine->addStretch(1);
     card->addLayout(tagLine);
 
-    imageBtn_ = new HmcButton("Browse…");
+    // Both actions on the image sit in one row so they read as siblings that act
+    // on the image above (pick/replace it, then edit it).
+    auto* actionRow = new QHBoxLayout();
+    actionRow->setContentsMargins(0, 0, 0, 0);
+    actionRow->setSpacing(12);
+
+    imageBtn_ = new HmcButton("Choose…");
     imageBtn_->setKind("secondary");
+    imageBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     connect(imageBtn_, &HmcButton::clicked, this, [this] {
         if (source_->value() == "download")
             chooseRelease();
         else
             pickImage();
     });
-    card->addWidget(imageBtn_);
+    actionRow->addWidget(imageBtn_, 1);
 
 #ifdef Q_OS_LINUX
     // Privileged, Linux-only in-place edit of a local .img; offered only here and
     // gated to a raw local image by applyState(). See docs: customize-pipeline.
     customizeBtn_ = new HmcButton("Customize…");
     customizeBtn_->setKind("secondary");
+    customizeBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     customizeBtn_->setToolTip(
         "Add ADI full-image features (desktop, libraries, apps) to this image");
     connect(customizeBtn_, &HmcButton::clicked, this, [this] { openCustomize(); });
-    card->addWidget(customizeBtn_);
+    actionRow->addWidget(customizeBtn_, 1);
 #endif
+    card->addLayout(actionRow);
     return card;
 }
 
@@ -281,6 +290,15 @@ QWidget* ConsoleWindow::buildStorageCard() {
     tagRow->addStretch(1);
     card->addLayout(tagRow);
 
+    // Configure acts on the card in this drive (it edits projects on the mounted
+    // BOOT partition), so it lives with Storage, not beside Write. Shown only
+    // once the drive is recognised as a flashed Kuiper 2 (see applyState()).
+    configureBtn_ = new HmcButton("Configure projects →");
+    configureBtn_->setKind("secondary");
+    configureBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    connect(configureBtn_, &HmcButton::clicked, this, [this] { openConfigure(); });
+    card->addWidget(configureBtn_);
+
     return card;
 }
 
@@ -297,11 +315,7 @@ QWidget* ConsoleWindow::buildActionArea() {
     writeBtn_ = new HmcButton("Write");
     writeBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     connect(writeBtn_, &HmcButton::clicked, this, [this] { startWrite(); });
-    configureBtn_ = new HmcButton("Configure projects →");
-    configureBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(configureBtn_, &HmcButton::clicked, this, [this] { openConfigure(); });
     row->addWidget(writeBtn_, 1);
-    row->addWidget(configureBtn_, 1);
     col->addWidget(buttonRow_);
 
     progressRow_ = new QWidget(area);
@@ -700,13 +714,13 @@ void ConsoleWindow::applyState() {
     const bool kuiper2 = bootCtx_ && bootCtx_->release.has_value();
     const bool hasProjects = bootCtx_ && !bootCtx_->projects.empty();
 
-    // Image card: button label follows source + whether an image is set.
-    if (hasImage)
-        imageBtn_->setText("Change…");
-    else if (source_->value() == "download")
+    // Image card: the picker label follows the source. "Choose…" covers both
+    // picking a first image and replacing one — the filename above already shows
+    // what is set, so a separate "Change…" wording would be redundant.
+    if (source_->value() == "download" && !hasImage)
         imageBtn_->setText("Choose release…");
     else
-        imageBtn_->setText("Browse…");
+        imageBtn_->setText("Choose…");
     if (!hasImage) {
         imageValue_->setText("No image selected");
         imageCaption_->setText(source_->value() == "download"
@@ -724,25 +738,11 @@ void ConsoleWindow::applyState() {
         customizeBtn_->setEnabled(rawLocalImg && !busy);
     }
 
+    // Write is the one commit action (always the primary button); Configure is a
+    // secondary action that appears in the Storage card for a flashed Kuiper 2.
     configureBtn_->setVisible(kuiper2);
-
-    // Adaptive primary: Write leads when an image is ready; Configure leads when
-    // the card is a Kuiper 2 and no image is queued.
-    const bool canWrite = hasImage && hasDrive && !busy;
-    const bool canConfigure = kuiper2 && hasProjects && !busy && !probing_;
-    writeBtn_->setEnabled(canWrite);
-    configureBtn_->setEnabled(canConfigure);
-
-    if (hasImage) {
-        writeBtn_->setKind("primary");
-        configureBtn_->setKind("secondary");
-    } else if (kuiper2) {
-        configureBtn_->setKind("primary");
-        writeBtn_->setKind("secondary");
-    } else {
-        writeBtn_->setKind("primary");
-        configureBtn_->setKind("secondary");
-    }
+    writeBtn_->setEnabled(hasImage && hasDrive && !busy);
+    configureBtn_->setEnabled(kuiper2 && hasProjects && !busy && !probing_);
 }
 
 bool ConsoleWindow::busy() const {
