@@ -24,10 +24,12 @@ restamps the image identity, and unmounts.
 .. note::
 
    ``customize`` is **Linux only** and modifies the ``.img`` **in place**. It
-   needs root. Because the Kuiper rootfs is ARM, customizing on an x86 host also
-   needs ``qemu-user-static`` (a.k.a. ``qemu-user-binfmt``) and
-   ``binfmt-support``; on a native-ARM host no emulation is needed. The ``.deb``
-   recommends these.
+   needs root. Because the Kuiper rootfs is ARM, customizing needs
+   ``qemu-user-static`` (a.k.a. ``qemu-user-binfmt``) and ``binfmt-support``
+   whenever the host cannot run the image's binaries natively — an x86 host, or an
+   ``arm64`` host customizing a 32-bit ``armhf`` image. Only a host whose execution
+   state matches the image (``arm64`` host ↔ ``arm64`` image, 32-bit ARM host ↔
+   ``armhf`` image) needs no emulation. The ``.deb`` recommends these.
 
 ----
 
@@ -113,7 +115,10 @@ Architecture detection and the chroot
 
 ``customize`` reads the image's architecture from its ``/etc/kuiper-release``
 marker to pick the right emulator (``arm64`` → ``qemu-aarch64``, ``armhf`` →
-``qemu-arm``). For an image without that marker, pass ``--arch``. On an x86 host
+``qemu-arm``). For an image without that marker, pass ``--arch``. Emulation kicks
+in whenever the host's execution state does not match the image's — an x86 host,
+or an ``arm64`` host with a 32-bit ``armhf`` image, since ``arm64`` and ``armhf``
+are distinct states and such kernels do not run 32-bit binaries by default. Then
 the kernel's ``binfmt_misc`` entry for the target must be registered and enabled;
 when it carries the ``F`` (fix_binary) flag — the default with
 ``qemu-user-binfmt`` + ``binfmt-support`` — the kernel already holds the
