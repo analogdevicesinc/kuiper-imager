@@ -621,7 +621,8 @@ void ConsoleWindow::startFetch(const QString& id, const QString& label) {
 
 void ConsoleWindow::startWrite() {
     const kuiper::Drive* d = currentDrive();
-    if (imagePath_.isEmpty() || !d || busy()) return;
+    // Re-check the guard the disabled Write button enforces (never a system disk).
+    if (imagePath_.isEmpty() || !d || d->isSystem || busy()) return;
 
     const QString target = QString("%1 (%2) · %3")
                                .arg(QString::fromStdString(d->description),
@@ -796,7 +797,9 @@ void ConsoleWindow::openCustomize() {
 void ConsoleWindow::applyState() {
     const bool busy = this->busy();
     const bool hasImage = !imagePath_.isEmpty();
-    const bool hasDrive = currentDrive() != nullptr;
+    const kuiper::Drive* drive = currentDrive();
+    const bool hasDrive = drive != nullptr;
+    const bool isSystem = drive && drive->isSystem;
     const bool kuiper2 = bootCtx_ && bootCtx_->release.has_value();
     const bool hasProjects = bootCtx_ && !bootCtx_->projects.empty();
 
@@ -821,10 +824,10 @@ void ConsoleWindow::applyState() {
         customizeBtn_->setEnabled(rawLocalImg && !busy);
     }
 
-    // Write is the one commit action (always the primary button); Configure is a
-    // secondary action that appears in the Storage card for a flashed Kuiper 2.
+    // Write is the one commit action; Configure appears for a flashed Kuiper 2.
+    // Never Write to a system disk (the red "System" tag says why).
     configureBtn_->setVisible(kuiper2);
-    writeBtn_->setEnabled(hasImage && hasDrive && !busy);
+    writeBtn_->setEnabled(hasImage && hasDrive && !isSystem && !busy);
     configureBtn_->setEnabled(kuiper2 && hasProjects && !busy && !probing_);
 }
 
