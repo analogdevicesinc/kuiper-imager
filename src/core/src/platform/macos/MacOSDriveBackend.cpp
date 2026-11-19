@@ -19,6 +19,7 @@ public:
     }
 
     Result<void> unmountAll(const std::string&) override { return unsupported(); }
+    Result<void> eject(const std::string&) override { return unsupported(); }
 
     Result<std::unique_ptr<IRawDevice>> openForWrite(const std::string&) override {
         return std::unexpected(unsupported().error());

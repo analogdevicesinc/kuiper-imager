@@ -625,6 +625,13 @@ public:
         return {};
     }
 
+    // Not yet implemented; the GUI only offers eject where the backend supports
+    // it. See docs: platform-backends (eject).
+    Result<void> eject(const std::string&) override {
+        return Err(ErrorCode::UnsupportedPlatform,
+                   "Eject is not implemented on Windows yet");
+    }
+
     Result<std::unique_ptr<IRawDevice>> openForWrite(
         const std::string& node) override {
         return openSession(node, /*write=*/true);

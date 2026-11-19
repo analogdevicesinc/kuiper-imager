@@ -455,6 +455,46 @@ public:
         return {};
     }
 
+    // Unprivileged udisks2 path (not the root-only umount2 in unmountAll).
+    // See docs: platform-backends (Linux backend, Ejecting).
+    Result<void> eject(const std::string& node) override {
+        const auto mountedParts = [&] {
+            std::vector<QString> parts;  // partition nodes with a live mountpoint
+            QProcess proc;
+            proc.start("lsblk", {"-J", "-p", "-o", "NAME,MOUNTPOINT",
+                                 QString::fromStdString(node)});
+            if (!proc.waitForStarted(3000) || !proc.waitForFinished(5000) ||
+                proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0)
+                return parts;
+            const auto doc = QJsonDocument::fromJson(proc.readAllStandardOutput());
+            std::function<void(const QJsonObject&)> walk = [&](const QJsonObject& o) {
+                const QString mp = o.value("mountpoint").toString();
+                if (!mp.isEmpty() && mp != "[SWAP]")
+                    parts.push_back(o.value("name").toString());
+                for (const auto& c : o.value("children").toArray())
+                    walk(c.toObject());
+            };
+            for (const auto& v : doc.object().value("blockdevices").toArray())
+                walk(v.toObject());
+            return parts;
+        };
+
+        for (const auto& p : mountedParts()) udisksUnmount(p.toStdString());
+
+        // Still mounted => don't promise safety.
+        if (!mountedParts().empty())
+            return Err(ErrorCode::DeviceBusy,
+                       "Could not unmount every filesystem on " + node,
+                       "A file on the card may still be open.");
+
+        // Best-effort power-off (a no-op on internal mmc readers).
+        QProcess off;
+        off.start("udisksctl", {"power-off", "--no-user-interaction", "-b",
+                                QString::fromStdString(node)});
+        if (off.waitForStarted(3000)) off.waitForFinished(15000);
+        return {};
+    }
+
     Result<std::unique_ptr<IRawDevice>> openForWrite(
         const std::string& node) override {
         bool tryDirect = true;
