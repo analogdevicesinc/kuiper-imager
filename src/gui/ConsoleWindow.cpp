@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QScreen>
+#include <QScrollArea>
 #include <QSignalBlocker>
 #include <QStandardPaths>
 #include <QStatusBar>
@@ -89,7 +90,12 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
                    std::optional<kuiper::Result<std::vector<kuiper::Release>>>>()),
       fetchOut_(std::make_shared<std::optional<kuiper::Result<kuiper::FetchSummary>>>()) {
     setWindowTitle("Kuiper Imager");
-    setFixedSize(900, 700);
+    // Fixed-width column (the whole layout is tuned to 900px); height is free so
+    // optional rows (the result banner, the Configure button, a wrapped error
+    // message) can't force the body below its minimum and overlap. The body
+    // scrolls if the window is ever dragged shorter than its content.
+    setFixedWidth(900);
+    setMinimumHeight(560);
 
     auto* central = new QWidget(this);
     auto* root = new QVBoxLayout(central);
@@ -137,8 +143,19 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
     col->addWidget(result_);
 
     col->addStretch(1);
-    root->addWidget(body, 1);
+
+    // The header bar stays pinned; only the body scrolls when it outgrows the
+    // window. widgetResizable keeps the body stretched to the viewport width so
+    // the cards still fill the 900px column.
+    auto* scroll = new QScrollArea(central);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setWidget(body);
+    root->addWidget(scroll, 1);
     setCentralWidget(central);
+
+    resize(900, 780);
 
     statusBar()->showMessage(QString("libkuiper %1  ·  %2")
                                  .arg(kuiper::version())
