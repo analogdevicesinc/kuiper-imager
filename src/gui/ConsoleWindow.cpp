@@ -88,7 +88,8 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
       probeOut_(std::make_shared<ProbeResult>()),
       releasesOut_(std::make_shared<
                    std::optional<kuiper::Result<std::vector<kuiper::Release>>>>()),
-      fetchOut_(std::make_shared<std::optional<kuiper::Result<kuiper::FetchSummary>>>()) {
+      fetchOut_(std::make_shared<std::optional<kuiper::Result<kuiper::FetchSummary>>>()),
+      ejectOut_(std::make_shared<std::optional<kuiper::Result<void>>>()) {
     setWindowTitle("Kuiper Imager");
     // Fixed-width column (the whole layout is tuned to 900px); height is free so
     // optional rows (the result banner, the Configure button, a wrapped error
@@ -468,6 +469,7 @@ void ConsoleWindow::probeCurrentDrive() {
                 if (kuiper2 || --writeReprobeLeft_ <= 0) {
                     writeReprobeLeft_ = 0;
                     writeReprobeNode_.clear();
+                    showWriteComplete();  // the card has settled; now show it
                 } else {
                     const QString node = writeReprobeNode_;
                     QTimer::singleShot(kWriteReprobeIntervalMs, this,
@@ -600,13 +602,16 @@ void ConsoleWindow::startWrite() {
     if (dlg.exec() != QDialog::Accepted) return;
 
     const QString node = QString::fromStdString(d->node);
+    const QString deviceLabel =
+        QString("%1 (%2)").arg(QString::fromStdString(d->description), node);
+    const QString image = imageLabel_;
     const bool verify = verify_->isChecked();
 
     // The write is the one privileged step: it runs in the elevated helper
     // (pkexec / UAC), not in-process. The result lands in helper_->result().
     const QMetaObject::Connection onHelperDone = connect(
         helper_, &HelperProcess::finished, this,
-        [this, node] {
+        [this, node, deviceLabel, image] {
             setBusyUi(false);
             const auto& r = helper_->result();
             if (!r.has_value()) return;
@@ -620,15 +625,17 @@ void ConsoleWindow::startWrite() {
                                "The card was left non-bootable.");
                 return;
             }
-            showResult("success", "Write complete",
-                       QString("%1 written · sha256 %2")
-                           .arg(kuiper::gui::formatBytes((*r)->bytesWritten),
-                                QString::fromStdString((*r)->sha256.substr(0, 12))));
-            // The card now holds a fresh image. The helper settled the new
-            // partition table before exiting, so BOOT is normally mountable at
-            // once; re-enumerate (driveList_ is stale) and re-probe the same
-            // device immediately, retrying briefly until the Kuiper 2 tag /
-            // Configure reappear (see the probe-finished handler).
+            // Defer the banner past the re-probe below (its busy UI would wipe it
+            // the same frame). See docs: gui-console (post-write flow).
+            pendingWriteTitle_ = "Write complete";
+            pendingWriteMsg_ =
+                QString("Wrote %1 to %2.\n%3 written · sha256 %4")
+                    .arg(image, deviceLabel,
+                         kuiper::gui::formatBytes((*r)->bytesWritten),
+                         QString::fromStdString((*r)->sha256.substr(0, 12)));
+            pendingEjectNode_ = node;
+            // Re-enumerate (driveList_ is stale) and re-probe the written card,
+            // retrying briefly until it reads as Kuiper 2.
             writeReprobeNode_ = node;
             writeReprobeLeft_ = kWriteReprobeTries;
             refreshDrives(node);
@@ -663,6 +670,56 @@ void ConsoleWindow::startWrite() {
         Qt::SingleShotConnection);
     task_->run([stale](kuiper::ProgressFn, kuiper::CancelToken) {
         stale->reset();
+    });
+}
+
+void ConsoleWindow::showWriteComplete() {
+    if (pendingWriteTitle_.isEmpty()) return;
+    showResult("success", pendingWriteTitle_, pendingWriteMsg_);
+    pendingWriteTitle_.clear();
+    pendingWriteMsg_.clear();
+#ifdef Q_OS_LINUX
+    // Offer Safe eject where the backend supports it (not macOS); the card is
+    // left mounted so Configure keeps working. See docs: gui-console.
+    if (!pendingEjectNode_.isEmpty()) {
+        const QString node = pendingEjectNode_;
+        result_->setAction("Safe eject", [this, node] { startEject(node); });
+    }
+#endif
+    pendingEjectNode_.clear();
+}
+
+void ConsoleWindow::startEject(const QString& node) {
+    if (busy()) return;
+    // Release our BOOT mount first (off-thread — it can block), then eject.
+    auto stale = takeBootContext();
+    auto out = ejectOut_;
+    *out = std::nullopt;
+    connect(
+        task_, &BackgroundTask::finished, this,
+        [this, out, node] {
+            setBusyUi(false);
+            if (out->has_value() && !**out) {
+                showResult("warning", "Couldn't eject the card",
+                           QString::fromStdString((*out)->error().message));
+                // Let the user retry once whatever held it is released.
+                result_->setAction("Safe eject",
+                                   [this, node] { startEject(node); });
+                return;
+            }
+            // Ejected: applyState drops the now-stale Kuiper 2 context/Configure.
+            showResult("success", "Safe to remove",
+                       "The card has been ejected — you can remove it now.");
+            result_->clearAction();
+            applyState();
+        },
+        Qt::SingleShotConnection);
+    setBusyUi(true);
+    progress_->setIndeterminate(true);
+    progress_->setPhase("Ejecting…");
+    task_->run([this, stale, node, out](kuiper::ProgressFn, kuiper::CancelToken) {
+        stale->reset();
+        *out = drives_.eject(node.toStdString());
     });
 }
 
@@ -773,6 +830,7 @@ void ConsoleWindow::showResult(const QString& status, const QString& title,
     result_->setStatus(status);
     result_->setTitle(title);
     result_->setMessage(message);
+    result_->clearAction();  // a fresh message drops any prior action button
     result_->setVisible(true);
 }
 
