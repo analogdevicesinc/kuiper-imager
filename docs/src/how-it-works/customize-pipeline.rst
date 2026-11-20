@@ -173,21 +173,33 @@ grow.
 Architecture Detection and the Chroot
 --------------------------------------
 
-The Kuiper rootfs is ARM, so on an x86 host apt inside the chroot runs ARM
-binaries through qemu user-mode emulation. The executor reads ``KUIPER_ARCH``
-from the image's ``/etc/kuiper-release`` (mounting the rootfs read-only *before*
-the grow, so it unmounts cleanly leaving nothing behind) to pick the emulator —
-``arm64`` → ``qemu-aarch64``, ``armhf`` → ``qemu-arm``. An image without the
-marker needs ``--arch``.
+The Kuiper rootfs is ARM, so apt inside the chroot runs ARM binaries. Whether
+that needs qemu user-mode emulation depends not on whether the *host* is ARM but
+on whether the host can execute the *image's* execution state natively. The
+executor reads ``KUIPER_ARCH`` from the image's ``/etc/kuiper-release`` (mounting
+the rootfs read-only *before* the grow, so it unmounts cleanly leaving nothing
+behind) to pick the emulator — ``arm64`` → ``qemu-aarch64``, ``armhf`` →
+``qemu-arm``. An image without the marker needs ``--arch``.
+
+``arm64`` (AArch64) and ``armhf`` (AArch32) are **different execution states**,
+not interchangeable members of one "ARM" family. A host runs an image natively
+only when their states match: an ``aarch64`` host runs an ``arm64`` image, and a
+32-bit ARM host runs an ``armhf`` image. Every other pairing needs qemu — crucially
+an **``armhf`` image on an ``aarch64`` host** (e.g. a 32-bit Kuiper customized on
+an arm64 Raspberry Pi 5). Such kernels do not run 32-bit binaries at EL0 by
+default — ``execve`` of a 32-bit ELF returns ``ENOEXEC`` — so relying on native
+execution would fail mid-chroot. The executor therefore treats a mismatched state
+exactly like an x86 host and routes it through qemu, rather than gambling on a
+32-bit-userspace kernel option that may not be present.
 
 The qemu posture is validated without touching the image:
 
-- **Native ARM host** — nothing is needed.
-- **x86 host, binfmt with the** ``F`` **(fix_binary) flag** — the default with
-  ``qemu-user-binfmt`` + ``binfmt-support``. The kernel already holds the
+- **Host matches the image's execution state** — native; nothing is needed.
+- **Mismatched state, binfmt with the** ``F`` **(fix_binary) flag** — the default
+  with ``qemu-user-binfmt`` + ``binfmt-support``. The kernel already holds the
   interpreter open, so the chroot just works; nothing is copied in.
-- **x86 host, non-**\ ``F`` **registration** — the interpreter must be copied
-  into the chroot (and removed again on teardown).
+- **Mismatched state, non-**\ ``F`` **registration** — the interpreter must be
+  copied into the chroot (and removed again on teardown).
 - **binfmt missing or disabled** — fail up front with the exact ``apt install`` /
   ``update-binfmts`` hint, before anything changes.
 

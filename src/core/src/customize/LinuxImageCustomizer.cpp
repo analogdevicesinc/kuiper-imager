@@ -51,11 +51,18 @@ std::string trim(std::string s) {
     return s.substr(b, e - b + 1);
 }
 
-bool hostIsArm() {
+std::string hostMachine() {
     utsname u{};
-    if (uname(&u) != 0) return false;
-    const std::string m = u.machine;
-    return m == "aarch64" || m.rfind("arm", 0) == 0;
+    if (uname(&u) != 0) return "";
+    return u.machine;
+}
+
+// See docs: customize-pipeline (Architecture detection and the chroot).
+bool canRunNatively(const std::string& arch) {
+    const std::string m = hostMachine();
+    if (arch == "arm64") return m == "aarch64";
+    if (arch == "armhf") return m != "aarch64" && m.rfind("arm", 0) == 0;
+    return false;
 }
 
 class LinuxImageCustomizer : public ImageCustomizer {
@@ -276,12 +283,12 @@ private:
     // Validate the qemu/binfmt posture for the arch without touching the image.
     // See docs: customize-pipeline (Architecture detection and the chroot).
     Result<QemuStage> planQemu(const std::string& arch) {
-        if (hostIsArm()) return QemuStage{};
         std::string node;
         if (arch == "arm64") node = "/proc/sys/fs/binfmt_misc/qemu-aarch64";
         else if (arch == "armhf") node = "/proc/sys/fs/binfmt_misc/qemu-arm";
         else return Err(ErrorCode::UnsupportedPlatform,
                         "Unsupported image architecture: " + arch);
+        if (canRunNatively(arch)) return QemuStage{};
 
         std::ifstream in(node);
         if (!in)
