@@ -382,20 +382,31 @@ can grow into trailing free space. The executor finds it from <code class="docut
 <hr class="docutils" />
 <section id="architecture-detection-and-the-chroot">
 <h2>Architecture Detection and the Chroot<a class="headerlink" href="#architecture-detection-and-the-chroot" title="Link to this heading"></a></h2>
-<p>The Kuiper rootfs is ARM, so on an x86 host apt inside the chroot runs ARM
-binaries through qemu user-mode emulation. The executor reads <code class="docutils literal notranslate"><span class="pre">KUIPER_ARCH</span></code>
-from the image’s <code class="docutils literal notranslate"><span class="pre">/etc/kuiper-release</span></code> (mounting the rootfs read-only <em>before</em>
-the grow, so it unmounts cleanly leaving nothing behind) to pick the emulator —
-<code class="docutils literal notranslate"><span class="pre">arm64</span></code> → <code class="docutils literal notranslate"><span class="pre">qemu-aarch64</span></code>, <code class="docutils literal notranslate"><span class="pre">armhf</span></code> → <code class="docutils literal notranslate"><span class="pre">qemu-arm</span></code>. An image without the
-marker needs <code class="docutils literal notranslate"><span class="pre">--arch</span></code>.</p>
+<p>The Kuiper rootfs is ARM, so apt inside the chroot runs ARM binaries. Whether
+that needs qemu user-mode emulation depends not on whether the <em>host</em> is ARM but
+on whether the host can execute the <em>image’s</em> execution state natively. The
+executor reads <code class="docutils literal notranslate"><span class="pre">KUIPER_ARCH</span></code> from the image’s <code class="docutils literal notranslate"><span class="pre">/etc/kuiper-release</span></code> (mounting
+the rootfs read-only <em>before</em> the grow, so it unmounts cleanly leaving nothing
+behind) to pick the emulator — <code class="docutils literal notranslate"><span class="pre">arm64</span></code> → <code class="docutils literal notranslate"><span class="pre">qemu-aarch64</span></code>, <code class="docutils literal notranslate"><span class="pre">armhf</span></code> →
+<code class="docutils literal notranslate"><span class="pre">qemu-arm</span></code>. An image without the marker needs <code class="docutils literal notranslate"><span class="pre">--arch</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">arm64</span></code> (AArch64) and <code class="docutils literal notranslate"><span class="pre">armhf</span></code> (AArch32) are <strong>different execution states</strong>,
+not interchangeable members of one “ARM” family. A host runs an image natively
+only when their states match: an <code class="docutils literal notranslate"><span class="pre">aarch64</span></code> host runs an <code class="docutils literal notranslate"><span class="pre">arm64</span></code> image, and a
+32-bit ARM host runs an <code class="docutils literal notranslate"><span class="pre">armhf</span></code> image. Every other pairing needs qemu — crucially
+an <strong>``armhf`` image on an ``aarch64`` host</strong> (e.g. a 32-bit Kuiper customized on
+an arm64 Raspberry Pi 5). Such kernels do not run 32-bit binaries at EL0 by
+default — <code class="docutils literal notranslate"><span class="pre">execve</span></code> of a 32-bit ELF returns <code class="docutils literal notranslate"><span class="pre">ENOEXEC</span></code> — so relying on native
+execution would fail mid-chroot. The executor therefore treats a mismatched state
+exactly like an x86 host and routes it through qemu, rather than gambling on a
+32-bit-userspace kernel option that may not be present.</p>
 <p>The qemu posture is validated without touching the image:</p>
 <ul class="simple">
-<li><p><strong>Native ARM host</strong> — nothing is needed.</p></li>
-<li><p><strong>x86 host, binfmt with the</strong> <code class="docutils literal notranslate"><span class="pre">F</span></code> <strong>(fix_binary) flag</strong> — the default with
-<code class="docutils literal notranslate"><span class="pre">qemu-user-binfmt</span></code> + <code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code>. The kernel already holds the
+<li><p><strong>Host matches the image’s execution state</strong> — native; nothing is needed.</p></li>
+<li><p><strong>Mismatched state, binfmt with the</strong> <code class="docutils literal notranslate"><span class="pre">F</span></code> <strong>(fix_binary) flag</strong> — the default
+with <code class="docutils literal notranslate"><span class="pre">qemu-user-binfmt</span></code> + <code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code>. The kernel already holds the
 interpreter open, so the chroot just works; nothing is copied in.</p></li>
-<li><p><strong>x86 host, non-</strong><code class="docutils literal notranslate"><span class="pre">F</span></code> <strong>registration</strong> — the interpreter must be copied
-into the chroot (and removed again on teardown).</p></li>
+<li><p><strong>Mismatched state, non-</strong><code class="docutils literal notranslate"><span class="pre">F</span></code> <strong>registration</strong> — the interpreter must be
+copied into the chroot (and removed again on teardown).</p></li>
 <li><p><strong>binfmt missing or disabled</strong> — fail up front with the exact <code class="docutils literal notranslate"><span class="pre">apt</span> <span class="pre">install</span></code> /
 <code class="docutils literal notranslate"><span class="pre">update-binfmts</span></code> hint, before anything changes.</p></li>
 </ul>
