@@ -206,3 +206,12 @@ deliberate performance choice: libcrypto uses the CPU's SHA extensions where
 present — roughly an order of magnitude faster than Qt's software hash — which
 turns hashing from a bottleneck into noise on the flash path. The digest is
 computed inline while writing; see :ref:`flash-pipeline`.
+
+Image decoding is similarly shared. ``kuiper::image`` wraps libarchive behind a
+small seam: the deliberate codec allowlist (gzip/xz/zstd/bzip2 + raw + zip, never
+``support_format_all``), the ZIP sniff, the largest-regular-file selection, and
+``openDecoded`` — which positions a read handle on the image stream regardless of
+container. Flash drains that handle to a device (deferring the partition-table
+head); customize's ``extractToFile`` drains it to a file. One decode brain, two
+sinks, so the accepted-format set can never drift between :ref:`flash-pipeline`
+and :ref:`customize-pipeline`.

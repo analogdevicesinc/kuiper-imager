@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content="Add the ADI &quot;full-image&quot; features (desktop, libraries, applications) to a prebuilt basic Kuiper .img, in place" name="description" />
+<meta content="Add the ADI &quot;full-image&quot; features (desktop, libraries, applications) to a prebuilt basic Kuiper image, writing a fresh .img" name="description" />
 
     <title>Customize: Add ADI Features to an Image &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
@@ -195,18 +195,22 @@ Content on this topic
 <p>A Kuiper image is <strong>basic</strong> or <strong>full</strong> only by which features were enabled when
 it was built: the “full” variant is the basic image with most of its <code class="docutils literal notranslate"><span class="pre">CONFIG_*</span></code>
 switches turned on. <code class="docutils literal notranslate"><span class="pre">customize</span></code> closes that gap after the fact — it takes a
-prebuilt basic <code class="docutils literal notranslate"><span class="pre">.img</span></code> and installs the ADI features you pick (an XFCE desktop,
+prebuilt basic image and installs the ADI features you pick (an XFCE desktop,
 the ADI libraries, the ADI applications) straight into it.</p>
+<p>The input may be a raw <code class="docutils literal notranslate"><span class="pre">.img</span></code> or a compressed/zipped one — the same set
+<a class="reference internal" href="flash.html#flash"><span class="std std-ref">flash</span></a> accepts (<code class="docutils literal notranslate"><span class="pre">.img</span></code>, <code class="docutils literal notranslate"><span class="pre">.zip</span></code>, <code class="docutils literal notranslate"><span class="pre">.xz</span></code>, <code class="docutils literal notranslate"><span class="pre">.zst</span></code>, <code class="docutils literal notranslate"><span class="pre">.gz</span></code>,
+<code class="docutils literal notranslate"><span class="pre">.bz2</span></code>). By default <code class="docutils literal notranslate"><span class="pre">customize</span></code> writes a <strong>fresh</strong> <code class="docutils literal notranslate"><span class="pre">.img</span></code> and leaves the
+input untouched; <code class="docutils literal notranslate"><span class="pre">--in-place</span></code> edits a raw <code class="docutils literal notranslate"><span class="pre">.img</span></code> directly instead.</p>
 <p>This works because <strong>every</strong> Kuiper image already carries the ADI apt repository,
 its signing key, and apt pinning. Each feature is therefore just an <code class="docutils literal notranslate"><span class="pre">apt-get</span>
 <span class="pre">install</span></code> run inside the image — the same path the Kuiper build itself uses.
-<code class="docutils literal notranslate"><span class="pre">customize</span></code> loop-mounts the image, runs those installs in the image’s chroot,
-writes the few asset files apt cannot (systemd units, the desktop wallpaper, …),
-restamps the image identity, and unmounts.</p>
+<code class="docutils literal notranslate"><span class="pre">customize</span></code> materializes a working image, loop-mounts it, runs those installs
+in its chroot, writes the few asset files apt cannot (systemd units, the desktop
+wallpaper, …), restamps the image identity, unmounts, and publishes the result.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code class="docutils literal notranslate"><span class="pre">customize</span></code> is <strong>Linux only</strong> and modifies the <code class="docutils literal notranslate"><span class="pre">.img</span></code> <strong>in place</strong>. It
-needs root. Because the Kuiper rootfs is ARM, customizing needs
+<p><code class="docutils literal notranslate"><span class="pre">customize</span></code> is <strong>Linux only</strong> and needs root. Because the Kuiper rootfs is
+ARM, customizing needs
 <code class="docutils literal notranslate"><span class="pre">qemu-user-static</span></code> (a.k.a. <code class="docutils literal notranslate"><span class="pre">qemu-user-binfmt</span></code>) and <code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code>
 whenever the host cannot run the image’s binaries natively — an x86 host, or an
 <code class="docutils literal notranslate"><span class="pre">arm64</span></code> host customizing a 32-bit <code class="docutils literal notranslate"><span class="pre">armhf</span></code> image. Only a host whose execution
@@ -226,43 +230,52 @@ estimate. Needs neither root nor an image.</p>
 <hr class="docutils" />
 <section id="id1">
 <h2>customize<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>kli<span class="w"> </span>customize<span class="w"> </span>--image<span class="w"> </span>&lt;file&gt;<span class="w"> </span><span class="o">[</span>--feature<span class="w"> </span>&lt;id&gt;<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--all<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>kli<span class="w"> </span>customize<span class="w"> </span>--image<span class="w"> </span>&lt;file&gt;<span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>&lt;file&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>--in-place<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                   </span><span class="o">[</span>--feature<span class="w"> </span>&lt;id&gt;<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--all<span class="o">]</span><span class="w"> </span><span class="se">\</span>
 <span class="w">                   </span><span class="o">[</span>--grow<span class="w"> </span>&lt;size&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>--no-grow<span class="o">]</span><span class="w"> </span><span class="o">[</span>--arch<span class="w"> </span>armhf<span class="p">|</span>arm64<span class="o">]</span><span class="w"> </span><span class="se">\</span>
-<span class="w">                   </span><span class="o">[</span>--dry-run<span class="o">]</span><span class="w"> </span><span class="o">[</span>--yes<span class="o">]</span>
+<span class="w">                   </span><span class="o">[</span>--overwrite<span class="o">]</span><span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span><span class="w"> </span><span class="o">[</span>--yes<span class="o">]</span>
 </pre></div>
 </div>
-<p>Install two features, letting the rootfs auto-grow to fit:</p>
+<p>Install two features into a fresh image, letting the rootfs auto-grow to fit:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>kli<span class="w"> </span>customize<span class="w"> </span>--image<span class="w"> </span>kuiper_basic.img<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--feature<span class="w"> </span>libiio<span class="w"> </span>--feature<span class="w"> </span>iio-oscilloscope
 </pre></div>
 </div>
-<p>Build the “full” preset (every feature):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>kli<span class="w"> </span>customize<span class="w"> </span>--image<span class="w"> </span>kuiper_basic.img<span class="w"> </span>--all<span class="w"> </span>--grow<span class="w"> </span>6G<span class="w"> </span>-y
+<p>Build the “full” preset (every feature) straight from a downloaded <code class="docutils literal notranslate"><span class="pre">.zip</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>kli<span class="w"> </span>customize<span class="w"> </span>--image<span class="w"> </span>kuiper_basic.zip<span class="w"> </span>--output<span class="w"> </span>full.img<span class="w"> </span>--all<span class="w"> </span>--grow<span class="w"> </span>6G<span class="w"> </span>-y
 </pre></div>
 </div>
 <p>Key behaviors:</p>
 <ul class="simple">
-<li><p><strong>In-place, with confirmation.</strong> The image is modified where it sits. Unless
-<code class="docutils literal notranslate"><span class="pre">--yes</span></code> is given, <code class="docutils literal notranslate"><span class="pre">customize</span></code> prints what it will do and waits for <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p></li>
+<li><p><strong>Fresh output by default.</strong> <code class="docutils literal notranslate"><span class="pre">customize</span></code> writes a new <code class="docutils literal notranslate"><span class="pre">.img</span></code> and leaves the
+input untouched. Without <code class="docutils literal notranslate"><span class="pre">--output</span></code> the path is derived from the input next to
+it (<code class="docutils literal notranslate"><span class="pre">kuiper_basic.zip</span></code> → <code class="docutils literal notranslate"><span class="pre">kuiper_basic-custom.img</span></code>). <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code> allows
+replacing an existing output file. <code class="docutils literal notranslate"><span class="pre">--in-place</span></code> instead edits a raw <code class="docutils literal notranslate"><span class="pre">.img</span></code>
+where it sits (no copy, no decompression — raw <code class="docutils literal notranslate"><span class="pre">.img</span></code> only).</p></li>
+<li><p><strong>Confirmation.</strong> Unless <code class="docutils literal notranslate"><span class="pre">--yes</span></code> is given, <code class="docutils literal notranslate"><span class="pre">customize</span></code> prints what it will do
+(and where it will write) and waits for <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p></li>
 <li><p><strong>Auto-grow.</strong> The full ADI stack is multiple GB, so the rootfs is enlarged
 before installing. By default the grow is sized from your selection; <code class="docutils literal notranslate"><span class="pre">--grow</span>
 <span class="pre">&lt;size&gt;</span></code> sets it explicitly and <code class="docutils literal notranslate"><span class="pre">--no-grow</span></code> disables it. The rootfs must be
 the <strong>physically last</strong> partition (greatest end offset, not highest number —
 Kuiper’s small bootloader partition is numbered last but placed first).</p></li>
-<li><p><strong>Dry run.</strong> <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> prints the full plan — the packages, files, and
-chroot steps per feature — without touching the image, as root or not.</p></li>
+<li><p><strong>Dry run.</strong> <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> prints the full plan — the resolved output path, the
+packages, files, and chroot steps per feature — without touching anything, as
+root or not.</p></li>
 <li><p><strong>No state tracking.</strong> <code class="docutils literal notranslate"><span class="pre">customize</span></code> installs what you select; apt is idempotent
 and resolves inter-package dependencies itself.</p></li>
 </ul>
-<p>On success it reports the features installed, the detected architecture, and the
-final image size, then hints at the matching <a class="reference internal" href="flash.html#flash"><span class="std std-ref">flash</span></a> command.</p>
+<p>On success it reports the output path, the features installed, the detected
+architecture, and the final image size, then hints at the matching <a class="reference internal" href="flash.html#flash"><span class="std std-ref">flash</span></a> command.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The GUI exposes the same feature on Linux: select a local <code class="docutils literal notranslate"><span class="pre">.img</span></code> and click
+<p>The GUI exposes the same feature on Linux: select a local image and click
 <strong>Customize…</strong> on the Image card. The dialog lists the catalog grouped by
 Desktop / Libraries / Applications with size estimates, lets you auto-grow (or
-set an explicit size), and runs the install in the elevated helper with live
-per-feature progress — the same core <code class="docutils literal notranslate"><span class="pre">ImageCustomizer</span></code> the CLI drives.</p>
+set an explicit size), pick the destination (or <strong>Edit in place</strong> for a raw
+<code class="docutils literal notranslate"><span class="pre">.img</span></code>), and runs the install in the elevated helper with live per-feature
+progress — the same core <code class="docutils literal notranslate"><span class="pre">ImageCustomizer</span></code> the CLI drives. On success the
+console switches to the freshly written image.</p>
 </div>
 </section>
 <hr class="docutils" />

@@ -215,6 +215,11 @@ zstd, and bzip2 filters plus the raw and zip formats. <code class="docutils lite
 deliberately <em>not</em> used: the tar and ISO readers can mis-bid on a raw disk
 image and silently mangle it. A missing codec is reported up front rather than
 mid-stream.</p>
+<p>This decode logic lives in the shared <code class="docutils literal notranslate"><span class="pre">kuiper::image</span></code> seam (see
+<a class="reference internal" href="core-library.html#core-library"><span class="std std-ref">Core Library (libkuiper)</span></a>), not in <code class="docutils literal notranslate"><span class="pre">flash()</span></code> itself: <a class="reference internal" href="customize-pipeline.html#customize-pipeline"><span class="std std-ref">The Customize Pipeline</span></a> reuses
+the very same opener and ZIP selection to materialize an image to a file, so the
+two features can never disagree about which inputs are accepted. Only the
+defer-head body streaming below is flash-specific.</p>
 <p>A <code class="docutils literal notranslate"><span class="pre">.zip</span></code> is handled specially. The file is sniffed for the ZIP magic
 (<code class="docutils literal notranslate"><span class="pre">PK\x03\x04</span></code>), then its central directory is scanned and the single largest
 regular file is chosen as the image. If two or more entries are each larger than

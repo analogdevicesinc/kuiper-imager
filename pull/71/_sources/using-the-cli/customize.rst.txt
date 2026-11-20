@@ -6,25 +6,30 @@ Customize: Add ADI Features to an Image
 .. description::
 
    Add the ADI "full-image" features (desktop, libraries, applications) to a
-   prebuilt basic Kuiper .img, in place
+   prebuilt basic Kuiper image, writing a fresh .img
 
 A Kuiper image is **basic** or **full** only by which features were enabled when
 it was built: the "full" variant is the basic image with most of its ``CONFIG_*``
 switches turned on. ``customize`` closes that gap after the fact — it takes a
-prebuilt basic ``.img`` and installs the ADI features you pick (an XFCE desktop,
+prebuilt basic image and installs the ADI features you pick (an XFCE desktop,
 the ADI libraries, the ADI applications) straight into it.
+
+The input may be a raw ``.img`` or a compressed/zipped one — the same set
+:ref:`flash <flash>` accepts (``.img``, ``.zip``, ``.xz``, ``.zst``, ``.gz``,
+``.bz2``). By default ``customize`` writes a **fresh** ``.img`` and leaves the
+input untouched; ``--in-place`` edits a raw ``.img`` directly instead.
 
 This works because **every** Kuiper image already carries the ADI apt repository,
 its signing key, and apt pinning. Each feature is therefore just an ``apt-get
 install`` run inside the image — the same path the Kuiper build itself uses.
-``customize`` loop-mounts the image, runs those installs in the image's chroot,
-writes the few asset files apt cannot (systemd units, the desktop wallpaper, …),
-restamps the image identity, and unmounts.
+``customize`` materializes a working image, loop-mounts it, runs those installs
+in its chroot, writes the few asset files apt cannot (systemd units, the desktop
+wallpaper, …), restamps the image identity, unmounts, and publishes the result.
 
 .. note::
 
-   ``customize`` is **Linux only** and modifies the ``.img`` **in place**. It
-   needs root. Because the Kuiper rootfs is ARM, customizing needs
+   ``customize`` is **Linux only** and needs root. Because the Kuiper rootfs is
+   ARM, customizing needs
    ``qemu-user-static`` (a.k.a. ``qemu-user-binfmt``) and ``binfmt-support``
    whenever the host cannot run the image's binaries natively — an x86 host, or an
    ``arm64`` host customizing a 32-bit ``armhf`` image. Only a host whose execution
@@ -51,47 +56,57 @@ customize
 
 .. code-block:: bash
 
-   sudo kli customize --image <file> [--feature <id> ...] [--all] \
+   sudo kli customize --image <file> [--output <file> | --in-place] \
+                      [--feature <id> ...] [--all] \
                       [--grow <size> | --no-grow] [--arch armhf|arm64] \
-                      [--dry-run] [--yes]
+                      [--overwrite] [--dry-run] [--yes]
 
-Install two features, letting the rootfs auto-grow to fit:
+Install two features into a fresh image, letting the rootfs auto-grow to fit:
 
 .. code-block:: bash
 
    sudo kli customize --image kuiper_basic.img \
        --feature libiio --feature iio-oscilloscope
 
-Build the "full" preset (every feature):
+Build the "full" preset (every feature) straight from a downloaded ``.zip``:
 
 .. code-block:: bash
 
-   sudo kli customize --image kuiper_basic.img --all --grow 6G -y
+   sudo kli customize --image kuiper_basic.zip --output full.img --all --grow 6G -y
 
 Key behaviors:
 
-- **In-place, with confirmation.** The image is modified where it sits. Unless
-  ``--yes`` is given, ``customize`` prints what it will do and waits for ``y``.
+- **Fresh output by default.** ``customize`` writes a new ``.img`` and leaves the
+  input untouched. Without ``--output`` the path is derived from the input next to
+  it (``kuiper_basic.zip`` → ``kuiper_basic-custom.img``). ``--overwrite`` allows
+  replacing an existing output file. ``--in-place`` instead edits a raw ``.img``
+  where it sits (no copy, no decompression — raw ``.img`` only).
+- **Confirmation.** Unless ``--yes`` is given, ``customize`` prints what it will do
+  (and where it will write) and waits for ``y``.
 - **Auto-grow.** The full ADI stack is multiple GB, so the rootfs is enlarged
   before installing. By default the grow is sized from your selection; ``--grow
   <size>`` sets it explicitly and ``--no-grow`` disables it. The rootfs must be
   the **physically last** partition (greatest end offset, not highest number —
   Kuiper's small bootloader partition is numbered last but placed first).
-- **Dry run.** ``--dry-run`` prints the full plan — the packages, files, and
-  chroot steps per feature — without touching the image, as root or not.
+- **Dry run.** ``--dry-run`` prints the full plan — the resolved output path, the
+  packages, files, and chroot steps per feature — without touching anything, as
+  root or not.
 - **No state tracking.** ``customize`` installs what you select; apt is idempotent
   and resolves inter-package dependencies itself.
 
-On success it reports the features installed, the detected architecture, and the
-final image size, then hints at the matching :ref:`flash <flash>` command.
+On success it reports the output path, the features installed, the detected
+architecture, and the final image size, then hints at the matching :ref:`flash
+<flash>` command.
 
 .. note::
 
-   The GUI exposes the same feature on Linux: select a local ``.img`` and click
+   The GUI exposes the same feature on Linux: select a local image and click
    **Customize…** on the Image card. The dialog lists the catalog grouped by
    Desktop / Libraries / Applications with size estimates, lets you auto-grow (or
-   set an explicit size), and runs the install in the elevated helper with live
-   per-feature progress — the same core ``ImageCustomizer`` the CLI drives.
+   set an explicit size), pick the destination (or **Edit in place** for a raw
+   ``.img``), and runs the install in the elevated helper with live per-feature
+   progress — the same core ``ImageCustomizer`` the CLI drives. On success the
+   console switches to the freshly written image.
 
 ----
 
