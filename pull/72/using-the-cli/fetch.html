@@ -202,9 +202,8 @@ sources described in <a class="reference internal" href="../how-it-works/release
 </div>
 <p>Lists available images as a table. The channel selects the source:</p>
 <ul class="simple">
-<li><p>Without <code class="docutils literal notranslate"><span class="pre">--unstable</span></code> the <strong>stable</strong> channel is queried. It is not wired up
-yet and reports cleanly that no official source is available — use
-<code class="docutils literal notranslate"><span class="pre">--unstable</span></code> for now.</p></li>
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">--unstable</span></code> the <strong>stable</strong> channel is queried — published Kuiper
+releases from a hosted manifest, listed recommended-first (no token needed).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--unstable</span></code> lists <strong>Kuiper 2.0 CI builds</strong> from GitHub Actions.</p></li>
 </ul>
 <p>Options for the unstable channel:</p>
@@ -261,6 +260,12 @@ leaves a partial file at the destination. A best-effort free-space check aborts
 early with <code class="docutils literal notranslate"><span class="pre">DiskFull</span></code> once the total size is known, and when <code class="docutils literal notranslate"><span class="pre">--output</span></code> is a
 directory the artifact name is reduced to a bare filename so an unexpected name
 can never write outside it.</p>
+<p>For a <strong>stable</strong> image whose manifest entry carries a <code class="docutils literal notranslate"><span class="pre">sha256</span></code>, <code class="docutils literal notranslate"><span class="pre">fetch</span></code>
+verifies the downloaded bytes against it <strong>before</strong> moving the file into place,
+so a corrupt or tampered download never lands at the destination: a mismatch
+fails with <code class="docutils literal notranslate"><span class="pre">HashMismatch</span></code> and the <code class="docutils literal notranslate"><span class="pre">.part</span></code> file is removed. CI artifacts (and
+stable entries without a published hash) have nothing to verify against, so the
+check is skipped.</p>
 <p>On success <code class="docutils literal notranslate"><span class="pre">fetch</span></code> prints the bytes written, the SHA-256 of the downloaded
 file, and a <code class="docutils literal notranslate"><span class="pre">Next:</span></code> hint suggesting the matching <code class="docutils literal notranslate"><span class="pre">flash</span></code> command.</p>
 </section>
