@@ -35,6 +35,14 @@ grouped into three areas:
   otherwise the backend mounts it and the handle unmounts on destruction. How the
   backend mounts is its own concern (see the Linux backend's unprivileged udisks2
   path below). A partition with no filesystem is an error.
+- ``eject(node)`` — release a drive for safe physical removal: unmount every
+  filesystem on it and, where the hardware supports it, power it off. Unlike the
+  root-only ``unmountAll`` the write path uses, ``eject`` goes through the OS's
+  **session-level media manager**, so the unprivileged GUI can invoke it with no
+  elevation prompt (see the per-backend paths below). It returns ``DeviceBusy`` if
+  a mount cannot be released — the caller must not promise safety it can't deliver
+  — and ``UnsupportedPlatform`` where no such manager exists (macOS). The portable
+  ``DriveService::eject`` is the sole gateway to it.
 
 **Raw device I/O** (an RAII handle, via ``openForWrite`` / ``openForRead``)
 
@@ -163,6 +171,16 @@ parsed from it; the handle unmounts via ``udisksctl`` on destruction. When udisk
 is absent (headless / minimal systems) ``mount`` falls back to ``mount(2)`` into a
 private temp dir, where the caller is root anyway.
 
+**Ejecting.** ``eject`` takes the same unprivileged udisks2 + polkit path as
+``mount`` (an active session may unmount and power off removable media with no
+prompt), *not* the root-only ``umount2`` in ``unmountAll``. It scans the drive's
+subtree with ``lsblk`` for live mountpoints, ``udisksctl unmount``\ s each, then
+**re-scans**: if anything is still mounted — a busy filesystem udisks declined to
+release — it reports ``DeviceBusy`` rather than claim the card is safe to pull.
+Finally it best-effort ``udisksctl power-off``\ s the whole device so the desktop
+won't re-mount it before removal; this is unsupported on internal MMC readers,
+where everything being unmounted is already safe to remove.
+
 ----
 
 Privilege
@@ -270,6 +288,20 @@ identical to Linux; only the thin positioned-I/O primitive (``WindowsBlockIo``:
 ``IOCTL_DISK_UPDATE_PROPERTIES``) is Windows-specific. Raw device access needs an
 elevated prompt; ``ERROR_ACCESS_DENIED`` maps to ``PermissionDenied`` with a "run
 as Administrator" hint.
+
+**Ejecting.** ``eject`` uses ``CM_Request_Device_Eject`` (``cfgmgr32``) — the
+same PnP path as the shell's "Safely Remove Hardware", available to a **standard
+user** for removable devices, unlike the admin-only storage IOCTLs the write path
+runs in the elevated helper. It flushes, dismounts, and powers the device down,
+and *vetoes* rather than forcing when a file is open. The backend resolves the
+PnP devnode behind ``\\.\PhysicalDriveN`` by matching the disk interface's device
+number (the same enumeration as ``listDrives``, kept to a zero-access query
+handle so it needs no admin), then walks up to the nearest **removable ancestor**
+— the ``GenDisk`` node is usually reported fixed, while its reader/USB parent is
+the ejectable unit. A transient handle (an indexer, a just-closed Explorer
+window) can veto the first attempt and then let go, so it retries a few times;
+a persistent veto maps to ``DeviceBusy``. This is the Windows analog of Linux's
+unprivileged udisks eject.
 
 The C libraries (libarchive, OpenSSL, libcurl) come from vcpkg on Windows; the
 Linux build keeps using the distro packages.

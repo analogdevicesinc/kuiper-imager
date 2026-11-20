@@ -13,7 +13,7 @@
     <link rel="icon" href="../_static/icon.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Development" href="../development/development.html" />
+    <link rel="next" title="The GUI Console" href="gui-console.html" />
     <link rel="prev" title="Platform Backends" href="platform-backends.html" />
    
   
@@ -99,6 +99,7 @@
 <li><a class="reference internal" href="#the-github-actions-provider">The GitHub Actions Provider</a></li>
 <li><a class="reference internal" href="#the-stable-provider">The Stable Provider</a></li>
 <li><a class="reference internal" href="#the-http-client">The HTTP Client</a></li>
+<li><a class="reference internal" href="#resolving-a-path-without-fetching">Resolving a Path Without Fetching</a></li>
 </ul>
 </li>
 </ul>
@@ -157,6 +158,7 @@ Content on this topic
 <li class="toctree-l1"><a class="reference internal" href="customize-pipeline.html">The Customize Pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="platform-backends.html">Platform Backends</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Releases and Sources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-console.html">The GUI Console</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -318,6 +320,21 @@ expired), other non-2xx → <code class="docutils literal notranslate"><span cla
 <code class="docutils literal notranslate"><span class="pre">.part</span></code> rename, the free-space guard, and path-traversal safety — is described
 in <a class="reference internal" href="../using-the-cli/fetch.html#fetch"><span class="std std-ref">Fetch: List and Download Releases</span></a>.</p>
 </section>
+<hr class="docutils" />
+<section id="resolving-a-path-without-fetching">
+<h2>Resolving a Path Without Fetching<a class="headerlink" href="#resolving-a-path-without-fetching" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">ImageService::artifactPath(id,</span> <span class="pre">outputDir)</span></code> composes the exact path
+<code class="docutils literal notranslate"><span class="pre">fetch(id,</span> <span class="pre">outputDir)</span></code> <em>would</em> write to — without downloading anything. It
+routes to the same provider <code class="docutils literal notranslate"><span class="pre">fetch</span></code> would, reads the artifact’s canonical
+filename from <code class="docutils literal notranslate"><span class="pre">resolve()</span></code>, and joins it to <code class="docutils literal notranslate"><span class="pre">outputDir</span></code> exactly as the
+into-a-directory branch of <code class="docutils literal notranslate"><span class="pre">fetch</span></code> does. For the stable channel this is fully
+offline; for unstable it may cost the one light metadata request <code class="docutils literal notranslate"><span class="pre">resolve()</span></code>
+already makes.</p>
+<p>It deliberately does <strong>not</strong> check whether the file exists — it reports a
+<em>location</em>, and the caller tests that path. This is what lets the
+<a class="reference internal" href="gui-console.html#gui-console"><span class="std std-ref">GUI</span></a> maintain its download cache: it asks where each release
+would live, then detects, reuses, or deletes the file there.</p>
+</section>
 </section>
 
 
@@ -325,7 +342,7 @@ in <a class="reference internal" href="../using-the-cli/fetch.html#fetch"><span 
               <div class="related">
                 &nbsp;
     <a href="platform-backends.html" title="Previous document (Alt+Shift+LeftArrow)" class="prev">Platform Backends</a>
-    <a href="../development/development.html" title="Next document (Alt+Shift+RightArrow)" class="next">Development</a>
+    <a href="gui-console.html" title="Next document (Alt+Shift+RightArrow)" class="next">The GUI Console</a>
               </div>
           
         </div>

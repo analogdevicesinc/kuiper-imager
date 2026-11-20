@@ -158,6 +158,7 @@ Content on this topic
 <li class="toctree-l1"><a class="reference internal" href="customize-pipeline.html">The Customize Pipeline</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Platform Backends</a></li>
 <li class="toctree-l1"><a class="reference internal" href="releases-and-sources.html">Releases and Sources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-console.html">The GUI Console</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -216,6 +217,14 @@ mounted the handle <em>borrows</em> it (and leaves it alone on destruction);
 otherwise the backend mounts it and the handle unmounts on destruction. How the
 backend mounts is its own concern (see the Linux backend’s unprivileged udisks2
 path below). A partition with no filesystem is an error.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">eject(node)</span></code> — release a drive for safe physical removal: unmount every
+filesystem on it and, where the hardware supports it, power it off. Unlike the
+root-only <code class="docutils literal notranslate"><span class="pre">unmountAll</span></code> the write path uses, <code class="docutils literal notranslate"><span class="pre">eject</span></code> goes through the OS’s
+<strong>session-level media manager</strong>, so the unprivileged GUI can invoke it with no
+elevation prompt (see the per-backend paths below). It returns <code class="docutils literal notranslate"><span class="pre">DeviceBusy</span></code> if
+a mount cannot be released — the caller must not promise safety it can’t deliver
+— and <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code> where no such manager exists (macOS). The portable
+<code class="docutils literal notranslate"><span class="pre">DriveService::eject</span></code> is the sole gateway to it.</p></li>
 </ul>
 <p><strong>Raw device I/O</strong> (an RAII handle, via <code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code>)</p>
 <p><code class="docutils literal notranslate"><span class="pre">openForWrite</span></code> / <code class="docutils literal notranslate"><span class="pre">openForRead</span></code> open the device and hand back a
@@ -328,6 +337,15 @@ output is localized, so the mountpoint is read back from <code class="docutils l
 parsed from it; the handle unmounts via <code class="docutils literal notranslate"><span class="pre">udisksctl</span></code> on destruction. When udisks2
 is absent (headless / minimal systems) <code class="docutils literal notranslate"><span class="pre">mount</span></code> falls back to <code class="docutils literal notranslate"><span class="pre">mount(2)</span></code> into a
 private temp dir, where the caller is root anyway.</p>
+<p><strong>Ejecting.</strong> <code class="docutils literal notranslate"><span class="pre">eject</span></code> takes the same unprivileged udisks2 + polkit path as
+<code class="docutils literal notranslate"><span class="pre">mount</span></code> (an active session may unmount and power off removable media with no
+prompt), <em>not</em> the root-only <code class="docutils literal notranslate"><span class="pre">umount2</span></code> in <code class="docutils literal notranslate"><span class="pre">unmountAll</span></code>. It scans the drive’s
+subtree with <code class="docutils literal notranslate"><span class="pre">lsblk</span></code> for live mountpoints, <code class="docutils literal notranslate"><span class="pre">udisksctl</span> <span class="pre">unmount</span></code>s each, then
+<strong>re-scans</strong>: if anything is still mounted — a busy filesystem udisks declined to
+release — it reports <code class="docutils literal notranslate"><span class="pre">DeviceBusy</span></code> rather than claim the card is safe to pull.
+Finally it best-effort <code class="docutils literal notranslate"><span class="pre">udisksctl</span> <span class="pre">power-off</span></code>s the whole device so the desktop
+won’t re-mount it before removal; this is unsupported on internal MMC readers,
+where everything being unmounted is already safe to remove.</p>
 </section>
 <hr class="docutils" />
 <section id="privilege">
@@ -437,6 +455,19 @@ identical to Linux; only the thin positioned-I/O primitive (<code class="docutil
 <code class="docutils literal notranslate"><span class="pre">IOCTL_DISK_UPDATE_PROPERTIES</span></code>) is Windows-specific. Raw device access needs an
 elevated prompt; <code class="docutils literal notranslate"><span class="pre">ERROR_ACCESS_DENIED</span></code> maps to <code class="docutils literal notranslate"><span class="pre">PermissionDenied</span></code> with a “run
 as Administrator” hint.</p>
+<p><strong>Ejecting.</strong> <code class="docutils literal notranslate"><span class="pre">eject</span></code> uses <code class="docutils literal notranslate"><span class="pre">CM_Request_Device_Eject</span></code> (<code class="docutils literal notranslate"><span class="pre">cfgmgr32</span></code>) — the
+same PnP path as the shell’s “Safely Remove Hardware”, available to a <strong>standard
+user</strong> for removable devices, unlike the admin-only storage IOCTLs the write path
+runs in the elevated helper. It flushes, dismounts, and powers the device down,
+and <em>vetoes</em> rather than forcing when a file is open. The backend resolves the
+PnP devnode behind <code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDriveN</span></code> by matching the disk interface’s device
+number (the same enumeration as <code class="docutils literal notranslate"><span class="pre">listDrives</span></code>, kept to a zero-access query
+handle so it needs no admin), then walks up to the nearest <strong>removable ancestor</strong>
+— the <code class="docutils literal notranslate"><span class="pre">GenDisk</span></code> node is usually reported fixed, while its reader/USB parent is
+the ejectable unit. A transient handle (an indexer, a just-closed Explorer
+window) can veto the first attempt and then let go, so it retries a few times;
+a persistent veto maps to <code class="docutils literal notranslate"><span class="pre">DeviceBusy</span></code>. This is the Windows analog of Linux’s
+unprivileged udisks eject.</p>
 <p>The C libraries (libarchive, OpenSSL, libcurl) come from vcpkg on Windows; the
 Linux build keeps using the distro packages.</p>
 </section>

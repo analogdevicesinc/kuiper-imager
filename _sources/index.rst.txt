@@ -47,9 +47,10 @@ the ``kli`` CLI on **Linux**:
 - ``list-projects`` / ``configure`` — set up boot files for your eval-board
 - ``list-releases --unstable`` / ``fetch`` — discover and download CI images
 
-The GUI currently lists drives only. Windows and macOS drive backends, the GUI
-wire-up, and the stable (non-CI) release source are postponed but have their
-seams in place — see the :ref:`roadmap`.
+A Qt GUI drives the same core: pick a local or downloaded image, choose a drive,
+and flash / configure / safely eject it (see :ref:`gui-console`). The macOS drive
+backend and the stable (non-CI) release source are postponed but have their seams
+in place — see the :ref:`roadmap`.
 
 ----
 
@@ -83,6 +84,7 @@ Documentation
    how-it-works/customize-pipeline
    how-it-works/platform-backends
    how-it-works/releases-and-sources
+   how-it-works/gui-console
 
 .. toctree::
    :maxdepth: 2

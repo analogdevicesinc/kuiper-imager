@@ -149,3 +149,21 @@ streamed into the output file. ``ImageService`` then maps the final status:
 expired), other non-2xx → ``NetworkFailure``. The fetch pipeline itself — atomic
 ``.part`` rename, the free-space guard, and path-traversal safety — is described
 in :ref:`fetch`.
+
+----
+
+Resolving a Path Without Fetching
+---------------------------------
+
+``ImageService::artifactPath(id, outputDir)`` composes the exact path
+``fetch(id, outputDir)`` *would* write to — without downloading anything. It
+routes to the same provider ``fetch`` would, reads the artifact's canonical
+filename from ``resolve()``, and joins it to ``outputDir`` exactly as the
+into-a-directory branch of ``fetch`` does. For the stable channel this is fully
+offline; for unstable it may cost the one light metadata request ``resolve()``
+already makes.
+
+It deliberately does **not** check whether the file exists — it reports a
+*location*, and the caller tests that path. This is what lets the
+:ref:`GUI <gui-console>` maintain its download cache: it asks where each release
+would live, then detects, reuses, or deletes the file there.

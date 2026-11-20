@@ -42,9 +42,9 @@ The Four Layers
                                         (*planned)
 
 The top layer holds two interchangeable front-ends. ``kli`` is the
-command-line tool; the Qt Widgets GUI is a second front-end that builds today
-but is not yet wired up. Neither contains business logic — they parse input,
-render progress, and translate results for a human.
+command-line tool; the Qt Widgets GUI (see :ref:`gui-console`) is a second
+front-end driving the same core. Neither contains business logic — they parse
+input, render progress, and translate results for a human.
 
 The core, ``libkuiper``, links **Qt Core only** — never Qt Widgets or QML. Its
 public types use ``std::string`` rather than ``QString`` so the API stays
