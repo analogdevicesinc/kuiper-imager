@@ -9,13 +9,12 @@ The Customize Pipeline
    the chroot/qemu model, the RAII teardown, and the testable command seam
 
 Where :ref:`flash <flash-pipeline>` writes an image to a card untouched,
-``customize`` edits the image's *contents*: it materializes a fresh ``.img`` from
-the input (decompressing a ``.zip`` or compressed stream, or copying a raw one),
-loop-mounts it, installs the selected ADI features through apt inside the image's
-chroot, writes the few asset files apt cannot, restamps the image identity, tears
-everything back down, and publishes the result. It is a C++ port of the Kuiper
-build's ``tools/image-customize.sh``, driven by a data-only feature catalog
-instead of a shell script.
+``customize`` edits the image *itself*: it loop-mounts a prebuilt ``.img``,
+installs the selected ADI features through apt inside the image's chroot,
+writes the few asset files apt cannot, restamps the image identity, and tears
+everything back down. It is a C++ port of the Kuiper build's
+``tools/image-customize.sh``, driven by a data-only feature catalog instead of a
+shell script.
 
 This page describes the internals — ``ImageCustomizer`` and its Linux executor.
 For the user-facing commands and flags, see :ref:`customize`.
@@ -45,40 +44,6 @@ buys three things the imager cares about:
   the grow, building the ``chroot``/``apt`` argvs, size-string parsing) live in a
   planning module reused by the real executor and by ``--dry-run``, so the plan
   you preview is the plan that runs.
-
-----
-
-Accepted Formats, Materialize & Publish
----------------------------------------
-
-The input may be a raw ``.img`` or any compressed/zipped form :ref:`flash
-<flash-pipeline>` accepts. Both features share one decode seam
-(``kuiper::image``, see :ref:`core-library`): the codec allowlist, the ZIP sniff,
-and the largest-regular-file selection live there once; flash streams the decoded
-bytes to a device, customize writes them to a file.
-
-So the loop-mount/chroot machinery never has to care where the bytes came from,
-``customize`` runs as three phases:
-
-- **Materialize** — ``extractToFile`` decodes the input into a fresh raw working
-  image at ``<output>.part``. A raw ``.img`` flows through libarchive's ``raw``
-  format untouched; a ``.zip``/compressed input is decompressed. The output path
-  defaults to the input's name with a ``-custom.img`` suffix, overridable.
-- **Edit** — the loop-mount, grow, chroot, feature install, and restamp below,
-  run against the working image.
-- **Publish** — on success, ``sync`` and atomically rename ``<output>.part`` →
-  ``<output>`` (with a cross-filesystem copy fallback).
-
-The working image is removed on *any* failure or cancellation by a ``PublishGuard``
-that commits only after the rename. It must outlive the edit-stage ``Unwind`` so it
-fires *after* the loop device is detached — a half-written output never survives,
-and the input is never touched. This is the same all-or-nothing posture as flash's
-defer-head and fetch's ``.part`` publish.
-
-``--in-place`` is the exception: for a raw ``.img`` it skips Materialize and
-Publish and edits the input directly — the one path that mutates its input, and
-the way to avoid copying a multi-GB image. A compressed or zipped input cannot be
-edited in place (there is nothing to loop-mount) and is rejected up front.
 
 ----
 
@@ -135,8 +100,8 @@ The Pipeline, Step by Step
 --------------------------
 
 ``customize()`` validates cheaply first, then runs a fixed sequence. Everything
-that can fail without touching anything is checked **before** the Materialize
-step, and Materialize/Publish bracket the edit (``--in-place`` skips both).
+that can fail without touching the image is checked **before** the destructive
+grow.
 
 .. list-table::
    :header-rows: 1
@@ -147,9 +112,9 @@ step, and Materialize/Publish bracket the edit (``--in-place`` skips both).
      - What happens
    * - 1
      - Resolve plan
-     - Resolve feature ids against the catalog (unknown id is an error), size the
-       grow, and resolve the output path. A plan needs features, a script, or
-       both; empty on both is a mistake, not a no-op.
+     - Resolve feature ids against the catalog (unknown id is an error) and size
+       the grow. A plan needs features, a script, or both; empty on both is a
+       mistake, not a no-op.
    * - 2
      - Validate script
      - If a custom script was given, confirm it exists and parses under
@@ -157,55 +122,44 @@ step, and Materialize/Publish bracket the edit (``--in-place`` skips both).
        image already mounted and grown. Runs even in ``--dry-run``.
    * - 3
      - Dry run (optional)
-     - If ``--dry-run``, report the computed plan (including the output path) and
-       return. Nothing is touched, as root or not.
+     - If ``--dry-run``, report the computed plan and return. Nothing is touched,
+       as root or not.
    * - 4
      - Precheck
-     - Require root (loop-mount and chroot need it) and a readable input file,
-       reject ``--in-place`` on a non-raw input, and confirm the host tools exist
-       (``losetup``, ``parted``, ``e2fsck``, ``resize2fs``, ``mount``, …).
+     - Require root (loop-mount and chroot need it) and a regular image file, and
+       confirm the host tools exist (``losetup``, ``parted``, ``e2fsck``,
+       ``resize2fs``, ``mount``, ``chroot``, …).
    * - 5
-     - Materialize (unless ``--in-place``)
-     - Reject a same-path or existing output (unless ``--overwrite``), then
-       ``extractToFile`` the input into ``<output>.part``. A ``PublishGuard`` arms
-       to delete it on any later failure.
-   * - 6
      - Attach + read layout
-     - Loop-mount the working image (``-P`` for partition nodes), settle udev,
-       then enumerate partitions by ``blkid`` and classify roles through the
-       shared ``identifyLayout`` — boot/root come from inspection, never a
-       composed node string.
-   * - 7
+     - Loop-mount the image (``-P`` for partition nodes), settle udev, then
+       enumerate partitions by ``blkid`` and classify roles through the shared
+       ``identifyLayout`` — boot/root come from inspection, never a composed node
+       string.
+   * - 6
      - Arch + qemu
      - Determine the image arch and validate the qemu/binfmt posture (see below).
        Both happen before the grow so an unsupported host fails cheaply.
-   * - 8
+   * - 7
      - Grow (optional)
      - Enlarge the image file, ``resizepart`` the rootfs to 100%, ``e2fsck``, and
        ``resize2fs``. Only a **physically last** rootfs can grow (see note).
-   * - 9
+   * - 8
      - Mount + prepare chroot
      - Mount rootfs and boot, bind ``/dev`` ``/proc`` ``/sys`` ``/dev/pts``, stage
        the emulator if needed, and swap in a working ``resolv.conf``.
-   * - 10
+   * - 9
      - Install features
      - ``apt-get update`` once, then install each feature's packages, write its
        files, and run its ``chroot`` snippets — streamed live to the log.
-   * - 11
+   * - 10
      - Run custom script (optional)
      - Copy the host script into the rootfs ``/tmp``, run it as root in the
        prepared chroot (it gets working apt and network for free), then remove it.
        Runs last so packages it installs are reflected in the manifest.
-   * - 12
+   * - 11
      - Restamp + teardown
      - Restamp the image identity (optional), ``sync``, and let the ``Unwind``
        stack restore ``resolv.conf``, remove the emulator, unmount, and detach.
-   * - 13
-     - Publish (unless ``--in-place``)
-     - ``sync`` and atomically rename ``<output>.part`` → ``<output>`` (copy
-       fallback across filesystems), set the output's owner to the input's (so a
-       root-run customize doesn't leave a root-owned image), then the
-       ``PublishGuard`` commits.
 
 .. note::
 
@@ -219,33 +173,21 @@ step, and Materialize/Publish bracket the edit (``--in-place`` skips both).
 Architecture Detection and the Chroot
 --------------------------------------
 
-The Kuiper rootfs is ARM, so apt inside the chroot runs ARM binaries. Whether
-that needs qemu user-mode emulation depends not on whether the *host* is ARM but
-on whether the host can execute the *image's* execution state natively. The
-executor reads ``KUIPER_ARCH`` from the image's ``/etc/kuiper-release`` (mounting
-the rootfs read-only *before* the grow, so it unmounts cleanly leaving nothing
-behind) to pick the emulator — ``arm64`` → ``qemu-aarch64``, ``armhf`` →
-``qemu-arm``. An image without the marker needs ``--arch``.
-
-``arm64`` (AArch64) and ``armhf`` (AArch32) are **different execution states**,
-not interchangeable members of one "ARM" family. A host runs an image natively
-only when their states match: an ``aarch64`` host runs an ``arm64`` image, and a
-32-bit ARM host runs an ``armhf`` image. Every other pairing needs qemu — crucially
-an **``armhf`` image on an ``aarch64`` host** (e.g. a 32-bit Kuiper customized on
-an arm64 Raspberry Pi 5). Such kernels do not run 32-bit binaries at EL0 by
-default — ``execve`` of a 32-bit ELF returns ``ENOEXEC`` — so relying on native
-execution would fail mid-chroot. The executor therefore treats a mismatched state
-exactly like an x86 host and routes it through qemu, rather than gambling on a
-32-bit-userspace kernel option that may not be present.
+The Kuiper rootfs is ARM, so on an x86 host apt inside the chroot runs ARM
+binaries through qemu user-mode emulation. The executor reads ``KUIPER_ARCH``
+from the image's ``/etc/kuiper-release`` (mounting the rootfs read-only *before*
+the grow, so it unmounts cleanly leaving nothing behind) to pick the emulator —
+``arm64`` → ``qemu-aarch64``, ``armhf`` → ``qemu-arm``. An image without the
+marker needs ``--arch``.
 
 The qemu posture is validated without touching the image:
 
-- **Host matches the image's execution state** — native; nothing is needed.
-- **Mismatched state, binfmt with the** ``F`` **(fix_binary) flag** — the default
-  with ``qemu-user-binfmt`` + ``binfmt-support``. The kernel already holds the
+- **Native ARM host** — nothing is needed.
+- **x86 host, binfmt with the** ``F`` **(fix_binary) flag** — the default with
+  ``qemu-user-binfmt`` + ``binfmt-support``. The kernel already holds the
   interpreter open, so the chroot just works; nothing is copied in.
-- **Mismatched state, non-**\ ``F`` **registration** — the interpreter must be
-  copied into the chroot (and removed again on teardown).
+- **x86 host, non-**\ ``F`` **registration** — the interpreter must be copied
+  into the chroot (and removed again on teardown).
 - **binfmt missing or disabled** — fail up front with the exact ``apt install`` /
   ``update-binfmts`` hint, before anything changes.
 

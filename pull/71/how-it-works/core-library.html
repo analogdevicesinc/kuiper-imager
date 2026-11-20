@@ -383,14 +383,6 @@ deliberate performance choice: libcrypto uses the CPU’s SHA extensions where
 present — roughly an order of magnitude faster than Qt’s software hash — which
 turns hashing from a bottleneck into noise on the flash path. The digest is
 computed inline while writing; see <a class="reference internal" href="flash-pipeline.html#flash-pipeline"><span class="std std-ref">The Flash Pipeline</span></a>.</p>
-<p>Image decoding is similarly shared. <code class="docutils literal notranslate"><span class="pre">kuiper::image</span></code> wraps libarchive behind a
-small seam: the deliberate codec allowlist (gzip/xz/zstd/bzip2 + raw + zip, never
-<code class="docutils literal notranslate"><span class="pre">support_format_all</span></code>), the ZIP sniff, the largest-regular-file selection, and
-<code class="docutils literal notranslate"><span class="pre">openDecoded</span></code> — which positions a read handle on the image stream regardless of
-container. Flash drains that handle to a device (deferring the partition-table
-head); customize’s <code class="docutils literal notranslate"><span class="pre">extractToFile</span></code> drains it to a file. One decode brain, two
-sinks, so the accepted-format set can never drift between <a class="reference internal" href="flash-pipeline.html#flash-pipeline"><span class="std std-ref">The Flash Pipeline</span></a>
-and <a class="reference internal" href="customize-pipeline.html#customize-pipeline"><span class="std std-ref">The Customize Pipeline</span></a>.</p>
 </section>
 </section>
 

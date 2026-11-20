@@ -35,12 +35,6 @@ deliberately *not* used: the tar and ISO readers can mis-bid on a raw disk
 image and silently mangle it. A missing codec is reported up front rather than
 mid-stream.
 
-This decode logic lives in the shared ``kuiper::image`` seam (see
-:ref:`core-library`), not in ``flash()`` itself: :ref:`customize-pipeline` reuses
-the very same opener and ZIP selection to materialize an image to a file, so the
-two features can never disagree about which inputs are accepted. Only the
-defer-head body streaming below is flash-specific.
-
 A ``.zip`` is handled specially. The file is sniffed for the ZIP magic
 (``PK\x03\x04``), then its central directory is scanned and the single largest
 regular file is chosen as the image. If two or more entries are each larger than

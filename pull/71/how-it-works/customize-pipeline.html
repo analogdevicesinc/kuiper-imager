@@ -95,7 +95,6 @@
           <ul>
 <li><a class="reference internal" href="#">The Customize Pipeline</a><ul>
 <li><a class="reference internal" href="#why-a-port-not-a-shell-out">Why a Port, Not a Shell-Out</a></li>
-<li><a class="reference internal" href="#accepted-formats-materialize-publish">Accepted Formats, Materialize &amp; Publish</a></li>
 <li><a class="reference internal" href="#the-feature-catalog">The Feature Catalog</a><ul>
 <li><a class="reference internal" href="#vendored-assets">Vendored assets</a></li>
 </ul>
@@ -199,13 +198,12 @@ Content on this topic
   <section id="the-customize-pipeline">
 <span id="customize-pipeline"></span><h1>The Customize Pipeline<a class="headerlink" href="#the-customize-pipeline" title="Link to this heading"></a></h1>
 <p>Where <a class="reference internal" href="flash-pipeline.html#flash-pipeline"><span class="std std-ref">flash</span></a> writes an image to a card untouched,
-<code class="docutils literal notranslate"><span class="pre">customize</span></code> edits the image’s <em>contents</em>: it materializes a fresh <code class="docutils literal notranslate"><span class="pre">.img</span></code> from
-the input (decompressing a <code class="docutils literal notranslate"><span class="pre">.zip</span></code> or compressed stream, or copying a raw one),
-loop-mounts it, installs the selected ADI features through apt inside the image’s
-chroot, writes the few asset files apt cannot, restamps the image identity, tears
-everything back down, and publishes the result. It is a C++ port of the Kuiper
-build’s <code class="docutils literal notranslate"><span class="pre">tools/image-customize.sh</span></code>, driven by a data-only feature catalog
-instead of a shell script.</p>
+<code class="docutils literal notranslate"><span class="pre">customize</span></code> edits the image <em>itself</em>: it loop-mounts a prebuilt <code class="docutils literal notranslate"><span class="pre">.img</span></code>,
+installs the selected ADI features through apt inside the image’s chroot,
+writes the few asset files apt cannot, restamps the image identity, and tears
+everything back down. It is a C++ port of the Kuiper build’s
+<code class="docutils literal notranslate"><span class="pre">tools/image-customize.sh</span></code>, driven by a data-only feature catalog instead of a
+shell script.</p>
 <p>This page describes the internals — <code class="docutils literal notranslate"><span class="pre">ImageCustomizer</span></code> and its Linux executor.
 For the user-facing commands and flags, see <a class="reference internal" href="../using-the-cli/customize.html#customize"><span class="std std-ref">Customize: Add ADI Features to an Image</span></a>.</p>
 <hr class="docutils" />
@@ -232,35 +230,6 @@ the grow, building the <code class="docutils literal notranslate"><span class="p
 planning module reused by the real executor and by <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>, so the plan
 you preview is the plan that runs.</p></li>
 </ul>
-</section>
-<hr class="docutils" />
-<section id="accepted-formats-materialize-publish">
-<h2>Accepted Formats, Materialize &amp; Publish<a class="headerlink" href="#accepted-formats-materialize-publish" title="Link to this heading"></a></h2>
-<p>The input may be a raw <code class="docutils literal notranslate"><span class="pre">.img</span></code> or any compressed/zipped form <a class="reference internal" href="flash-pipeline.html#flash-pipeline"><span class="std std-ref">flash</span></a> accepts. Both features share one decode seam
-(<code class="docutils literal notranslate"><span class="pre">kuiper::image</span></code>, see <a class="reference internal" href="core-library.html#core-library"><span class="std std-ref">Core Library (libkuiper)</span></a>): the codec allowlist, the ZIP sniff,
-and the largest-regular-file selection live there once; flash streams the decoded
-bytes to a device, customize writes them to a file.</p>
-<p>So the loop-mount/chroot machinery never has to care where the bytes came from,
-<code class="docutils literal notranslate"><span class="pre">customize</span></code> runs as three phases:</p>
-<ul class="simple">
-<li><p><strong>Materialize</strong> — <code class="docutils literal notranslate"><span class="pre">extractToFile</span></code> decodes the input into a fresh raw working
-image at <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;.part</span></code>. A raw <code class="docutils literal notranslate"><span class="pre">.img</span></code> flows through libarchive’s <code class="docutils literal notranslate"><span class="pre">raw</span></code>
-format untouched; a <code class="docutils literal notranslate"><span class="pre">.zip</span></code>/compressed input is decompressed. The output path
-defaults to the input’s name with a <code class="docutils literal notranslate"><span class="pre">-custom.img</span></code> suffix, overridable.</p></li>
-<li><p><strong>Edit</strong> — the loop-mount, grow, chroot, feature install, and restamp below,
-run against the working image.</p></li>
-<li><p><strong>Publish</strong> — on success, <code class="docutils literal notranslate"><span class="pre">sync</span></code> and atomically rename <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;.part</span></code> →
-<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;</span></code> (with a cross-filesystem copy fallback).</p></li>
-</ul>
-<p>The working image is removed on <em>any</em> failure or cancellation by a <code class="docutils literal notranslate"><span class="pre">PublishGuard</span></code>
-that commits only after the rename. It must outlive the edit-stage <code class="docutils literal notranslate"><span class="pre">Unwind</span></code> so it
-fires <em>after</em> the loop device is detached — a half-written output never survives,
-and the input is never touched. This is the same all-or-nothing posture as flash’s
-defer-head and fetch’s <code class="docutils literal notranslate"><span class="pre">.part</span></code> publish.</p>
-<p><code class="docutils literal notranslate"><span class="pre">--in-place</span></code> is the exception: for a raw <code class="docutils literal notranslate"><span class="pre">.img</span></code> it skips Materialize and
-Publish and edits the input directly — the one path that mutates its input, and
-the way to avoid copying a multi-GB image. A compressed or zipped input cannot be
-edited in place (there is nothing to loop-mount) and is rejected up front.</p>
 </section>
 <hr class="docutils" />
 <section id="the-feature-catalog">
@@ -322,8 +291,8 @@ file’s arch restriction.</p>
 <section id="the-pipeline-step-by-step">
 <h2>The Pipeline, Step by Step<a class="headerlink" href="#the-pipeline-step-by-step" title="Link to this heading"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">customize()</span></code> validates cheaply first, then runs a fixed sequence. Everything
-that can fail without touching anything is checked <strong>before</strong> the Materialize
-step, and Materialize/Publish bracket the edit (<code class="docutils literal notranslate"><span class="pre">--in-place</span></code> skips both).</p>
+that can fail without touching the image is checked <strong>before</strong> the destructive
+grow.</p>
 <div class="table-wrapper colwidths-given docutils container">
 <table class="docutils align-default">
 <colgroup>
@@ -340,9 +309,9 @@ step, and Materialize/Publish bracket the edit (<code class="docutils literal no
 <tbody>
 <tr class="row-even"><td><p>1</p></td>
 <td><p>Resolve plan</p></td>
-<td><p>Resolve feature ids against the catalog (unknown id is an error), size the
-grow, and resolve the output path. A plan needs features, a script, or
-both; empty on both is a mistake, not a no-op.</p></td>
+<td><p>Resolve feature ids against the catalog (unknown id is an error) and size
+the grow. A plan needs features, a script, or both; empty on both is a
+mistake, not a no-op.</p></td>
 </tr>
 <tr class="row-odd"><td><p>2</p></td>
 <td><p>Validate script</p></td>
@@ -352,65 +321,52 @@ image already mounted and grown. Runs even in <code class="docutils literal notr
 </tr>
 <tr class="row-even"><td><p>3</p></td>
 <td><p>Dry run (optional)</p></td>
-<td><p>If <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>, report the computed plan (including the output path) and
-return. Nothing is touched, as root or not.</p></td>
+<td><p>If <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>, report the computed plan and return. Nothing is touched,
+as root or not.</p></td>
 </tr>
 <tr class="row-odd"><td><p>4</p></td>
 <td><p>Precheck</p></td>
-<td><p>Require root (loop-mount and chroot need it) and a readable input file,
-reject <code class="docutils literal notranslate"><span class="pre">--in-place</span></code> on a non-raw input, and confirm the host tools exist
-(<code class="docutils literal notranslate"><span class="pre">losetup</span></code>, <code class="docutils literal notranslate"><span class="pre">parted</span></code>, <code class="docutils literal notranslate"><span class="pre">e2fsck</span></code>, <code class="docutils literal notranslate"><span class="pre">resize2fs</span></code>, <code class="docutils literal notranslate"><span class="pre">mount</span></code>, …).</p></td>
+<td><p>Require root (loop-mount and chroot need it) and a regular image file, and
+confirm the host tools exist (<code class="docutils literal notranslate"><span class="pre">losetup</span></code>, <code class="docutils literal notranslate"><span class="pre">parted</span></code>, <code class="docutils literal notranslate"><span class="pre">e2fsck</span></code>,
+<code class="docutils literal notranslate"><span class="pre">resize2fs</span></code>, <code class="docutils literal notranslate"><span class="pre">mount</span></code>, <code class="docutils literal notranslate"><span class="pre">chroot</span></code>, …).</p></td>
 </tr>
 <tr class="row-even"><td><p>5</p></td>
-<td><p>Materialize (unless <code class="docutils literal notranslate"><span class="pre">--in-place</span></code>)</p></td>
-<td><p>Reject a same-path or existing output (unless <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>), then
-<code class="docutils literal notranslate"><span class="pre">extractToFile</span></code> the input into <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;.part</span></code>. A <code class="docutils literal notranslate"><span class="pre">PublishGuard</span></code> arms
-to delete it on any later failure.</p></td>
+<td><p>Attach + read layout</p></td>
+<td><p>Loop-mount the image (<code class="docutils literal notranslate"><span class="pre">-P</span></code> for partition nodes), settle udev, then
+enumerate partitions by <code class="docutils literal notranslate"><span class="pre">blkid</span></code> and classify roles through the shared
+<code class="docutils literal notranslate"><span class="pre">identifyLayout</span></code> — boot/root come from inspection, never a composed node
+string.</p></td>
 </tr>
 <tr class="row-odd"><td><p>6</p></td>
-<td><p>Attach + read layout</p></td>
-<td><p>Loop-mount the working image (<code class="docutils literal notranslate"><span class="pre">-P</span></code> for partition nodes), settle udev,
-then enumerate partitions by <code class="docutils literal notranslate"><span class="pre">blkid</span></code> and classify roles through the
-shared <code class="docutils literal notranslate"><span class="pre">identifyLayout</span></code> — boot/root come from inspection, never a
-composed node string.</p></td>
-</tr>
-<tr class="row-even"><td><p>7</p></td>
 <td><p>Arch + qemu</p></td>
 <td><p>Determine the image arch and validate the qemu/binfmt posture (see below).
 Both happen before the grow so an unsupported host fails cheaply.</p></td>
 </tr>
-<tr class="row-odd"><td><p>8</p></td>
+<tr class="row-even"><td><p>7</p></td>
 <td><p>Grow (optional)</p></td>
 <td><p>Enlarge the image file, <code class="docutils literal notranslate"><span class="pre">resizepart</span></code> the rootfs to 100%, <code class="docutils literal notranslate"><span class="pre">e2fsck</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">resize2fs</span></code>. Only a <strong>physically last</strong> rootfs can grow (see note).</p></td>
 </tr>
-<tr class="row-even"><td><p>9</p></td>
+<tr class="row-odd"><td><p>8</p></td>
 <td><p>Mount + prepare chroot</p></td>
 <td><p>Mount rootfs and boot, bind <code class="docutils literal notranslate"><span class="pre">/dev</span></code> <code class="docutils literal notranslate"><span class="pre">/proc</span></code> <code class="docutils literal notranslate"><span class="pre">/sys</span></code> <code class="docutils literal notranslate"><span class="pre">/dev/pts</span></code>, stage
 the emulator if needed, and swap in a working <code class="docutils literal notranslate"><span class="pre">resolv.conf</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p>10</p></td>
+<tr class="row-even"><td><p>9</p></td>
 <td><p>Install features</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">apt-get</span> <span class="pre">update</span></code> once, then install each feature’s packages, write its
 files, and run its <code class="docutils literal notranslate"><span class="pre">chroot</span></code> snippets — streamed live to the log.</p></td>
 </tr>
-<tr class="row-even"><td><p>11</p></td>
+<tr class="row-odd"><td><p>10</p></td>
 <td><p>Run custom script (optional)</p></td>
 <td><p>Copy the host script into the rootfs <code class="docutils literal notranslate"><span class="pre">/tmp</span></code>, run it as root in the
 prepared chroot (it gets working apt and network for free), then remove it.
 Runs last so packages it installs are reflected in the manifest.</p></td>
 </tr>
-<tr class="row-odd"><td><p>12</p></td>
+<tr class="row-even"><td><p>11</p></td>
 <td><p>Restamp + teardown</p></td>
 <td><p>Restamp the image identity (optional), <code class="docutils literal notranslate"><span class="pre">sync</span></code>, and let the <code class="docutils literal notranslate"><span class="pre">Unwind</span></code>
 stack restore <code class="docutils literal notranslate"><span class="pre">resolv.conf</span></code>, remove the emulator, unmount, and detach.</p></td>
-</tr>
-<tr class="row-even"><td><p>13</p></td>
-<td><p>Publish (unless <code class="docutils literal notranslate"><span class="pre">--in-place</span></code>)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">sync</span></code> and atomically rename <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;.part</span></code> → <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;</span></code> (copy
-fallback across filesystems), set the output’s owner to the input’s (so a
-root-run customize doesn’t leave a root-owned image), then the
-<code class="docutils literal notranslate"><span class="pre">PublishGuard</span></code> commits.</p></td>
 </tr>
 </tbody>
 </table>
@@ -426,31 +382,20 @@ can grow into trailing free space. The executor finds it from <code class="docut
 <hr class="docutils" />
 <section id="architecture-detection-and-the-chroot">
 <h2>Architecture Detection and the Chroot<a class="headerlink" href="#architecture-detection-and-the-chroot" title="Link to this heading"></a></h2>
-<p>The Kuiper rootfs is ARM, so apt inside the chroot runs ARM binaries. Whether
-that needs qemu user-mode emulation depends not on whether the <em>host</em> is ARM but
-on whether the host can execute the <em>image’s</em> execution state natively. The
-executor reads <code class="docutils literal notranslate"><span class="pre">KUIPER_ARCH</span></code> from the image’s <code class="docutils literal notranslate"><span class="pre">/etc/kuiper-release</span></code> (mounting
-the rootfs read-only <em>before</em> the grow, so it unmounts cleanly leaving nothing
-behind) to pick the emulator — <code class="docutils literal notranslate"><span class="pre">arm64</span></code> → <code class="docutils literal notranslate"><span class="pre">qemu-aarch64</span></code>, <code class="docutils literal notranslate"><span class="pre">armhf</span></code> →
-<code class="docutils literal notranslate"><span class="pre">qemu-arm</span></code>. An image without the marker needs <code class="docutils literal notranslate"><span class="pre">--arch</span></code>.</p>
-<p><code class="docutils literal notranslate"><span class="pre">arm64</span></code> (AArch64) and <code class="docutils literal notranslate"><span class="pre">armhf</span></code> (AArch32) are <strong>different execution states</strong>,
-not interchangeable members of one “ARM” family. A host runs an image natively
-only when their states match: an <code class="docutils literal notranslate"><span class="pre">aarch64</span></code> host runs an <code class="docutils literal notranslate"><span class="pre">arm64</span></code> image, and a
-32-bit ARM host runs an <code class="docutils literal notranslate"><span class="pre">armhf</span></code> image. Every other pairing needs qemu — crucially
-an <strong>``armhf`` image on an ``aarch64`` host</strong> (e.g. a 32-bit Kuiper customized on
-an arm64 Raspberry Pi 5). Such kernels do not run 32-bit binaries at EL0 by
-default — <code class="docutils literal notranslate"><span class="pre">execve</span></code> of a 32-bit ELF returns <code class="docutils literal notranslate"><span class="pre">ENOEXEC</span></code> — so relying on native
-execution would fail mid-chroot. The executor therefore treats a mismatched state
-exactly like an x86 host and routes it through qemu, rather than gambling on a
-32-bit-userspace kernel option that may not be present.</p>
+<p>The Kuiper rootfs is ARM, so on an x86 host apt inside the chroot runs ARM
+binaries through qemu user-mode emulation. The executor reads <code class="docutils literal notranslate"><span class="pre">KUIPER_ARCH</span></code>
+from the image’s <code class="docutils literal notranslate"><span class="pre">/etc/kuiper-release</span></code> (mounting the rootfs read-only <em>before</em>
+the grow, so it unmounts cleanly leaving nothing behind) to pick the emulator —
+<code class="docutils literal notranslate"><span class="pre">arm64</span></code> → <code class="docutils literal notranslate"><span class="pre">qemu-aarch64</span></code>, <code class="docutils literal notranslate"><span class="pre">armhf</span></code> → <code class="docutils literal notranslate"><span class="pre">qemu-arm</span></code>. An image without the
+marker needs <code class="docutils literal notranslate"><span class="pre">--arch</span></code>.</p>
 <p>The qemu posture is validated without touching the image:</p>
 <ul class="simple">
-<li><p><strong>Host matches the image’s execution state</strong> — native; nothing is needed.</p></li>
-<li><p><strong>Mismatched state, binfmt with the</strong> <code class="docutils literal notranslate"><span class="pre">F</span></code> <strong>(fix_binary) flag</strong> — the default
-with <code class="docutils literal notranslate"><span class="pre">qemu-user-binfmt</span></code> + <code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code>. The kernel already holds the
+<li><p><strong>Native ARM host</strong> — nothing is needed.</p></li>
+<li><p><strong>x86 host, binfmt with the</strong> <code class="docutils literal notranslate"><span class="pre">F</span></code> <strong>(fix_binary) flag</strong> — the default with
+<code class="docutils literal notranslate"><span class="pre">qemu-user-binfmt</span></code> + <code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code>. The kernel already holds the
 interpreter open, so the chroot just works; nothing is copied in.</p></li>
-<li><p><strong>Mismatched state, non-</strong><code class="docutils literal notranslate"><span class="pre">F</span></code> <strong>registration</strong> — the interpreter must be
-copied into the chroot (and removed again on teardown).</p></li>
+<li><p><strong>x86 host, non-</strong><code class="docutils literal notranslate"><span class="pre">F</span></code> <strong>registration</strong> — the interpreter must be copied
+into the chroot (and removed again on teardown).</p></li>
 <li><p><strong>binfmt missing or disabled</strong> — fail up front with the exact <code class="docutils literal notranslate"><span class="pre">apt</span> <span class="pre">install</span></code> /
 <code class="docutils literal notranslate"><span class="pre">update-binfmts</span></code> hint, before anything changes.</p></li>
 </ul>
