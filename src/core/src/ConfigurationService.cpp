@@ -102,6 +102,56 @@ std::string resolveSource(const std::string& manifestPath,
     return manifestPath;
 }
 
+std::uint64_t preflightOps(const std::vector<CopyOp>& ops,
+                           const std::string& missingLabel,
+                           const std::string& missingHint,
+                           Result<void>& err) {
+    std::uint64_t total = 0;
+    for (const CopyOp& op : ops) {
+        std::error_code ec;
+        if (!fs::is_regular_file(op.source, ec)) {
+            err = Err(ErrorCode::NotFound, missingLabel + op.source, missingHint);
+            return 0;
+        }
+        total += fs::file_size(op.source, ec);
+    }
+    return total;
+}
+
+Result<void> copyOps(const std::vector<CopyOp>& ops,
+                     ProgressFn& onProgress,
+                     std::uint64_t& doneBytes,
+                     std::uint64_t totalBytes) {
+    for (const CopyOp& op : ops) {
+        if (onProgress) {
+            Progress p;
+            p.phase = Progress::Phase::Configuring;
+            p.bytesDone = doneBytes;
+            p.bytesTotal = totalBytes;
+            p.fraction = totalBytes
+                             ? static_cast<double>(doneBytes) / totalBytes
+                             : 0.0;
+            p.message = fs::path(op.dest).filename().string();
+            onProgress(p);
+        }
+
+        std::error_code cec;
+        fs::copy_file(op.source, op.dest,
+                      fs::copy_options::overwrite_existing, cec);
+        if (cec) {
+            ErrorCode code = ErrorCode::Unknown;
+            if (cec.value() == EACCES) code = ErrorCode::PermissionDenied;
+            else if (cec.value() == ENOSPC) code = ErrorCode::DiskFull;
+            return Err(code, "Failed to copy file to " + op.dest,
+                       cec.message());
+        }
+
+        std::error_code sz;
+        doneBytes += fs::file_size(op.source, sz);
+    }
+    return {};
+}
+
 }  // namespace
 
 Result<KuiperRelease> ConfigurationService::readRelease(
@@ -263,23 +313,24 @@ Result<ConfigureSummary> ConfigurationService::configureProject(
         summary.preloader = preloaderSource;
     }
 
+    for (const std::string& f : opts.extraFiles) {
+        summary.extraFiles.push_back(CopyOp{
+            f,
+            (fs::path(bootPath) / fs::path(f).filename()).string(),
+        });
+    }
+
     if (opts.dryRun) return summary;
 
     // Preflight: every source must exist before we copy anything, so a bad
     // manifest never leaves a half-configured card. For intel, the preloader is
     // part of the all-or-nothing check.
-    std::uint64_t totalBytes = 0;
-    for (const CopyOp& op : summary.files) {
-        std::error_code sec;
-        if (!fs::is_regular_file(op.source, sec)) {
-            return Err(ErrorCode::NotFound,
-                       "Boot file listed in the manifest is missing on the "
-                       "card: " +
-                           op.source,
-                       "The card may be incomplete or from a different image.");
-        }
-        totalBytes += fs::file_size(op.source, sec);
-    }
+    Result<void> pfErr;
+    std::uint64_t totalBytes = preflightOps(
+        summary.files,
+        "Boot file listed in the manifest is missing on the card: ",
+        "The card may be incomplete or from a different image.", pfErr);
+    if (!pfErr) return std::unexpected(pfErr.error());
     if (isIntel) {
         std::error_code sec;
         if (preloaderSource.empty() ||
@@ -292,37 +343,18 @@ Result<ConfigureSummary> ConfigurationService::configureProject(
                        "The card may be incomplete or from a different image.");
         }
     }
+    totalBytes += preflightOps(
+        summary.extraFiles,
+        "Local file is missing: ",
+        "Check the path and try again.", pfErr);
+    if (!pfErr) return std::unexpected(pfErr.error());
 
     // Copy each into the boot-partition root, overwriting, with live progress.
     std::uint64_t doneBytes = 0;
-    for (const CopyOp& op : summary.files) {
-        if (onProgress) {
-            Progress p;
-            p.phase = Progress::Phase::Configuring;
-            p.bytesDone = doneBytes;
-            p.bytesTotal = totalBytes;
-            p.fraction =
-                totalBytes ? static_cast<double>(doneBytes) / totalBytes : 0.0;
-            p.message = fs::path(op.dest).filename().string();
-            onProgress(p);
-        }
-
-        std::error_code cec;
-        fs::copy_file(op.source, op.dest, fs::copy_options::overwrite_existing,
-                      cec);
-        if (cec) {
-            ErrorCode code = ErrorCode::Unknown;
-            if (cec.value() == EACCES)
-                code = ErrorCode::PermissionDenied;
-            else if (cec.value() == ENOSPC)
-                code = ErrorCode::DiskFull;
-            return Err(code, "Failed to copy boot file to " + op.dest,
-                       cec.message());
-        }
-
-        std::error_code sz;
-        doneBytes += fs::file_size(op.source, sz);
-    }
+    if (auto r = copyOps(summary.files, onProgress, doneBytes, totalBytes); !r)
+        return std::unexpected(r.error());
+    if (auto r = copyOps(summary.extraFiles, onProgress, doneBytes, totalBytes); !r)
+        return std::unexpected(r.error());
 
     if (isIntel) {
         // Intel boots via extlinux: the config lives in extlinux/, not the root.
@@ -350,6 +382,49 @@ Result<ConfigureSummary> ConfigurationService::configureProject(
     // Non-intel boards must not carry a stale extlinux/ from a prior intel config.
     // Best-effort — absence is fine.
     fs::remove_all(fs::path(bootPath) / "extlinux", ec);
+
+    if (onProgress) {
+        Progress p;
+        p.phase = Progress::Phase::Done;
+        p.bytesDone = totalBytes;
+        p.bytesTotal = totalBytes;
+        p.fraction = 1.0;
+        onProgress(p);
+    }
+    return summary;
+}
+
+Result<ConfigureSummary> ConfigurationService::copyLocalFiles(
+    const std::string& bootPath, const std::vector<std::string>& files,
+    bool dryRun, ProgressFn onProgress) {
+    std::error_code ec;
+    if (!fs::is_directory(bootPath, ec)) {
+        return Err(ErrorCode::NotKuiper2,
+                   "Not a Kuiper boot partition: " + bootPath,
+                   "Expected the mounted BOOT partition of the card.");
+    }
+
+    ConfigureSummary summary;
+    summary.dryRun = dryRun;
+    for (const std::string& f : files) {
+        summary.extraFiles.push_back(CopyOp{
+            f,
+            (fs::path(bootPath) / fs::path(f).filename()).string(),
+        });
+    }
+
+    if (dryRun) return summary;
+
+    Result<void> pfErr;
+    std::uint64_t totalBytes = preflightOps(
+        summary.extraFiles,
+        "Local file is missing: ",
+        "Check the path and try again.", pfErr);
+    if (!pfErr) return std::unexpected(pfErr.error());
+
+    std::uint64_t doneBytes = 0;
+    if (auto r = copyOps(summary.extraFiles, onProgress, doneBytes, totalBytes); !r)
+        return std::unexpected(r.error());
 
     if (onProgress) {
         Progress p;
