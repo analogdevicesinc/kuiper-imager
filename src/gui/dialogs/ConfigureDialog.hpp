@@ -14,6 +14,7 @@
 
 #include <QDialog>
 #include <QString>
+#include <QStringList>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -21,6 +22,7 @@
 #include "kuiper/ConfigurationService.hpp"
 #include "kuiper/Project.hpp"
 
+class QLabel;
 class QTableWidget;
 class KuiperSegmentedControl;
 class KuiperBanner;
@@ -67,6 +69,11 @@ private:
     KuiperButton* previewBtn_;
     KuiperButton* applyBtn_;
     KuiperButton* closeBtn_;
+
+    QStringList bootFiles_;       // host files to copy into BOOT
+    KuiperButton* bootFileBtn_;     // opens a file picker
+    QLabel* bootFileLabel_;      // shows selected filenames
+    KuiperButton* bootFileClear_;   // clears the list
 
     // Result holder shared with the worker job.
     std::shared_ptr<std::optional<kuiper::Result<kuiper::ConfigureSummary>>>
