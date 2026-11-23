@@ -41,6 +41,7 @@ struct KuiperRelease {
 // Options for configureProject.
 struct ConfigureOptions {
     bool dryRun = false;  // compute the copy plan without touching the card
+    std::vector<std::string> extraFiles;  // host paths copied into boot root
 };
 
 // One boot file that configure copies into the boot-partition root.
@@ -52,6 +53,8 @@ struct CopyOp {
 // What configureProject did (or, in dry-run, would do).
 struct ConfigureSummary {
     std::vector<CopyOp> files;
+    std::vector<CopyOp>
+        extraFiles;  // host-to-boot copies from ConfigureOptions
     bool dryRun = false;
     std::optional<std::string> preloader;  // resolved source, intel only
 };
@@ -91,6 +94,10 @@ public:
         const std::string& bootPath, const Project& project,
         const ConfigureOptions& opts = {}, ProgressFn onProgress = {},
         PreloaderSink writePreloader = {});
+
+    Result<ConfigureSummary> copyLocalFiles(
+        const std::string& bootPath, const std::vector<std::string>& files,
+        bool dryRun = false, ProgressFn onProgress = {});
 
     const char* backendName() const noexcept;
 };
