@@ -5,12 +5,12 @@
 class QButtonGroup;
 class QHBoxLayout;
 
-// Harmonic segmented-control: a row of mutually-exclusive options inside a
+// segmented-control: a row of mutually-exclusive options inside a
 // bordered frame. Used for small either/or choices (e.g. Local file / Download).
-class HmcSegmentedControl : public QWidget {
+class KuiperSegmentedControl : public QWidget {
     Q_OBJECT
 public:
-    explicit HmcSegmentedControl(QWidget* parent = nullptr);
+    explicit KuiperSegmentedControl(QWidget* parent = nullptr);
 
     // Add a segment; `value` is returned by value()/emitted by valueChanged.
     void addSegment(const QString& text, const QString& value);

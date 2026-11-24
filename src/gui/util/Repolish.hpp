@@ -10,7 +10,7 @@ namespace kuiper::gui {
 // keys selectors on those properties (e.g. [status="danger"]).
 //
 // Descendants are re-polished too: selectors such as
-// `QFrame[hmcBanner="true"][status="danger"] QLabel` style a *child* by its
+// `QFrame[kuiperBanner="true"][status="danger"] QLabel` style a *child* by its
 // parent's property, and Qt only re-resolves the widget it is asked to polish.
 inline void repolish(QWidget* w) {
     QStyle* style = w->style();

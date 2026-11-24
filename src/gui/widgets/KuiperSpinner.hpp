@@ -5,15 +5,15 @@
 
 class QTimer;
 
-// Harmonic spinner: an indeterminate rotating arc. size is "sm" (16px) or "md"
+// spinner: an indeterminate rotating arc. size is "sm" (16px) or "md"
 // (24px). The arc colour is a styleable property (qproperty-arcColor in the
 // generated QSS) so it tracks the active theme like every other widget; it
 // defaults to the light interactive-primary token as a fallback.
-class HmcSpinner : public QWidget {
+class KuiperSpinner : public QWidget {
     Q_OBJECT
     Q_PROPERTY(QColor arcColor READ arcColor WRITE setArcColor)
 public:
-    explicit HmcSpinner(const QString& size = "sm", QWidget* parent = nullptr);
+    explicit KuiperSpinner(const QString& size = "sm", QWidget* parent = nullptr);
 
     QColor arcColor() const { return arcColor_; }
     void setArcColor(const QColor& c) {

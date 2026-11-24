@@ -10,10 +10,10 @@
 #include "kuiper/Project.hpp"
 
 class QTableWidget;
-class HmcSegmentedControl;
-class HmcBanner;
-class HmcButton;
-class HmcProgressBar;
+class KuiperSegmentedControl;
+class KuiperBanner;
+class KuiperButton;
+class KuiperProgressBar;
 class BackgroundTask;
 
 // Modal project picker + applier for a flashed Kuiper 2 card. Given the mounted
@@ -47,14 +47,14 @@ private:
     BackgroundTask* task_;
 
     QString platformFilter_ = "all";
-    HmcSegmentedControl* filter_;
+    KuiperSegmentedControl* filter_;
     QTableWidget* table_;
-    HmcBanner* intelWarning_;
-    HmcBanner* result_;
-    HmcProgressBar* progress_;
-    HmcButton* previewBtn_;
-    HmcButton* applyBtn_;
-    HmcButton* closeBtn_;
+    KuiperBanner* intelWarning_;
+    KuiperBanner* result_;
+    KuiperProgressBar* progress_;
+    KuiperButton* previewBtn_;
+    KuiperButton* applyBtn_;
+    KuiperButton* closeBtn_;
 
     // Result holder shared with the worker job.
     std::shared_ptr<std::optional<kuiper::Result<kuiper::ConfigureSummary>>> out_;

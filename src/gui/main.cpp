@@ -9,7 +9,7 @@
 
 namespace {
 
-// Register any bundled OFL fonts (Barlow headings, Inter body) so the Harmonic
+// Register any bundled OFL fonts (Barlow headings, Inter body) so the
 // typography renders true to ADI instead of a system fallback. No-op until the
 // TTFs are added under theme/fonts/ and listed in theme.qrc.
 void loadBundledFonts() {

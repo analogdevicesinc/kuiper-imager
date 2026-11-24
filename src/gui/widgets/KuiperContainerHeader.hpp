@@ -4,12 +4,12 @@
 
 class QLabel;
 
-// Harmonic container-header: a heading with an optional subtitle, used at the top
+// container-header: a heading with an optional subtitle, used at the top
 // of cards and screen sections.
-class HmcContainerHeader : public QWidget {
+class KuiperContainerHeader : public QWidget {
     Q_OBJECT
 public:
-    explicit HmcContainerHeader(const QString& heading,
+    explicit KuiperContainerHeader(const QString& heading,
                                 const QString& subtitle = QString(),
                                 QWidget* parent = nullptr);
 

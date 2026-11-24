@@ -9,11 +9,11 @@
 #include <QVBoxLayout>
 
 #include "task/BackgroundTask.hpp"
-#include "widgets/HmcBanner.hpp"
-#include "widgets/HmcButton.hpp"
-#include "widgets/HmcContainerHeader.hpp"
-#include "widgets/HmcProgressBar.hpp"
-#include "widgets/HmcSegmentedControl.hpp"
+#include "widgets/KuiperBanner.hpp"
+#include "widgets/KuiperButton.hpp"
+#include "widgets/KuiperContainerHeader.hpp"
+#include "widgets/KuiperProgressBar.hpp"
+#include "widgets/KuiperSegmentedControl.hpp"
 
 ConfigureDialog::ConfigureDialog(const QString& bootPath,
                                  std::vector<kuiper::Project> projects,
@@ -34,15 +34,15 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
     col->setContentsMargins(24, 24, 24, 24);
     col->setSpacing(16);
 
-    col->addWidget(new HmcContainerHeader(
+    col->addWidget(new KuiperContainerHeader(
         "Configure card", "Select the project for your target hardware."));
 
-    filter_ = new HmcSegmentedControl(this);
+    filter_ = new KuiperSegmentedControl(this);
     filter_->addSegment("All", "all");
     filter_->addSegment("Xilinx", "xilinx");
     filter_->addSegment("Intel", "intel");
     filter_->addSegment("RPi", "rpi");
-    connect(filter_, &HmcSegmentedControl::valueChanged, this,
+    connect(filter_, &KuiperSegmentedControl::valueChanged, this,
             [this](const QString& v) {
                 platformFilter_ = v;
                 rebuildTable();
@@ -61,18 +61,18 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
             &ConfigureDialog::onSelectionChanged);
     col->addWidget(table_, 1);
 
-    intelWarning_ = new HmcBanner(
+    intelWarning_ = new KuiperBanner(
         "warning", "This Intel project also writes a preloader.",
         "A raw preloader image will be written to the card's bootloader "
         "partition in addition to copying the boot files.");
     intelWarning_->setVisible(false);
     col->addWidget(intelWarning_);
 
-    result_ = new HmcBanner("info", QString());
+    result_ = new KuiperBanner("info", QString());
     result_->setVisible(false);
     col->addWidget(result_);
 
-    progress_ = new HmcProgressBar(this);
+    progress_ = new KuiperProgressBar(this);
     progress_->setVisible(false);
     col->addWidget(progress_);
 
@@ -118,17 +118,17 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
     });
 
     auto* buttons = new QHBoxLayout();
-    closeBtn_ = new HmcButton("Cancel");
+    closeBtn_ = new KuiperButton("Cancel");
     closeBtn_->setKind("ghost");
-    connect(closeBtn_, &HmcButton::clicked, this, &QDialog::reject);
+    connect(closeBtn_, &KuiperButton::clicked, this, &QDialog::reject);
     buttons->addWidget(closeBtn_);
     buttons->addStretch(1);
-    previewBtn_ = new HmcButton("Preview changes");
+    previewBtn_ = new KuiperButton("Preview changes");
     previewBtn_->setKind("secondary");
-    connect(previewBtn_, &HmcButton::clicked, this, [this] { runConfigure(true); });
+    connect(previewBtn_, &KuiperButton::clicked, this, [this] { runConfigure(true); });
     buttons->addWidget(previewBtn_);
-    applyBtn_ = new HmcButton("Apply");
-    connect(applyBtn_, &HmcButton::clicked, this, [this] { runConfigure(false); });
+    applyBtn_ = new KuiperButton("Apply");
+    connect(applyBtn_, &KuiperButton::clicked, this, [this] { runConfigure(false); });
     buttons->addWidget(applyBtn_);
     col->addLayout(buttons);
 

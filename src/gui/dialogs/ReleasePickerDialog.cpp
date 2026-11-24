@@ -13,9 +13,9 @@
 #include <QWidget>
 
 #include "util/Format.hpp"
-#include "widgets/HmcButton.hpp"
-#include "widgets/HmcContainerHeader.hpp"
-#include "widgets/HmcTag.hpp"
+#include "widgets/KuiperButton.hpp"
+#include "widgets/KuiperContainerHeader.hpp"
+#include "widgets/KuiperTag.hpp"
 
 namespace {
 constexpr int kColVersion = 0;
@@ -39,7 +39,7 @@ ReleasePickerDialog::ReleasePickerDialog(
     col->setContentsMargins(24, 24, 24, 24);
     col->setSpacing(16);
 
-    col->addWidget(new HmcContainerHeader(
+    col->addWidget(new KuiperContainerHeader(
         "Stable releases", "ADI Kuiper Linux — published images"));
 
     table_ = new QTableWidget(this);
@@ -72,12 +72,12 @@ ReleasePickerDialog::ReleasePickerDialog(
 
     auto* buttons = new QHBoxLayout();
     buttons->addStretch(1);
-    auto* cancel = new HmcButton("Cancel");
+    auto* cancel = new KuiperButton("Cancel");
     cancel->setKind("secondary");
-    connect(cancel, &HmcButton::clicked, this, &QDialog::reject);
+    connect(cancel, &KuiperButton::clicked, this, &QDialog::reject);
     buttons->addWidget(cancel);
-    auto* choose = new HmcButton("Download");
-    connect(choose, &HmcButton::clicked, this, &QDialog::accept);
+    auto* choose = new KuiperButton("Download");
+    connect(choose, &KuiperButton::clicked, this, &QDialog::accept);
     buttons->addWidget(choose);
     col->addLayout(buttons);
 }
@@ -103,12 +103,12 @@ void ReleasePickerDialog::refreshStatusCell(int row) {
     auto* lay = new QHBoxLayout(cell);
     lay->setContentsMargins(6, 2, 6, 2);
     lay->setSpacing(6);
-    lay->addWidget(new HmcTag("Downloaded", "success"));
+    lay->addWidget(new KuiperTag("Downloaded", "success"));
     lay->addStretch(1);
-    auto* del = new HmcButton("🗑");
+    auto* del = new KuiperButton("🗑");
     del->setKind("ghost");
     del->setToolTip("Delete this download");
-    connect(del, &HmcButton::clicked, this, [this, row] { deleteCached(row); });
+    connect(del, &KuiperButton::clicked, this, [this, row] { deleteCached(row); });
     lay->addWidget(del);
     table_->setCellWidget(row, kColStatus, cell);
 }

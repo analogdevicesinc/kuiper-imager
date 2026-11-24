@@ -2,7 +2,7 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS Core Widgets Concurrent Network)
 
 qt_standard_project_setup()
 
-# Compile theme/theme.qrc (the generated stylesheet bundle) into the binary.
+# Compile theme/theme.qrc (the stylesheet bundle) into the binary.
 set(CMAKE_AUTORCC ON)
 
 # WIN32: build as a GUI-subsystem app on Windows, so launching it doesn't open a
@@ -28,26 +28,26 @@ qt_add_executable(kuiper-imager WIN32
     util/Repolish.hpp
     theme/ThemeManager.cpp
     theme/ThemeManager.hpp
-    widgets/HmcButton.cpp
-    widgets/HmcButton.hpp
-    widgets/HmcCard.cpp
-    widgets/HmcCard.hpp
-    widgets/HmcContainerHeader.cpp
-    widgets/HmcContainerHeader.hpp
-    widgets/HmcTag.cpp
-    widgets/HmcTag.hpp
-    widgets/HmcProgressBar.cpp
-    widgets/HmcProgressBar.hpp
-    widgets/HmcSegmentedControl.cpp
-    widgets/HmcSegmentedControl.hpp
-    widgets/HmcCheckBox.cpp
-    widgets/HmcCheckBox.hpp
-    widgets/HmcBanner.cpp
-    widgets/HmcBanner.hpp
-    widgets/HmcSpinner.cpp
-    widgets/HmcSpinner.hpp
-    widgets/HmcLogView.cpp
-    widgets/HmcLogView.hpp
+    widgets/KuiperButton.cpp
+    widgets/KuiperButton.hpp
+    widgets/KuiperCard.cpp
+    widgets/KuiperCard.hpp
+    widgets/KuiperContainerHeader.cpp
+    widgets/KuiperContainerHeader.hpp
+    widgets/KuiperTag.cpp
+    widgets/KuiperTag.hpp
+    widgets/KuiperProgressBar.cpp
+    widgets/KuiperProgressBar.hpp
+    widgets/KuiperSegmentedControl.cpp
+    widgets/KuiperSegmentedControl.hpp
+    widgets/KuiperCheckBox.cpp
+    widgets/KuiperCheckBox.hpp
+    widgets/KuiperBanner.cpp
+    widgets/KuiperBanner.hpp
+    widgets/KuiperSpinner.cpp
+    widgets/KuiperSpinner.hpp
+    widgets/KuiperLogView.cpp
+    widgets/KuiperLogView.hpp
     theme/theme.qrc)
 
 # Per-OS elevation session behind IHelperSession: pkexec+stdio on Unix,

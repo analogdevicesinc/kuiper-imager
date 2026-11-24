@@ -30,15 +30,15 @@
 #include "task/HelperProcess.hpp"
 #include "theme/ThemeManager.hpp"
 #include "util/Format.hpp"
-#include "widgets/HmcBanner.hpp"
-#include "widgets/HmcButton.hpp"
-#include "widgets/HmcCard.hpp"
-#include "widgets/HmcCheckBox.hpp"
-#include "widgets/HmcContainerHeader.hpp"
-#include "widgets/HmcProgressBar.hpp"
-#include "widgets/HmcSegmentedControl.hpp"
-#include "widgets/HmcSpinner.hpp"
-#include "widgets/HmcTag.hpp"
+#include "widgets/KuiperBanner.hpp"
+#include "widgets/KuiperButton.hpp"
+#include "widgets/KuiperCard.hpp"
+#include "widgets/KuiperCheckBox.hpp"
+#include "widgets/KuiperContainerHeader.hpp"
+#include "widgets/KuiperProgressBar.hpp"
+#include "widgets/KuiperSegmentedControl.hpp"
+#include "widgets/KuiperSpinner.hpp"
+#include "widgets/KuiperTag.hpp"
 
 namespace {
 
@@ -74,7 +74,7 @@ QLabel* valueLabel(const QString& text) {
 
 QLabel* caption(const QString& text) {
     auto* l = new QLabel(text);
-    l->setProperty("hmcCaption", true);
+    l->setProperty("kuiperCaption", true);
     return l;
 }
 
@@ -105,18 +105,18 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
 
     // --- header bar ---
     auto* header = new QFrame(central);
-    header->setProperty("hmcHeaderBar", true);
+    header->setProperty("kuiperHeaderBar", true);
     auto* headerRow = new QHBoxLayout(header);
     headerRow->setContentsMargins(24, 16, 24, 16);
-    auto* wordmark = new HmcContainerHeader("Kuiper Imager");
+    auto* wordmark = new KuiperContainerHeader("Kuiper Imager");
     wordmark->setDensity("low");
     headerRow->addWidget(wordmark);
     headerRow->addStretch(1);
-    auto* themeToggle = new HmcSegmentedControl(header);
+    auto* themeToggle = new KuiperSegmentedControl(header);
     themeToggle->setCompact(true);
     themeToggle->addSegment("Light", "light");
     themeToggle->addSegment("Dark", "dark");
-    connect(themeToggle, &HmcSegmentedControl::valueChanged, this,
+    connect(themeToggle, &KuiperSegmentedControl::valueChanged, this,
             [](const QString& v) {
                 kuiper::theme::applyTheme(*qApp, v == "dark"
                                                      ? kuiper::theme::Theme::Dark
@@ -133,13 +133,13 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
     col->addWidget(buildImageCard());
     col->addWidget(buildStorageCard());
 
-    verify_ = new HmcCheckBox("Verify after writing");
+    verify_ = new KuiperCheckBox("Verify after writing");
     verify_->setChecked(true);
     col->addWidget(verify_);
 
     col->addWidget(buildActionArea());
 
-    result_ = new HmcBanner("info", QString());
+    result_ = new KuiperBanner("info", QString());
     result_->setVisible(false);
     col->addWidget(result_);
 
@@ -198,14 +198,14 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
 }
 
 QWidget* ConsoleWindow::buildImageCard() {
-    auto* card = new HmcCard(this);
-    card->addWidget(new HmcContainerHeader("Image", "Choose what to write"));
+    auto* card = new KuiperCard(this);
+    card->addWidget(new KuiperContainerHeader("Image", "Choose what to write"));
 
     // Name + provenance pill (Local | Downloaded). See docs: gui-console.
     auto* nameLine = new QHBoxLayout();
     nameLine->setContentsMargins(0, 0, 0, 0);
     imageValue_ = valueLabel("No image selected");
-    imageTag_ = new HmcTag("", "info");
+    imageTag_ = new KuiperTag("", "info");
     imageTag_->setVisible(false);
     nameLine->addWidget(imageValue_, 1);
     nameLine->addWidget(imageTag_, 0, Qt::AlignVCenter);
@@ -219,27 +219,27 @@ QWidget* ConsoleWindow::buildImageCard() {
     actionRow->setContentsMargins(0, 0, 0, 0);
     actionRow->setSpacing(12);
 
-    chooseFileBtn_ = new HmcButton("Choose file…");
+    chooseFileBtn_ = new KuiperButton("Choose file…");
     chooseFileBtn_->setKind("secondary");
     chooseFileBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(chooseFileBtn_, &HmcButton::clicked, this, [this] { pickImage(); });
+    connect(chooseFileBtn_, &KuiperButton::clicked, this, [this] { pickImage(); });
     actionRow->addWidget(chooseFileBtn_, 1);
 
-    downloadBtn_ = new HmcButton("Download release…");
+    downloadBtn_ = new KuiperButton("Download release…");
     downloadBtn_->setKind("secondary");
     downloadBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(downloadBtn_, &HmcButton::clicked, this, [this] { chooseRelease(); });
+    connect(downloadBtn_, &KuiperButton::clicked, this, [this] { chooseRelease(); });
     actionRow->addWidget(downloadBtn_, 1);
 
 #ifdef Q_OS_LINUX
     // Privileged, Linux-only in-place edit of a local .img; offered only here and
     // gated to a raw local image by applyState(). See docs: customize-pipeline.
-    customizeBtn_ = new HmcButton("Customize…");
+    customizeBtn_ = new KuiperButton("Customize…");
     customizeBtn_->setKind("secondary");
     customizeBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     customizeBtn_->setToolTip(
         "Add ADI full-image features (desktop, libraries, apps) to this image");
-    connect(customizeBtn_, &HmcButton::clicked, this, [this] { openCustomize(); });
+    connect(customizeBtn_, &KuiperButton::clicked, this, [this] { openCustomize(); });
     actionRow->addWidget(customizeBtn_, 1);
 #endif
     card->addLayout(actionRow);
@@ -247,8 +247,8 @@ QWidget* ConsoleWindow::buildImageCard() {
 }
 
 QWidget* ConsoleWindow::buildStorageCard() {
-    auto* card = new HmcCard(this);
-    card->addWidget(new HmcContainerHeader("Storage", "Choose the device to write to"));
+    auto* card = new KuiperCard(this);
+    card->addWidget(new KuiperContainerHeader("Storage", "Choose the device to write to"));
 
     auto* pickRow = new QHBoxLayout();
     pickRow->setContentsMargins(0, 0, 0, 0);
@@ -257,20 +257,20 @@ QWidget* ConsoleWindow::buildStorageCard() {
     connect(driveCombo_, &QComboBox::currentIndexChanged, this,
             [this](int) { onDriveChanged(); });
     pickRow->addWidget(driveCombo_, 1);
-    rescanBtn_ = new HmcButton("↻");
+    rescanBtn_ = new KuiperButton("↻");
     rescanBtn_->setKind("ghost");
     rescanBtn_->setToolTip("Rescan drives");
-    connect(rescanBtn_, &HmcButton::clicked, this, [this] { refreshDrives(); });
+    connect(rescanBtn_, &KuiperButton::clicked, this, [this] { refreshDrives(); });
     pickRow->addWidget(rescanBtn_);
     card->addLayout(pickRow);
 
     auto* tagRow = new QHBoxLayout();
     tagRow->setContentsMargins(0, 0, 0, 0);
     tagRow->setSpacing(8);
-    removableTag_ = new HmcTag("Removable", "success");
-    systemTag_ = new HmcTag("System", "danger");
-    kuiperTag_ = new HmcTag("Kuiper 2", "highlight");
-    probeSpinner_ = new HmcSpinner("sm", card);
+    removableTag_ = new KuiperTag("Removable", "success");
+    systemTag_ = new KuiperTag("System", "danger");
+    kuiperTag_ = new KuiperTag("Kuiper 2", "highlight");
+    probeSpinner_ = new KuiperSpinner("sm", card);
     probeLabel_ = caption("Checking card…");
     for (auto* w : {static_cast<QWidget*>(removableTag_), static_cast<QWidget*>(systemTag_),
                     static_cast<QWidget*>(kuiperTag_), static_cast<QWidget*>(probeSpinner_),
@@ -287,10 +287,10 @@ QWidget* ConsoleWindow::buildStorageCard() {
     // Configure acts on the card in this drive (it edits projects on the mounted
     // BOOT partition), so it lives with Storage, not beside Write. Shown only
     // once the drive is recognised as a flashed Kuiper 2 (see applyState()).
-    configureBtn_ = new HmcButton("Configure projects →");
+    configureBtn_ = new KuiperButton("Configure projects →");
     configureBtn_->setKind("secondary");
     configureBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(configureBtn_, &HmcButton::clicked, this, [this] { openConfigure(); });
+    connect(configureBtn_, &KuiperButton::clicked, this, [this] { openConfigure(); });
     card->addWidget(configureBtn_);
 
     return card;
@@ -306,9 +306,9 @@ QWidget* ConsoleWindow::buildActionArea() {
     auto* row = new QHBoxLayout(buttonRow_);
     row->setContentsMargins(0, 0, 0, 0);
     row->setSpacing(12);
-    writeBtn_ = new HmcButton("Write");
+    writeBtn_ = new KuiperButton("Write");
     writeBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(writeBtn_, &HmcButton::clicked, this, [this] { startWrite(); });
+    connect(writeBtn_, &KuiperButton::clicked, this, [this] { startWrite(); });
     row->addWidget(writeBtn_, 1);
     col->addWidget(buttonRow_);
 
@@ -316,11 +316,11 @@ QWidget* ConsoleWindow::buildActionArea() {
     auto* prow = new QHBoxLayout(progressRow_);
     prow->setContentsMargins(0, 0, 0, 0);
     prow->setSpacing(12);
-    progress_ = new HmcProgressBar(progressRow_);
+    progress_ = new KuiperProgressBar(progressRow_);
     prow->addWidget(progress_, 1);
-    cancelBtn_ = new HmcButton("Cancel");
+    cancelBtn_ = new KuiperButton("Cancel");
     cancelBtn_->setKind("secondary");
-    connect(cancelBtn_, &HmcButton::clicked, this, [this] {
+    connect(cancelBtn_, &KuiperButton::clicked, this, [this] {
         if (helper_->busy()) helper_->cancel();
         task_->cancel();
         cancelBtn_->setEnabled(false);

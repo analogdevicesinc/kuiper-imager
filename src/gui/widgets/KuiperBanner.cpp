@@ -1,17 +1,17 @@
-#include "HmcBanner.hpp"
+#include "KuiperBanner.hpp"
 
 #include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QVBoxLayout>
 
-#include "HmcButton.hpp"
+#include "KuiperButton.hpp"
 #include "util/Repolish.hpp"
 
-HmcBanner::HmcBanner(const QString& status, const QString& title,
+KuiperBanner::KuiperBanner(const QString& status, const QString& title,
                      const QString& message, QWidget* parent)
     : QFrame(parent) {
-    setProperty("hmcBanner", true);
+    setProperty("kuiperBanner", true);
     setProperty("status", status);
 
     row_ = new QHBoxLayout(this);
@@ -37,31 +37,31 @@ HmcBanner::HmcBanner(const QString& status, const QString& title,
     row_->addLayout(col, 1);  // text takes the width; the action sits at the end
 }
 
-void HmcBanner::setStatus(const QString& status) {
+void KuiperBanner::setStatus(const QString& status) {
     setProperty("status", status);
     kuiper::gui::repolish(this);
 }
 
-void HmcBanner::setTitle(const QString& title) { title_->setText(title); }
+void KuiperBanner::setTitle(const QString& title) { title_->setText(title); }
 
-void HmcBanner::setMessage(const QString& message) {
+void KuiperBanner::setMessage(const QString& message) {
     message_->setText(message);
     message_->setVisible(!message.isEmpty());
 }
 
-void HmcBanner::setAction(const QString& text, std::function<void()> onClick) {
+void KuiperBanner::setAction(const QString& text, std::function<void()> onClick) {
     if (!action_) {
-        action_ = new HmcButton(this);
+        action_ = new KuiperButton(this);
         action_->setKind("secondary");
         row_->addWidget(action_, 0, Qt::AlignVCenter);
     }
     action_->setText(text);
     action_->setVisible(true);
     QObject::disconnect(actionConn_);
-    actionConn_ = QObject::connect(action_, &HmcButton::clicked, this,
+    actionConn_ = QObject::connect(action_, &KuiperButton::clicked, this,
                                    [cb = std::move(onClick)] { if (cb) cb(); });
 }
 
-void HmcBanner::clearAction() {
+void KuiperBanner::clearAction() {
     if (action_) action_->setVisible(false);
 }
