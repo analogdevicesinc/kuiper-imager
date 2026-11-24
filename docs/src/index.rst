@@ -153,9 +153,3 @@ Where to go next
    :caption: Reference
 
    reference/troubleshooting
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contributing
-
-   development/contributing
