@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta content="The ``kli`` command line end to end: the conventions every command shares, then fetch, flash, configure, and customize" name="description" />
+
+    <title>CLI Walkthrough &#8212; Kuiper Imager  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=6cfc7fee" />
+    <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
+    <link rel="icon" href="../_static/icon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Architecture Overview" href="../how-it-works/architecture.html" />
+    <link rel="prev" title="GUI Walkthrough" href="gui-walkthrough.html" />
+   
+  
+  
+  
+  <meta name="repository" content="kuiper-imager">
+  <meta name="version" content="latest">
+  
+    <meta name="page_source_suffix" content=".rst">
+  
+  
+  
+
+
+<style>
+  body {
+    
+  }
+
+  body.dark {
+    
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body:not(.light) {
+      
+    }
+  }
+</style>
+  </head>
+  
+    <body>
+  
+  <input type="checkbox" id="input-show-toc">
+  <input type="checkbox" id="input-show-localtoc">
+  <input type="checkbox" id="input-show-repotoc">
+
+  
+  <div class="search-area">
+    <form action="" method="get">
+      <input type="text" name="q" aria-labelledby="search-documentation" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="search" placeholder="Search"/>
+      <button class="icon"></button>
+    </form>
+  </div>
+  
+
+  <header>
+    <div id="left">
+      <label id="show-sidebar" class="icon" for="input-show-toc" title="Show/hide index"></label>
+    </div>
+    <div id="right">
+      <span>
+        <a id="logo-org" href="https://developer.analog.com/" aria-label="Analog Devices Inc. landing page"></a>
+        <div class="vertical-divider"></div>
+        
+        <label id="show-repotoc" for="input-show-repotoc" title="Show/hide docs">Documentation</label>
+        
+        <a id="logo" href="../index.html">
+          <div>Kuiper Imager</div>
+        </a>
+      </span>
+      <span class="reverse">
+        <label id="show-localtoc" class="icon" for="input-show-localtoc" title="Show/hide contents"></label>
+      </span>
+    </div>
+  </header>
+
+
+  <div class="repotoc-tree overlay">
+    <root/>
+
+  </div>
+    <div class="localtoc">
+      <div class="tocwrapper">
+        <div class="header localtoc-header">
+          <a id="scroll-up" href="#top-anchor" title="Back to top"></a>
+        </div>
+        <nav>
+          <ul>
+<li><a class="reference internal" href="#">CLI Walkthrough</a><ul>
+<li><a class="reference internal" href="#conventions">Conventions</a><ul>
+<li><a class="reference internal" href="#the-whole-drive-model">The Whole-Drive Model</a></li>
+<li><a class="reference internal" href="#output">Output</a></li>
+<li><a class="reference internal" href="#exit-codes">Exit Codes</a></li>
+<li><a class="reference internal" href="#privileges-and-tokens">Privileges and Tokens</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#inspecting-drives-and-releases">Inspecting drives and releases</a></li>
+<li><a class="reference internal" href="#fetch-download-an-image">fetch — download an image</a></li>
+<li><a class="reference internal" href="#flash-write-an-image-to-a-drive">flash — write an image to a drive</a></li>
+<li><a class="reference internal" href="#configure-set-up-boot-files">configure — set up boot files</a></li>
+<li><a class="reference internal" href="#customize-add-adi-features-to-an-image-linux-only">customize — add ADI features to an image (Linux only)</a></li>
+</ul>
+</li>
+</ul>
+
+        </nav>
+      </div>
+    </div>
+
+  
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+    <a id="logo" href="../index.html">
+      <img class="only-light" src="../_static/logo_light.png"/>
+      <img class="only-dark" src="../_static/logo_dark.png"/>
+    </a><input id="input-switch-toc" type="checkbox">
+<label id="show-repotoc" for="input-switch-toc">
+All content
+</label>
+<label id="show-toc" for="input-switch-toc">
+Content on this topic
+</label>
+<div class="repotoc-tree">
+  <root/>
+
+</div>
+<div class="toc-tree">
+  <p class="caption" role="heading">
+  <span class="caption-text">Getting Started</span>
+</p>
+
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quick-setup.html">Quick Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-walkthrough.html">GUI Walkthrough</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">CLI Walkthrough</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">How It Works</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/core-library.html">Core Library (libkuiper)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/flash-pipeline.html">The Flash Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/customize-pipeline.html">The Customize Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/platform-backends.html">Platform Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/releases-and-sources.html">Releases and Sources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/gui-console.html">The GUI Console</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/dev-container.html">The Dev Container</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/github-actions.html">GitHub Actions CI</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Reference</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Contributing</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+</ul>
+
+
+</div>
+        </div>
+      </div>
+
+  <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper" id="top-anchor">
+          <div class="body-header">
+  <nav class="breadcrumb empty"><ol></ol></nav>
+</div>
+          <div class="body" role="main">
+            
+  <section id="cli-walkthrough">
+<span id="cli-overview"></span><h1>CLI Walkthrough<a class="headerlink" href="#cli-walkthrough" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">kli</span></code> is the command-line front-end and the scriptability surface of Kuiper
+Imager. It is a thin layer over <a class="reference internal" href="../how-it-works/core-library.html#core-library"><span class="std std-ref">libkuiper</span></a>: it parses
+arguments, renders progress, and translates typed results into output and exit
+codes. The GUI and the CLI drive the <em>same</em> core, so they behave identically —
+the CLI simply exposes it for scripting, automation, and headless machines.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>kli version
+kli list-drives
+kli list-releases [--unstable] [--branch &lt;branch&gt;] [--limit &lt;n&gt;]
+kli list-projects --drive &lt;dev&gt;
+kli fetch     --image &lt;id&gt;   --output &lt;path&gt; [--force]
+kli flash     --image &lt;file&gt; --drive &lt;dev&gt;   [--yes] [--force] [--no-verify] [--timings]
+kli configure --drive &lt;dev&gt;  --project &lt;name&gt; --board &lt;carrier&gt; [--dry-run] [--force]
+kli customize --image &lt;file&gt; [--feature &lt;id&gt; ...] [--all] [--list-features] ...
+kli help
+</pre></div>
+</div>
+<p>The guided order is <strong>fetch → flash → configure</strong>, and each command ends with a
+<code class="docutils literal notranslate"><span class="pre">Next:</span></code> hint toward the following one, but the steps are independent: flash an
+image you already have, or reconfigure a card without reflashing.</p>
+<hr class="docutils" />
+<section id="conventions">
+<h2>Conventions<a class="headerlink" href="#conventions" title="Link to this heading"></a></h2>
+<section id="the-whole-drive-model">
+<h3>The Whole-Drive Model<a class="headerlink" href="#the-whole-drive-model" title="Link to this heading"></a></h3>
+<p>Every command that touches a card takes one identifier, <code class="docutils literal notranslate"><span class="pre">--drive</span></code>, and it is
+<strong>always a whole drive</strong> — <code class="docutils literal notranslate"><span class="pre">/dev/sda</span></code>, <code class="docutils literal notranslate"><span class="pre">/dev/mmcblk0</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">\\.\PhysicalDrive1</span></code> on Windows). You never name a partition. Kuiper Imager
+enumerates the drive and identifies its BOOT, rootfs, and bootloader partitions
+itself, by inspection (see the <a class="reference internal" href="../how-it-works/core-library.html#core-library"><span class="std std-ref">layout rules</span></a>). As a
+convenience a partition node such as <code class="docutils literal notranslate"><span class="pre">/dev/sda1</span></code> is accepted and resolves to
+its parent drive.</p>
+</section>
+<section id="output">
+<h3>Output<a class="headerlink" href="#output" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">kli</span></code> produces <strong>human-readable output only</strong> — there is no JSON mode, because
+nothing in the current design consumes one (see <a class="reference internal" href="../how-it-works/architecture.html#architecture"><span class="std std-ref">Architecture Overview</span></a>). Output is
+split by stream so it composes cleanly:</p>
+<ul class="simple">
+<li><p><strong>stdout</strong> — results: drive tables, release listings, the final summary.</p></li>
+<li><p><strong>stderr</strong> — everything else: progress bars, the flash confirmation prompt,
+and errors.</p></li>
+</ul>
+<p>Progress is redrawn in place on stderr, so piping stdout to a file leaves you
+with just the results.</p>
+</section>
+<section id="exit-codes">
+<span id="id1"></span><h3>Exit Codes<a class="headerlink" href="#exit-codes" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">kli</span></code> maps each error’s <a class="reference internal" href="../how-it-works/core-library.html#core-library"><span class="std std-ref">ErrorCode</span></a> to a stable process
+exit code, so scripts can branch on the <em>kind</em> of failure.</p>
+<div class="table-wrapper colwidths-given docutils container">
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 10.0%" />
+<col style="width: 26.0%" />
+<col style="width: 64.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Code</p></th>
+<th class="head"><p>Meaning</p></th>
+<th class="head"><p>Typical cause</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p>Success</p></td>
+<td><p>The command completed.</p></td>
+</tr>
+<tr class="row-odd"><td><p>1</p></td>
+<td><p>Generic failure</p></td>
+<td><p>Any error without a specific code (also: no arguments, unknown command).</p></td>
+</tr>
+<tr class="row-even"><td><p>2</p></td>
+<td><p>Usage error</p></td>
+<td><p>A missing or unexpected argument.</p></td>
+</tr>
+<tr class="row-odd"><td><p>3</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UserCancelled</span></code></p></td>
+<td><p>Ctrl-C, or declining the flash confirmation prompt.</p></td>
+</tr>
+<tr class="row-even"><td><p>4</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PermissionDenied</span></code></p></td>
+<td><p>Raw device access without root; a rejected download token.</p></td>
+</tr>
+<tr class="row-odd"><td><p>5</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DeviceBusy</span></code></p></td>
+<td><p>A live mount / swap / LVM / RAID / LUKS holder on the target.</p></td>
+</tr>
+<tr class="row-even"><td><p>6</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DeviceRemoved</span></code></p></td>
+<td><p>The card was pulled, or an I/O error during the operation.</p></td>
+</tr>
+<tr class="row-odd"><td><p>7</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">InvalidImage</span></code></p></td>
+<td><p>The image or target isn’t a usable file / block device.</p></td>
+</tr>
+<tr class="row-even"><td><p>8</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DiskFull</span></code></p></td>
+<td><p>The image is larger than the target, or the download exceeds free space.</p></td>
+</tr>
+<tr class="row-odd"><td><p>9</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">HashMismatch</span></code></p></td>
+<td><p>Read-back verification failed — the media doesn’t match the image.</p></td>
+</tr>
+<tr class="row-even"><td><p>10</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NotFound</span></code></p></td>
+<td><p>Drive, project, release, or artifact not found.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>See <a class="reference internal" href="../reference/troubleshooting.html#troubleshooting"><span class="std std-ref">Troubleshooting</span></a> for what to do about each.</p>
+</section>
+<section id="privileges-and-tokens">
+<h3>Privileges and Tokens<a class="headerlink" href="#privileges-and-tokens" title="Link to this heading"></a></h3>
+<p><strong>Root.</strong> Flashing and the Intel preloader write require raw device access, so
+<code class="docutils literal notranslate"><span class="pre">flash</span></code> and (for Intel projects) <code class="docutils literal notranslate"><span class="pre">configure</span></code> must run under <code class="docutils literal notranslate"><span class="pre">sudo</span></code> on
+Linux, or from an elevated prompt on Windows. Without it you get
+<code class="docutils literal notranslate"><span class="pre">PermissionDenied</span></code> (exit 4) with a “run with sudo” hint.</p>
+<p><strong>GitHub token.</strong> Downloading a CI artifact with <code class="docutils literal notranslate"><span class="pre">fetch</span></code> needs a GitHub token
+with the <code class="docutils literal notranslate"><span class="pre">actions:read</span></code> scope, discovered in order from <code class="docutils literal notranslate"><span class="pre">$GH_TOKEN</span></code>, then
+<code class="docutils literal notranslate"><span class="pre">$GITHUB_TOKEN</span></code>, then <code class="docutils literal notranslate"><span class="pre">gh</span> <span class="pre">auth</span> <span class="pre">token</span></code> (if the GitHub CLI is logged in).
+Listing releases needs <strong>no</strong> token — a token there only raises the API rate
+limit.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="inspecting-drives-and-releases">
+<h2>Inspecting drives and releases<a class="headerlink" href="#inspecting-drives-and-releases" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">list-drives</span></code> enumerates the drives you can write to, with columns
+<code class="docutils literal notranslate"><span class="pre">DRIVE</span></code>, <code class="docutils literal notranslate"><span class="pre">DESCRIPTION</span></code>, <code class="docutils literal notranslate"><span class="pre">SIZE(GB)</span></code>, <code class="docutils literal notranslate"><span class="pre">REMOVABLE</span></code>, and <code class="docutils literal notranslate"><span class="pre">SYSTEM</span></code>. A disk
+tagged <code class="docutils literal notranslate"><span class="pre">SYSTEM</span></code> hosts the running OS and is never a flash candidate.</p>
+<p id="list-releases"><code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">list-releases</span></code> lists available images as a table. The channel selects the
+source:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kli<span class="w"> </span>list-releases<span class="w">                     </span><span class="c1"># stable: published Kuiper releases</span>
+kli<span class="w"> </span>list-releases<span class="w"> </span>--unstable<span class="w">          </span><span class="c1"># CI builds from GitHub Actions</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">--unstable</span></code> the <strong>stable</strong> channel is queried — published Kuiper
+releases from a hosted manifest, listed recommended-first (no token needed).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--unstable</span></code> lists <strong>Kuiper 2.0 CI builds</strong>. <code class="docutils literal notranslate"><span class="pre">--branch</span> <span class="pre">&lt;name&gt;</span></code> filters to
+one branch and <code class="docutils literal notranslate"><span class="pre">--limit</span> <span class="pre">&lt;n&gt;</span></code> sets how many recent successful runs to scan
+(default 10, max 100); both apply only to <code class="docutils literal notranslate"><span class="pre">--unstable</span></code>.</p></li>
+</ul>
+<p>The <strong>IDENTIFIER</strong> column (for example <code class="docutils literal notranslate"><span class="pre">gh:9607528144</span></code> for a CI build, or
+<code class="docutils literal notranslate"><span class="pre">adi:2026.1.1/full/arm64</span></code> for a stable release) is the copy-paste key you pass
+to <code class="docutils literal notranslate"><span class="pre">fetch</span></code>. See <a class="reference internal" href="../how-it-works/releases-and-sources.html#releases-and-sources"><span class="std std-ref">Releases and Sources</span></a> for where each channel’s images
+come from.</p>
+</section>
+<hr class="docutils" />
+<section id="fetch-download-an-image">
+<span id="fetch"></span><h2>fetch — download an image<a class="headerlink" href="#fetch-download-an-image" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kli<span class="w"> </span>fetch<span class="w"> </span>--image<span class="w"> </span>&lt;id&gt;<span class="w"> </span>--output<span class="w"> </span>&lt;path&gt;<span class="w"> </span><span class="o">[</span>--force<span class="o">]</span>
+</pre></div>
+</div>
+<p>Downloads the artifact named by <code class="docutils literal notranslate"><span class="pre">--image</span></code> (an identifier from
+<code class="docutils literal notranslate"><span class="pre">list-releases</span></code>) to <code class="docutils literal notranslate"><span class="pre">--output</span></code>. The bytes are saved <strong>verbatim</strong> — no
+decompression; the downloaded file is exactly what <a class="reference internal" href="#flash"><span class="std std-ref">flash</span></a> later
+decompresses.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kli<span class="w"> </span>list-releases<span class="w"> </span>--unstable
+kli<span class="w"> </span>fetch<span class="w"> </span>--image<span class="w"> </span>gh:9607528144<span class="w"> </span>--output<span class="w"> </span>./kuiper.zip
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--output</span></code> may be a <strong>file path</strong> to write, or a <strong>directory</strong> (an existing
+directory or a path ending in <code class="docutils literal notranslate"><span class="pre">/</span></code>), in which case the artifact is saved under
+its own canonical name. By default <code class="docutils literal notranslate"><span class="pre">fetch</span></code> refuses to overwrite an existing
+file; <code class="docutils literal notranslate"><span class="pre">--force</span></code> allows it.</p>
+<p>The download <strong>streams to a sibling</strong> <code class="docutils literal notranslate"><span class="pre">.part</span></code> <strong>file and is renamed into place
+only on success</strong>, so a failed, cancelled, or interrupted fetch never leaves a
+partial file at the destination. For a stable image whose manifest entry carries
+a <code class="docutils literal notranslate"><span class="pre">sha256</span></code>, the download is verified against it <strong>before</strong> the file is moved
+into place, so a corrupt download never lands at the destination.</p>
+<p>Downloading a <strong>CI</strong> artifact requires a <a class="reference internal" href="#cli-overview"><span class="std std-ref">GitHub token</span></a>; the
+stable channel does not. CI artifacts are deleted by GitHub roughly 90 days
+after their run — an expired one lists with <code class="docutils literal notranslate"><span class="pre">STATUS</span></code> <code class="docutils literal notranslate"><span class="pre">expired</span></code> and can’t be
+fetched; re-run <code class="docutils literal notranslate"><span class="pre">list-releases</span> <span class="pre">--unstable</span></code> for a current identifier. For the
+full download mechanics, see <a class="reference internal" href="../how-it-works/releases-and-sources.html#releases-and-sources"><span class="std std-ref">fetch</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="flash-write-an-image-to-a-drive">
+<span id="flash"></span><h2>flash — write an image to a drive<a class="headerlink" href="#flash-write-an-image-to-a-drive" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>kli<span class="w"> </span>flash<span class="w"> </span>--image<span class="w"> </span>&lt;file&gt;<span class="w"> </span>--drive<span class="w"> </span>&lt;dev&gt;<span class="w"> </span><span class="o">[</span>--yes<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span><span class="w"> </span><span class="o">[</span>--no-verify<span class="o">]</span><span class="w"> </span><span class="o">[</span>--timings<span class="o">]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">flash</span></code> writes a local image onto a card and verifies it. It is the one
+destructive command, so it guards the operation with a confirmation prompt and a
+suite of safety checks.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kli<span class="w"> </span>list-drives
+sudo<span class="w"> </span>kli<span class="w"> </span>flash<span class="w"> </span>--image<span class="w"> </span>kuiper.img.xz<span class="w"> </span>--drive<span class="w"> </span>/dev/sda
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--image</span></code> is a <strong>local file</strong> (download first with <a class="reference internal" href="#fetch"><span class="std std-ref">fetch — download an image</span></a>). It may be a
+raw <code class="docutils literal notranslate"><span class="pre">.img</span></code> or a compressed <code class="docutils literal notranslate"><span class="pre">.zip</span></code> / <code class="docutils literal notranslate"><span class="pre">.xz</span></code> / <code class="docutils literal notranslate"><span class="pre">.zst</span></code> / <code class="docutils literal notranslate"><span class="pre">.gz</span></code> / <code class="docutils literal notranslate"><span class="pre">.bz2</span></code>,
+decompressed inline as it is written. <code class="docutils literal notranslate"><span class="pre">--drive</span></code> is a whole drive. Flashing
+needs root.</p>
+<p>Before writing, <code class="docutils literal notranslate"><span class="pre">flash</span></code> prints a loud confirmation naming the drive it will
+erase and waits for you to type <code class="docutils literal notranslate"><span class="pre">y</span></code>; declining or Ctrl-C aborts (exit 3) and
+touches nothing.</p>
+<div class="table-wrapper colwidths-given docutils container">
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 80.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Effect</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--yes</span></code> / <code class="docutils literal notranslate"><span class="pre">-y</span></code></p></td>
+<td><p>Skip the confirmation prompt. Use in scripts, once sure of the target.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--force</span></code></p></td>
+<td><p>Bypass the <em>removable-drive</em> heuristic — for an internal SD reader or a
+<code class="docutils literal notranslate"><span class="pre">/dev/loopN</span></code> device. It does <strong>not</strong> bypass the system-disk guard.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--no-verify</span></code></p></td>
+<td><p>Skip the full read-back verification (~half the wall-clock time). The
+partition table is <em>still</em> written last and checked, so a failed flash
+never looks bootable.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--timings</span></code></p></td>
+<td><p>Print a per-phase wall-clock breakdown to stderr after a successful flash.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Safety.</strong> <code class="docutils literal notranslate"><span class="pre">flash</span></code> re-enumerates the drive up front and applies a two-tier
+guard: the <strong>system disk</strong> (hosting the running OS) is refused <strong>always</strong> —
+<code class="docutils literal notranslate"><span class="pre">--force</span></code> does not override it — while a <strong>non-removable disk</strong> is refused
+unless <code class="docutils literal notranslate"><span class="pre">--force</span></code>. Read-back SHA-256 verification (on by default) proves what is
+<em>on the card</em> matches the image, and the partition table is always written
+<strong>last</strong>, so an interrupted flash yields an inert card, not a half-bootable one.
+The full pipeline is in <a class="reference internal" href="../how-it-works/flash-pipeline.html#flash-pipeline"><span class="std std-ref">The Flash Pipeline</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="configure-set-up-boot-files">
+<span id="configure"></span><h2>configure — set up boot files<a class="headerlink" href="#configure-set-up-boot-files" title="Link to this heading"></a></h2>
+<p>A freshly flashed Kuiper card is generic. <code class="docutils literal notranslate"><span class="pre">configure</span></code> specializes it for one
+hardware combination — an eval board on a carrier — by copying the right kernel
+and boot files into place. It is a C++ port of ADI’s <code class="docutils literal notranslate"><span class="pre">configure-setup.sh</span></code>.
+<strong>Raspberry Pi cards boot without this step and can skip it.</strong></p>
+<p>First list the projects the card declares, then configure:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kli<span class="w"> </span>list-projects<span class="w"> </span>--drive<span class="w"> </span>/dev/sda
+sudo<span class="w"> </span>kli<span class="w"> </span>configure<span class="w"> </span>--drive<span class="w"> </span>/dev/sda<span class="w"> </span>--project<span class="w"> </span>ad9081<span class="w"> </span>--board<span class="w"> </span>vck190<span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">list-projects</span></code> mounts the card’s BOOT partition and lists its hardware
+projects with columns <code class="docutils literal notranslate"><span class="pre">EVAL</span> <span class="pre">BOARD</span></code>, <code class="docutils literal notranslate"><span class="pre">CARRIER</span></code>, <code class="docutils literal notranslate"><span class="pre">PLATFORM</span></code>, and <code class="docutils literal notranslate"><span class="pre">ARCH</span></code>. A
+project is identified by the <strong>(eval board, carrier)</strong> pair, which is exactly
+what <code class="docutils literal notranslate"><span class="pre">configure</span></code> takes as <code class="docutils literal notranslate"><span class="pre">--project</span></code> and <code class="docutils literal notranslate"><span class="pre">--board</span></code>.</p>
+<p>Key behaviors:</p>
+<ul class="simple">
+<li><p><strong>All-or-nothing preflight.</strong> Every source file (and, for Intel, the
+preloader) must exist before <em>anything</em> is copied, so a bad manifest never
+leaves a half-configured card.</p></li>
+<li><p><strong>Dry run.</strong> <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> prints the exact copy plan without touching the
+card — the safe way to preview what a project will do.</p></li>
+<li><p><strong>Intel boards.</strong> Intel-based projects additionally need a raw preloader write
+(which needs root) and an <code class="docutils literal notranslate"><span class="pre">extlinux</span></code> layout; both are handled automatically.
+Intel <code class="docutils literal notranslate"><span class="pre">configure</span></code> is Linux-only for now. See <a class="reference internal" href="../how-it-works/flash-pipeline.html#flash-pipeline"><span class="std std-ref">configure</span></a> and the <a class="reference internal" href="../how-it-works/core-library.html#core-library"><span class="std std-ref">ConfigurationService</span></a> for the
+mechanics.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="customize-add-adi-features-to-an-image-linux-only">
+<span id="customize"></span><h2>customize — add ADI features to an image (Linux only)<a class="headerlink" href="#customize-add-adi-features-to-an-image-linux-only" title="Link to this heading"></a></h2>
+<p>A Kuiper image is <em>basic</em> or <em>full</em> only by which features were enabled when it
+was built. <code class="docutils literal notranslate"><span class="pre">customize</span></code> closes that gap after the fact: it takes a prebuilt
+basic <code class="docutils literal notranslate"><span class="pre">.img</span></code> and installs the ADI features you pick — an XFCE desktop, the ADI
+libraries, the ADI applications — straight into it, <strong>in place</strong>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">customize</span></code> is <strong>Linux only</strong> and modifies the <code class="docutils literal notranslate"><span class="pre">.img</span></code> <strong>in place</strong>. It
+needs root. Because the Kuiper rootfs is ARM, customizing on an x86 host also
+needs <code class="docutils literal notranslate"><span class="pre">qemu-user-static</span></code> and <code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code> (the <code class="docutils literal notranslate"><span class="pre">.deb</span></code> recommends
+them); on a native-ARM host no emulation is needed.</p>
+</div>
+<p>List the installable features, then install:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>kli<span class="w"> </span>customize<span class="w"> </span>--list-features
+sudo<span class="w"> </span>kli<span class="w"> </span>customize<span class="w"> </span>--image<span class="w"> </span>kuiper_basic.img<span class="w"> </span>--feature<span class="w"> </span>libiio<span class="w"> </span>--feature<span class="w"> </span>iio-oscilloscope
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>kli<span class="w"> </span>customize<span class="w"> </span>--image<span class="w"> </span>&lt;file&gt;<span class="w"> </span><span class="o">[</span>--feature<span class="w"> </span>&lt;id&gt;<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--all<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                   </span><span class="o">[</span>--grow<span class="w"> </span>&lt;size&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>--no-grow<span class="o">]</span><span class="w"> </span><span class="o">[</span>--arch<span class="w"> </span>armhf<span class="p">|</span>arm64<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                   </span><span class="o">[</span>--script<span class="w"> </span>&lt;file&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span><span class="w"> </span><span class="o">[</span>--yes<span class="o">]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--list-features</span></code> prints each feature’s <code class="docutils literal notranslate"><span class="pre">ID</span></code> (what you pass to
+<code class="docutils literal notranslate"><span class="pre">--feature</span></code>), <code class="docutils literal notranslate"><span class="pre">GROUP</span></code> (Desktop / Libraries / Applications), name, and a
+rough installed-size estimate. <code class="docutils literal notranslate"><span class="pre">--all</span></code> installs every feature (the “full”
+preset).</p>
+<p>Key behaviors:</p>
+<ul class="simple">
+<li><p><strong>In-place, with confirmation.</strong> Unless <code class="docutils literal notranslate"><span class="pre">--yes</span></code> is given, <code class="docutils literal notranslate"><span class="pre">customize</span></code>
+prints what it will do and waits for <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p></li>
+<li><p><strong>Auto-grow.</strong> The full ADI stack is multiple GB, so the rootfs is enlarged
+before installing. <code class="docutils literal notranslate"><span class="pre">--grow</span> <span class="pre">&lt;size&gt;</span></code> sets the grow explicitly; <code class="docutils literal notranslate"><span class="pre">--no-grow</span></code>
+disables it. (The rootfs must be the physically last partition.)</p></li>
+<li><p><strong>Dry run.</strong> <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> prints the full plan — packages, files, and chroot
+steps per feature — without touching the image.</p></li>
+<li><p><strong>Architecture.</strong> The image’s architecture is read from its
+<code class="docutils literal notranslate"><span class="pre">/etc/kuiper-release</span></code> marker; pass <code class="docutils literal notranslate"><span class="pre">--arch</span> <span class="pre">armhf|arm64</span></code> for an image
+without that marker.</p></li>
+</ul>
+<p>On success it reports the features installed, the detected architecture, and the
+final image size, then hints at the matching <a class="reference internal" href="#flash"><span class="std std-ref">flash</span></a> command. For
+the chroot/qemu model and the feature catalog, see <a class="reference internal" href="../how-it-works/customize-pipeline.html#customize-pipeline"><span class="std std-ref">The Customize Pipeline</span></a>.</p>
+</section>
+</section>
+
+
+          </div>
+              <div class="related">
+                &nbsp;
+    <a href="gui-walkthrough.html" title="Previous document (Alt+Shift+LeftArrow)" class="prev">GUI Walkthrough</a>
+    <a href="../how-it-works/architecture.html" title="Next document (Alt+Shift+RightArrow)" class="next">Architecture Overview</a>
+              </div>
+          
+        </div>
+      </div>
+  </div>
+
+  <label id="cancel-area-show-toc" for="input-show-toc"></label>
+  <label id="cancel-area-show-localtoc" for="input-show-localtoc"></label>
+    <footer>
+      &#169;2025, Analog Devices, Inc.
+      
+      |
+      Made with <a href="https://www.sphinx-doc.org/">Sphinx</a>
+      &amp; <a href="https://github.com/analogdevicesinc/doctools">Doctools</a>
+      
+    </footer>
+  </body>
+</html>

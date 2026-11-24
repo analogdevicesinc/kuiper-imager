@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta content="What you need, how to install Kuiper Imager, and where to go next" name="description" />
+
+    <title>Quick Setup &#8212; Kuiper Imager  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=6cfc7fee" />
+    <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
+    <link rel="icon" href="../_static/icon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="GUI Walkthrough" href="gui-walkthrough.html" />
+    <link rel="prev" title="Kuiper Imager" href="../index.html" />
+   
+  
+  
+  
+  <meta name="repository" content="kuiper-imager">
+  <meta name="version" content="latest">
+  
+    <meta name="page_source_suffix" content=".rst">
+  
+  
+  
+
+
+<style>
+  body {
+    
+  }
+
+  body.dark {
+    
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body:not(.light) {
+      
+    }
+  }
+</style>
+  </head>
+  
+    <body>
+  
+  <input type="checkbox" id="input-show-toc">
+  <input type="checkbox" id="input-show-localtoc">
+  <input type="checkbox" id="input-show-repotoc">
+
+  
+  <div class="search-area">
+    <form action="" method="get">
+      <input type="text" name="q" aria-labelledby="search-documentation" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="search" placeholder="Search"/>
+      <button class="icon"></button>
+    </form>
+  </div>
+  
+
+  <header>
+    <div id="left">
+      <label id="show-sidebar" class="icon" for="input-show-toc" title="Show/hide index"></label>
+    </div>
+    <div id="right">
+      <span>
+        <a id="logo-org" href="https://developer.analog.com/" aria-label="Analog Devices Inc. landing page"></a>
+        <div class="vertical-divider"></div>
+        
+        <label id="show-repotoc" for="input-show-repotoc" title="Show/hide docs">Documentation</label>
+        
+        <a id="logo" href="../index.html">
+          <div>Kuiper Imager</div>
+        </a>
+      </span>
+      <span class="reverse">
+        <label id="show-localtoc" class="icon" for="input-show-localtoc" title="Show/hide contents"></label>
+      </span>
+    </div>
+  </header>
+
+
+  <div class="repotoc-tree overlay">
+    <root/>
+
+  </div>
+    <div class="localtoc">
+      <div class="tocwrapper">
+        <div class="header localtoc-header">
+          <a id="scroll-up" href="#top-anchor" title="Back to top"></a>
+        </div>
+        <nav>
+          <ul>
+<li><a class="reference internal" href="#">Quick Setup</a><ul>
+<li><a class="reference internal" href="#what-you-need">What you need</a></li>
+<li><a class="reference internal" href="#install-on-linux-debian-ubuntu">Install on Linux (Debian/Ubuntu)</a></li>
+<li><a class="reference internal" href="#install-on-windows">Install on Windows</a></li>
+<li><a class="reference internal" href="#macos">macOS</a></li>
+<li><a class="reference internal" href="#next-steps">Next steps</a></li>
+</ul>
+</li>
+</ul>
+
+        </nav>
+      </div>
+    </div>
+
+  
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+    <a id="logo" href="../index.html">
+      <img class="only-light" src="../_static/logo_light.png"/>
+      <img class="only-dark" src="../_static/logo_dark.png"/>
+    </a><input id="input-switch-toc" type="checkbox">
+<label id="show-repotoc" for="input-switch-toc">
+All content
+</label>
+<label id="show-toc" for="input-switch-toc">
+Content on this topic
+</label>
+<div class="repotoc-tree">
+  <root/>
+
+</div>
+<div class="toc-tree">
+  <p class="caption" role="heading">
+  <span class="caption-text">Getting Started</span>
+</p>
+
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-walkthrough.html">GUI Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli-walkthrough.html">CLI Walkthrough</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">How It Works</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/core-library.html">Core Library (libkuiper)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/flash-pipeline.html">The Flash Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/customize-pipeline.html">The Customize Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/platform-backends.html">Platform Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/releases-and-sources.html">Releases and Sources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/gui-console.html">The GUI Console</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/dev-container.html">The Dev Container</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/github-actions.html">GitHub Actions CI</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Reference</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Contributing</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+</ul>
+
+
+</div>
+        </div>
+      </div>
+
+  <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper" id="top-anchor">
+          <div class="body-header">
+  <nav class="breadcrumb empty"><ol></ol></nav>
+</div>
+          <div class="body" role="main">
+            
+  <section id="quick-setup">
+<span id="installation"></span><h1>Quick Setup<a class="headerlink" href="#quick-setup" title="Link to this heading"></a></h1>
+<p>This page gets Kuiper Imager onto your machine. Once it is installed, the
+<a class="reference internal" href="gui-walkthrough.html#quick-start"><span class="std std-ref">GUI walkthrough</span></a> and the <a class="reference internal" href="cli-walkthrough.html#cli-overview"><span class="std std-ref">CLI walkthrough</span></a> take you from a blank card to a booting board.</p>
+<hr class="docutils" />
+<section id="what-you-need">
+<h2>What you need<a class="headerlink" href="#what-you-need" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>An Analog Devices evaluation board on its carrier, or a Raspberry Pi with an
+ADI HAT — whatever you intend to boot.</p></li>
+<li><p>An <strong>SD card</strong> (or USB drive) large enough for the image. A <em>full</em> image is
+several GB; a <em>basic</em> image is smaller.</p></li>
+<li><p>An <strong>SD card reader</strong> on the computer running Kuiper Imager.</p></li>
+<li><p>For downloading <strong>CI</strong> images with <a class="reference internal" href="cli-walkthrough.html#fetch"><span class="std std-ref">fetch — download an image</span></a>, a GitHub token (not needed
+for the stable channel, and not needed at all if you already have an image
+file). See the <a class="reference internal" href="cli-walkthrough.html#fetch"><span class="std std-ref">CLI walkthrough</span></a>.</p></li>
+</ul>
+<p>Flashing and the Intel preloader write touch raw devices, so on Linux they run
+under <code class="docutils literal notranslate"><span class="pre">sudo</span></code> (the GUI elevates only for the write itself). See the
+<a class="reference internal" href="../how-it-works/platform-backends.html#platform-backends"><span class="std std-ref">privilege model</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="install-on-linux-debian-ubuntu">
+<h2>Install on Linux (Debian/Ubuntu)<a class="headerlink" href="#install-on-linux-debian-ubuntu" title="Link to this heading"></a></h2>
+<p>Kuiper Imager ships as <strong>two</strong> Debian packages, so you install only what you
+need:</p>
+<ul class="simple">
+<li><p><strong>kuiper-imager</strong> — the desktop GUI, the privileged write helper, the polkit
+policy, and a desktop entry. Install this for the graphical workflow.</p></li>
+<li><p><strong>kuiper-imager-cli</strong> — just the <code class="docutils literal notranslate"><span class="pre">kli</span></code> command-line tool. It has no GUI or
+desktop dependencies, so it suits headless servers, CI runners, and scripted
+flashing.</p></li>
+</ul>
+<p>Install the <code class="docutils literal notranslate"><span class="pre">.deb</span></code> files you obtained, letting <code class="docutils literal notranslate"><span class="pre">apt</span></code> pull in their
+dependencies:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>./kuiper-imager_*.deb<span class="w">        </span><span class="c1"># the GUI (+ helper)</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>./kuiper-imager-cli_*.deb<span class="w">     </span><span class="c1"># the kli CLI</span>
+</pre></div>
+</div>
+<p>On an x86 host the GUI package <em>recommends</em> <code class="docutils literal notranslate"><span class="pre">qemu-user-static</span></code> and
+<code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code>; these are only needed to <a class="reference internal" href="cli-walkthrough.html#customize"><span class="std std-ref">customize</span></a> an ARM
+image on a non-ARM machine, and <code class="docutils literal notranslate"><span class="pre">apt</span></code> installs them by default.</p>
+<p>To build the packages (or the tools) yourself, see <a class="reference internal" href="../how-it-works/dev-container.html#development"><span class="std std-ref">the dev container</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="install-on-windows">
+<h2>Install on Windows<a class="headerlink" href="#install-on-windows" title="Link to this heading"></a></h2>
+<p>The Windows build is produced by <a class="reference internal" href="../how-it-works/github-actions.html#github-actions"><span class="std std-ref">continuous integration</span></a>
+as a self-contained folder (the executables plus their Qt and C-library DLLs)
+that runs on a clean Windows host with nothing else installed. Unzip it and run
+<code class="docutils literal notranslate"><span class="pre">kuiper-imager.exe</span></code> for the GUI, or <code class="docutils literal notranslate"><span class="pre">kli.exe</span></code> from a terminal.</p>
+<p>Flashing on Windows needs Administrator rights: the GUI prompts for elevation
+(UAC) only at the moment it writes, and the CLI should be run from an elevated
+prompt.</p>
+</section>
+<hr class="docutils" />
+<section id="macos">
+<h2>macOS<a class="headerlink" href="#macos" title="Link to this heading"></a></h2>
+<p>macOS is planned but not yet implemented — the drive backend is a compilable
+stub, so the tool builds but cannot image a card. See <a class="reference internal" href="../how-it-works/platform-backends.html#platform-backends"><span class="std std-ref">Platform Backends</span></a>
+for the status.</p>
+</section>
+<hr class="docutils" />
+<section id="next-steps">
+<h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Most users:</strong> follow the <a class="reference internal" href="gui-walkthrough.html#quick-start"><span class="std std-ref">GUI walkthrough</span></a>.</p></li>
+<li><p><strong>Scripting or headless:</strong> follow the <a class="reference internal" href="cli-walkthrough.html#cli-overview"><span class="std std-ref">CLI walkthrough</span></a>.</p></li>
+</ul>
+</section>
+</section>
+
+
+          </div>
+              <div class="related">
+                &nbsp;
+    <a href="../index.html" title="Previous document (Alt+Shift+LeftArrow)" class="prev">Kuiper Imager</a>
+    <a href="gui-walkthrough.html" title="Next document (Alt+Shift+RightArrow)" class="next">GUI Walkthrough</a>
+              </div>
+          
+        </div>
+      </div>
+  </div>
+
+  <label id="cancel-area-show-toc" for="input-show-toc"></label>
+  <label id="cancel-area-show-localtoc" for="input-show-localtoc"></label>
+    <footer>
+      &#169;2025, Analog Devices, Inc.
+      
+      |
+      Made with <a href="https://www.sphinx-doc.org/">Sphinx</a>
+      &amp; <a href="https://github.com/analogdevicesinc/doctools">Doctools</a>
+      
+    </footer>
+  </body>
+</html>

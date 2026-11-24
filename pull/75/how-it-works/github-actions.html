@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta content="The two CI workflows: the cross-platform build-and-package matrix, and the documentation site deploy" name="description" />
+
+    <title>GitHub Actions CI &#8212; Kuiper Imager  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=6cfc7fee" />
+    <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
+    <link rel="icon" href="../_static/icon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Troubleshooting" href="../reference/troubleshooting.html" />
+    <link rel="prev" title="The Dev Container" href="dev-container.html" />
+   
+  
+  
+  
+  <meta name="repository" content="kuiper-imager">
+  <meta name="version" content="latest">
+  
+    <meta name="page_source_suffix" content=".rst">
+  
+  
+  
+
+
+<style>
+  body {
+    
+  }
+
+  body.dark {
+    
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body:not(.light) {
+      
+    }
+  }
+</style>
+  </head>
+  
+    <body>
+  
+  <input type="checkbox" id="input-show-toc">
+  <input type="checkbox" id="input-show-localtoc">
+  <input type="checkbox" id="input-show-repotoc">
+
+  
+  <div class="search-area">
+    <form action="" method="get">
+      <input type="text" name="q" aria-labelledby="search-documentation" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="search" placeholder="Search"/>
+      <button class="icon"></button>
+    </form>
+  </div>
+  
+
+  <header>
+    <div id="left">
+      <label id="show-sidebar" class="icon" for="input-show-toc" title="Show/hide index"></label>
+    </div>
+    <div id="right">
+      <span>
+        <a id="logo-org" href="https://developer.analog.com/" aria-label="Analog Devices Inc. landing page"></a>
+        <div class="vertical-divider"></div>
+        
+        <label id="show-repotoc" for="input-show-repotoc" title="Show/hide docs">Documentation</label>
+        
+        <a id="logo" href="../index.html">
+          <div>Kuiper Imager</div>
+        </a>
+      </span>
+      <span class="reverse">
+        <label id="show-localtoc" class="icon" for="input-show-localtoc" title="Show/hide contents"></label>
+      </span>
+    </div>
+  </header>
+
+
+  <div class="repotoc-tree overlay">
+    <root/>
+
+  </div>
+    <div class="localtoc">
+      <div class="tocwrapper">
+        <div class="header localtoc-header">
+          <a id="scroll-up" href="#top-anchor" title="Back to top"></a>
+        </div>
+        <nav>
+          <ul>
+<li><a class="reference internal" href="#">GitHub Actions CI</a><ul>
+<li><a class="reference internal" href="#build-yml-build-and-package">build.yml — build and package</a><ul>
+<li><a class="reference internal" href="#the-build-job-compile-smoke">The <code class="docutils literal notranslate"><span class="pre">build</span></code> job (compile + smoke)</a></li>
+<li><a class="reference internal" href="#the-package-deb-job-debian-packages">The <code class="docutils literal notranslate"><span class="pre">package-deb</span></code> job (Debian packages)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#gh-pages-yml-the-documentation-site">gh-pages.yml — the documentation site</a></li>
+<li><a class="reference internal" href="#relationship-to-the-image-sources">Relationship to the image sources</a></li>
+</ul>
+</li>
+</ul>
+
+        </nav>
+      </div>
+    </div>
+
+  
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+    <a id="logo" href="../index.html">
+      <img class="only-light" src="../_static/logo_light.png"/>
+      <img class="only-dark" src="../_static/logo_dark.png"/>
+    </a><input id="input-switch-toc" type="checkbox">
+<label id="show-repotoc" for="input-switch-toc">
+All content
+</label>
+<label id="show-toc" for="input-switch-toc">
+Content on this topic
+</label>
+<div class="repotoc-tree">
+  <root/>
+
+</div>
+<div class="toc-tree">
+  <p class="caption" role="heading">
+  <span class="caption-text">Getting Started</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/quick-setup.html">Quick Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/gui-walkthrough.html">GUI Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/cli-walkthrough.html">CLI Walkthrough</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">How It Works</span>
+</p>
+
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core-library.html">Core Library (libkuiper)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="flash-pipeline.html">The Flash Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="customize-pipeline.html">The Customize Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platform-backends.html">Platform Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases-and-sources.html">Releases and Sources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui-console.html">The GUI Console</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-container.html">The Dev Container</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">GitHub Actions CI</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Reference</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Contributing</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+</ul>
+
+
+</div>
+        </div>
+      </div>
+
+  <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper" id="top-anchor">
+          <div class="body-header">
+  <nav class="breadcrumb empty"><ol></ol></nav>
+</div>
+          <div class="body" role="main">
+            
+  <section id="github-actions-ci">
+<span id="github-actions"></span><h1>GitHub Actions CI<a class="headerlink" href="#github-actions-ci" title="Link to this heading"></a></h1>
+<p>Kuiper Imager’s continuous integration lives in two GitHub Actions workflows
+under <code class="docutils literal notranslate"><span class="pre">.github/workflows/</span></code>. One builds, smoke-tests, and packages the tool
+across platforms; the other builds and publishes this documentation. Both run on
+pushes and pull requests against <code class="docutils literal notranslate"><span class="pre">main</span></code> and <code class="docutils literal notranslate"><span class="pre">v2.0</span></code>.</p>
+<hr class="docutils" />
+<section id="build-yml-build-and-package">
+<h2>build.yml — build and package<a class="headerlink" href="#build-yml-build-and-package" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">build.yml</span></code> builds the tool, proves each build actually runs, and produces
+installable artifacts. It has two jobs.</p>
+<section id="the-build-job-compile-smoke">
+<h3>The <code class="docutils literal notranslate"><span class="pre">build</span></code> job (compile + smoke)<a class="headerlink" href="#the-build-job-compile-smoke" title="Link to this heading"></a></h3>
+<p>A matrix builds on <strong>Linux</strong> (<code class="docutils literal notranslate"><span class="pre">ubuntu-24.04</span></code>, preset <code class="docutils literal notranslate"><span class="pre">ci-linux</span></code>) and
+<strong>Windows</strong> (<code class="docutils literal notranslate"><span class="pre">windows-latest</span></code>, preset <code class="docutils literal notranslate"><span class="pre">ci-windows</span></code>). Qt 6.8.2 is installed
+via <code class="docutils literal notranslate"><span class="pre">install-qt-action</span></code>; Windows additionally wires up MSVC (<code class="docutils literal notranslate"><span class="pre">msvc-dev-cmd</span></code>)
+and Ninja, and the C libraries (libarchive, curl, openssl) come from <strong>vcpkg</strong>
+manifest mode through the <code class="docutils literal notranslate"><span class="pre">ci-windows</span></code> preset’s toolchain. Each platform
+configures and builds with its preset, then smoke-tests:</p>
+<ul class="simple">
+<li><p><strong>Linux</strong> runs <code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">version</span></code>.</p></li>
+<li><p><strong>Windows</strong> stages a <strong>self-contained bundle</strong> — the three executables plus
+the vcpkg C-library DLLs and, via <code class="docutils literal notranslate"><span class="pre">windeployqt</span></code>, the Qt DLLs, the platform
+plugin, and the MSVC runtime — then runs <code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">version</span></code> and <code class="docutils literal notranslate"><span class="pre">kli</span>
+<span class="pre">list-drives</span></code> <strong>with ``PATH`` stripped to the system directories</strong>. Running
+with a bare <code class="docutils literal notranslate"><span class="pre">PATH</span></code> proves every dependency resolves from the bundle itself,
+and <code class="docutils literal notranslate"><span class="pre">list-drives</span></code> exercises the real SetupAPI enumeration on the runner.</p></li>
+</ul>
+<p>The unpackaged Linux binaries and the Windows bundle are uploaded as artifacts
+(retained 14 days). There is no macOS row yet — the macOS
+<a class="reference internal" href="platform-backends.html#platform-backends"><span class="std std-ref">backend</span></a> is a stub.</p>
+</section>
+<section id="the-package-deb-job-debian-packages">
+<h3>The <code class="docutils literal notranslate"><span class="pre">package-deb</span></code> job (Debian packages)<a class="headerlink" href="#the-package-deb-job-debian-packages" title="Link to this heading"></a></h3>
+<p>A second matrix builds the Debian packages for <strong>amd64</strong> and <strong>arm64</strong>, each
+inside a pinned <code class="docutils literal notranslate"><span class="pre">debian:12</span></code> container so they link the Qt the target users
+have. It installs the packaging toolchain and the build-deps from
+<code class="docutils literal notranslate"><span class="pre">debian/control</span></code> (<code class="docutils literal notranslate"><span class="pre">mk-build-deps</span></code>), builds with <code class="docutils literal notranslate"><span class="pre">dpkg-buildpackage</span> <span class="pre">-us</span> <span class="pre">-uc</span>
+<span class="pre">-b</span></code>, then gates quality before publishing:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">desktop-file-validate</span></code> checks the desktop entry.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lintian</span> <span class="pre">--fail-on</span> <span class="pre">error</span></code> lints the built <code class="docutils literal notranslate"><span class="pre">.deb</span></code> files.</p></li>
+<li><p>both packages are <strong>installed</strong> (dependencies only, no Recommends) and
+<code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">version</span></code> is run, proving the packaged CLI works from a clean install.</p></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">.deb</span></code> files are uploaded per architecture (excluding <code class="docutils literal notranslate"><span class="pre">-dbgsym</span></code>
+packages). See <a class="reference internal" href="dev-container.html#development"><span class="std std-ref">the dev container</span></a> for building the same
+packages locally.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="gh-pages-yml-the-documentation-site">
+<h2>gh-pages.yml — the documentation site<a class="headerlink" href="#gh-pages-yml-the-documentation-site" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">gh-pages.yml</span></code> builds and deploys this Sphinx site. It triggers only on
+changes under <code class="docutils literal notranslate"><span class="pre">docs/**</span></code> (on the same branches, plus pull requests). The
+<code class="docutils literal notranslate"><span class="pre">build-doc</span></code> job installs <code class="docutils literal notranslate"><span class="pre">docs/requirements.txt</span></code> and runs:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>html<span class="w"> </span><span class="nv">SPHINXOPTS</span><span class="o">=</span><span class="s1">'-W --keep-going'</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">-W</span></code> makes <strong>every warning an error</strong>, so a broken cross-reference, an
+orphaned page, or a stray <code class="docutils literal notranslate"><span class="pre">..</span> <span class="pre">todo::</span></code> fails the build — which is why the docs
+keep no unresolved references. <code class="docutils literal notranslate"><span class="pre">--keep-going</span></code> collects <em>all</em> warnings in one
+run rather than stopping at the first. The generated HTML is then published by
+the shared <code class="docutils literal notranslate"><span class="pre">analogdevicesinc/doctools/gh-pages-deploy</span></code> action on <code class="docutils literal notranslate"><span class="pre">main</span></code> (and
+built, but not deployed, for pull requests so a doc change is checked before
+merge).</p>
+</section>
+<hr class="docutils" />
+<section id="relationship-to-the-image-sources">
+<h2>Relationship to the image sources<a class="headerlink" href="#relationship-to-the-image-sources" title="Link to this heading"></a></h2>
+<p>These workflows build the <strong>imager itself</strong>. They are distinct from the workflow
+that builds the <strong>Kuiper images</strong> the tool downloads: the <code class="docutils literal notranslate"><span class="pre">--unstable</span></code> channel
+of <a class="reference internal" href="../getting-started/cli-walkthrough.html#list-releases"><span class="std std-ref">list-releases</span></a> reads CI artifacts from the
+<code class="docutils literal notranslate"><span class="pre">kuiper2_0-build.yml</span></code> workflow in the separate ADI <code class="docutils literal notranslate"><span class="pre">kuiper</span></code> repository. See
+<a class="reference internal" href="releases-and-sources.html#releases-and-sources"><span class="std std-ref">Releases and Sources</span></a> for how that channel works.</p>
+</section>
+</section>
+
+
+          </div>
+              <div class="related">
+                &nbsp;
+    <a href="dev-container.html" title="Previous document (Alt+Shift+LeftArrow)" class="prev">The Dev Container</a>
+    <a href="../reference/troubleshooting.html" title="Next document (Alt+Shift+RightArrow)" class="next">Troubleshooting</a>
+              </div>
+          
+        </div>
+      </div>
+  </div>
+
+  <label id="cancel-area-show-toc" for="input-show-toc"></label>
+  <label id="cancel-area-show-localtoc" for="input-show-localtoc"></label>
+    <footer>
+      &#169;2025, Analog Devices, Inc.
+      
+      |
+      Made with <a href="https://www.sphinx-doc.org/">Sphinx</a>
+      &amp; <a href="https://github.com/analogdevicesinc/doctools">Doctools</a>
+      
+    </footer>
+  </body>
+</html>

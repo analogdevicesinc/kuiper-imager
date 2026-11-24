@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta content="Prepare a bootable Kuiper card with the desktop app, from picking an image to safely ejecting the finished card" name="description" />
+
+    <title>GUI Walkthrough &#8212; Kuiper Imager  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=6cfc7fee" />
+    <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
+    <link rel="icon" href="../_static/icon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="CLI Walkthrough" href="cli-walkthrough.html" />
+    <link rel="prev" title="Quick Setup" href="quick-setup.html" />
+   
+  
+  
+  
+  <meta name="repository" content="kuiper-imager">
+  <meta name="version" content="latest">
+  
+    <meta name="page_source_suffix" content=".rst">
+  
+  
+  
+
+
+<style>
+  body {
+    
+  }
+
+  body.dark {
+    
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body:not(.light) {
+      
+    }
+  }
+</style>
+  </head>
+  
+    <body>
+  
+  <input type="checkbox" id="input-show-toc">
+  <input type="checkbox" id="input-show-localtoc">
+  <input type="checkbox" id="input-show-repotoc">
+
+  
+  <div class="search-area">
+    <form action="" method="get">
+      <input type="text" name="q" aria-labelledby="search-documentation" value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="search" placeholder="Search"/>
+      <button class="icon"></button>
+    </form>
+  </div>
+  
+
+  <header>
+    <div id="left">
+      <label id="show-sidebar" class="icon" for="input-show-toc" title="Show/hide index"></label>
+    </div>
+    <div id="right">
+      <span>
+        <a id="logo-org" href="https://developer.analog.com/" aria-label="Analog Devices Inc. landing page"></a>
+        <div class="vertical-divider"></div>
+        
+        <label id="show-repotoc" for="input-show-repotoc" title="Show/hide docs">Documentation</label>
+        
+        <a id="logo" href="../index.html">
+          <div>Kuiper Imager</div>
+        </a>
+      </span>
+      <span class="reverse">
+        <label id="show-localtoc" class="icon" for="input-show-localtoc" title="Show/hide contents"></label>
+      </span>
+    </div>
+  </header>
+
+
+  <div class="repotoc-tree overlay">
+    <root/>
+
+  </div>
+    <div class="localtoc">
+      <div class="tocwrapper">
+        <div class="header localtoc-header">
+          <a id="scroll-up" href="#top-anchor" title="Back to top"></a>
+        </div>
+        <nav>
+          <ul>
+<li><a class="reference internal" href="#">GUI Walkthrough</a><ul>
+<li><a class="reference internal" href="#choose-an-image">1. Choose an image</a></li>
+<li><a class="reference internal" href="#choose-the-drive">2. Choose the drive</a></li>
+<li><a class="reference internal" href="#write">3. Write</a></li>
+<li><a class="reference internal" href="#configure-the-card">4. Configure the card</a></li>
+<li><a class="reference internal" href="#customize-an-image-linux-only">5. Customize an image (Linux only)</a></li>
+<li><a class="reference internal" href="#eject-safely">6. Eject safely</a></li>
+</ul>
+</li>
+</ul>
+
+        </nav>
+      </div>
+    </div>
+
+  
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+    <a id="logo" href="../index.html">
+      <img class="only-light" src="../_static/logo_light.png"/>
+      <img class="only-dark" src="../_static/logo_dark.png"/>
+    </a><input id="input-switch-toc" type="checkbox">
+<label id="show-repotoc" for="input-switch-toc">
+All content
+</label>
+<label id="show-toc" for="input-switch-toc">
+Content on this topic
+</label>
+<div class="repotoc-tree">
+  <root/>
+
+</div>
+<div class="toc-tree">
+  <p class="caption" role="heading">
+  <span class="caption-text">Getting Started</span>
+</p>
+
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quick-setup.html">Quick Setup</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">GUI Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli-walkthrough.html">CLI Walkthrough</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">How It Works</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/core-library.html">Core Library (libkuiper)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/flash-pipeline.html">The Flash Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/customize-pipeline.html">The Customize Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/platform-backends.html">Platform Backends</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/releases-and-sources.html">Releases and Sources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/gui-console.html">The GUI Console</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/dev-container.html">The Dev Container</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/github-actions.html">GitHub Actions CI</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Reference</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Contributing</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+</ul>
+
+
+</div>
+        </div>
+      </div>
+
+  <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper" id="top-anchor">
+          <div class="body-header">
+  <nav class="breadcrumb empty"><ol></ol></nav>
+</div>
+          <div class="body" role="main">
+            
+  <section id="gui-walkthrough">
+<span id="quick-start"></span><h1>GUI Walkthrough<a class="headerlink" href="#gui-walkthrough" title="Link to this heading"></a></h1>
+<p>The Kuiper Imager desktop app turns a blank SD card into a bootable Analog
+Devices system. This page walks through the whole flow. The window is a single
+screen built from three stacked cards — <strong>Image</strong>, <strong>Storage</strong>, and an <strong>action
+area</strong> — so the workflow reads top to bottom: prepare each input, then commit
+the write.</p>
+<p>Launch it from your desktop menu (<em>Kuiper Imager</em>) or by running
+<code class="docutils literal notranslate"><span class="pre">kuiper-imager</span></code>. For the internals behind this screen — the threading model,
+the download cache, the post-write flow — see <a class="reference internal" href="../how-it-works/gui-console.html#gui-console"><span class="std std-ref">The GUI Console</span></a>.</p>
+<hr class="docutils" />
+<section id="choose-an-image">
+<h2>1. Choose an image<a class="headerlink" href="#choose-an-image" title="Link to this heading"></a></h2>
+<p>The <strong>Image</strong> card is where you select what to write. You have two ways to get
+an image:</p>
+<ul class="simple">
+<li><p><strong>Use a local file.</strong> Pick an image you already have — a raw <code class="docutils literal notranslate"><span class="pre">.img</span></code> or a
+compressed <code class="docutils literal notranslate"><span class="pre">.zip</span></code> / <code class="docutils literal notranslate"><span class="pre">.xz</span></code> / <code class="docutils literal notranslate"><span class="pre">.zst</span></code> / <code class="docutils literal notranslate"><span class="pre">.gz</span></code> / <code class="docutils literal notranslate"><span class="pre">.bz2</span></code>.</p></li>
+<li><p><strong>Download a release.</strong> Open the release picker to browse published Kuiper
+releases (and, optionally, CI builds) and download one. Downloads are kept in
+a per-user cache, so a release you already fetched is reused instead of
+downloaded again — the picker badges cached releases, shows their on-disk
+size, and lets you delete one to reclaim space.</p></li>
+</ul>
+<p>A small <strong>provenance pill</strong> on the card shows whether the current image is
+<em>Local</em> or <em>Downloaded</em>, so you always know where it came from.</p>
+</section>
+<hr class="docutils" />
+<section id="choose-the-drive">
+<h2>2. Choose the drive<a class="headerlink" href="#choose-the-drive" title="Link to this heading"></a></h2>
+<p>The <strong>Storage</strong> card lists the drives you can write to. Each carries tags that
+tell you what it is:</p>
+<ul class="simple">
+<li><p><strong>Removable</strong> — the kind of media you can safely pull.</p></li>
+<li><p><strong>System</strong> — the disk hosting your running operating system. A system drive is
+shown with a red <strong>System</strong> tag and <strong>cannot be selected for writing</strong> — the
+app will not let you erase the OS it is running on.</p></li>
+<li><p><strong>Kuiper 2</strong> — a card that already holds a flashed Kuiper image (so you can
+reconfigure it without reflashing).</p></li>
+</ul>
+<p>Select the card you inserted. If it is not listed, reseat it and let the list
+refresh.</p>
+</section>
+<hr class="docutils" />
+<section id="write">
+<h2>3. Write<a class="headerlink" href="#write" title="Link to this heading"></a></h2>
+<p>The <strong>action area</strong> holds a <strong>Verify</strong> toggle and the <strong>Write</strong> button. Writing
+erases the target, so it is deliberate:</p>
+<ul class="simple">
+<li><p>Leave <strong>Verify</strong> on (the default) to have the app read the card back after
+writing and confirm it matches the image — the integrity guarantee that sets
+Kuiper Imager apart from a plain disk copy.</p></li>
+<li><p>Click <strong>Write</strong>. A confirmation dialog names the drive it will erase; confirm
+to proceed. Writing needs elevated rights, so you are prompted once (polkit on
+Linux, UAC on Windows) for the write itself.</p></li>
+</ul>
+<p>Progress is shown as the image is written, flushed, and verified. When it
+finishes you get a success banner.</p>
+</section>
+<hr class="docutils" />
+<section id="configure-the-card">
+<h2>4. Configure the card<a class="headerlink" href="#configure-the-card" title="Link to this heading"></a></h2>
+<p>Most eval-board-and-carrier combinations need the correct boot files copied onto
+the card after flashing. After a successful write, the Storage card recognises
+the new Kuiper 2 card and offers <strong>Configure</strong>.</p>
+<p>The Configure dialog lists the hardware projects the card declares. Pick your
+<strong>eval board</strong> and <strong>carrier</strong>, optionally preview the exact copy plan with a
+<strong>dry run</strong>, then apply. Intel-based boards also need a raw preloader written and
+show a short warning to that effect; this is handled for you (Intel configure is
+Linux-only — see <a class="reference internal" href="cli-walkthrough.html#configure"><span class="std std-ref">configure — set up boot files</span></a>).</p>
+<p><strong>Raspberry Pi cards boot without this step</strong> and can skip Configure.</p>
+</section>
+<hr class="docutils" />
+<section id="customize-an-image-linux-only">
+<h2>5. Customize an image (Linux only)<a class="headerlink" href="#customize-an-image-linux-only" title="Link to this heading"></a></h2>
+<p>If you have a <em>basic</em> local <code class="docutils literal notranslate"><span class="pre">.img</span></code> and want the <em>full</em> ADI stack on it, the
+Image card offers <strong>Customize</strong> (Linux only, for a raw local image). The dialog
+lists the installable features grouped into <strong>Desktop</strong>, <strong>Libraries</strong>, and
+<strong>Applications</strong> with size estimates. Choose what you want, let the image
+auto-grow to fit (or set an explicit size), and apply — the install runs in the
+elevated helper with a live log. See <a class="reference internal" href="cli-walkthrough.html#customize"><span class="std std-ref">customize — add ADI features to an image (Linux only)</span></a> for what each feature
+installs.</p>
+</section>
+<hr class="docutils" />
+<section id="eject-safely">
+<h2>6. Eject safely<a class="headerlink" href="#eject-safely" title="Link to this heading"></a></h2>
+<p>After a write the card is left mounted so Configure can keep working. When you
+are done, use <strong>Safe eject</strong> from the banner: it releases the card and powers it
+down so the OS won’t touch it again, and tells you if something is still holding
+the card so you don’t pull it mid-write. (Safe eject is available on Linux and
+Windows.)</p>
+<p>Your card is now ready to boot.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The app is designed to be self-explanatory, and richer in-app guidance
+(such as hover hints on each control) is planned. Until then, this page and
+the <a class="reference internal" href="cli-walkthrough.html#cli-overview"><span class="std std-ref">CLI walkthrough</span></a> are the reference for what each
+action does.</p>
+</div>
+</section>
+</section>
+
+
+          </div>
+              <div class="related">
+                &nbsp;
+    <a href="quick-setup.html" title="Previous document (Alt+Shift+LeftArrow)" class="prev">Quick Setup</a>
+    <a href="cli-walkthrough.html" title="Next document (Alt+Shift+RightArrow)" class="next">CLI Walkthrough</a>
+              </div>
+          
+        </div>
+      </div>
+  </div>
+
+  <label id="cancel-area-show-toc" for="input-show-toc"></label>
+  <label id="cancel-area-show-localtoc" for="input-show-localtoc"></label>
+    <footer>
+      &#169;2025, Analog Devices, Inc.
+      
+      |
+      Made with <a href="https://www.sphinx-doc.org/">Sphinx</a>
+      &amp; <a href="https://github.com/analogdevicesinc/doctools">Doctools</a>
+      
+    </footer>
+  </body>
+</html>
