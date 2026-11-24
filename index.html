@@ -4,16 +4,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content="Cross-platform tool to fetch, flash, and configure ADI Kuiper Linux images for Analog Devices hardware — CLI-first, with a GUI on top" name="description" />
+<meta content="Fetch, flash, and configure ADI Kuiper Linux images for Analog Devices hardware — one cross-platform app, CLI-first with a GUI on top" name="description" />
 
     <title>Kuiper Imager &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8e8a900e" />
-    <link rel="stylesheet" type="text/css" href="_static/app.min.css?v=07ad7716" />
+    <link rel="stylesheet" type="text/css" href="_static/app.min.css?v=6cfc7fee" />
     <script async="async" src="_static/app.umd.js?v=2fe15c61"></script>
     <link rel="icon" href="_static/icon.png"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Installation" href="getting-started/installation.html" />
+    <link rel="next" title="Quick Setup" href="getting-started/quick-setup.html" />
    
   
   
@@ -93,10 +93,13 @@
         <nav>
           <ul>
 <li><a class="reference internal" href="#">Kuiper Imager</a><ul>
-<li><a class="reference internal" href="#status">Status</a></li>
+<li><a class="reference internal" href="#what-is-a-kuiper-image">What is a Kuiper image?</a></li>
+<li><a class="reference internal" href="#what-is-it-used-for">What is it used for?</a></li>
+<li><a class="reference internal" href="#how-kuiper-imager-helps">How Kuiper Imager helps</a></li>
+<li><a class="reference internal" href="#platform-support">Platform support</a></li>
+<li><a class="reference internal" href="#where-to-go-next">Where to go next</a><ul>
 </ul>
 </li>
-<li><a class="reference internal" href="#documentation">Documentation</a><ul>
 </ul>
 </li>
 </ul>
@@ -128,20 +131,9 @@ Content on this topic
 </p>
 
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="getting-started/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="getting-started/quick-start.html">Quick Start</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Using the CLI</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/cli-overview.html">CLI Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/fetch.html">Fetch: List and Download Releases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/flash.html">Flash: Write an Image to a Drive</a></li>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/configure.html">Configure: Set Up Boot Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/customize.html">Customize: Add ADI Features to an Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/quick-setup.html">Quick Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/gui-walkthrough.html">GUI Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/cli-walkthrough.html">CLI Walkthrough</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -156,16 +148,8 @@ Content on this topic
 <li class="toctree-l1"><a class="reference internal" href="how-it-works/platform-backends.html">Platform Backends</a></li>
 <li class="toctree-l1"><a class="reference internal" href="how-it-works/releases-and-sources.html">Releases and Sources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="how-it-works/gui-console.html">The GUI Console</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Development</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="development/development.html">Development</a></li>
-<li class="toctree-l1"><a class="reference internal" href="development/contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="development/roadmap.html">Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="how-it-works/dev-container.html">The Dev Container</a></li>
+<li class="toctree-l1"><a class="reference internal" href="how-it-works/github-actions.html">GitHub Actions CI</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -174,6 +158,14 @@ Content on this topic
 
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="reference/troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Contributing</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="development/contributing.html">Contributing</a></li>
 </ul>
 
 
@@ -191,100 +183,148 @@ Content on this topic
             
   <section id="kuiper-imager">
 <h1>Kuiper Imager<a class="headerlink" href="#kuiper-imager" title="Link to this heading"></a></h1>
-<p>Kuiper Imager is a tool for preparing bootable <a class="icon link reference external" href="https://github.com/analogdevicesinc/kuiper" target="_blank">ADI Kuiper Linux</a> SD cards for Analog Devices
-hardware. It consolidates a fragmented,
-error-prone, multi-tool process into a single application with three core
-operations:</p>
+<p>Kuiper Imager prepares a bootable Analog Devices system on an SD card in one
+guided flow. Before the details, it helps to know what it is writing.</p>
+<hr class="docutils" />
+<section id="what-is-a-kuiper-image">
+<h2>What is a Kuiper image?<a class="headerlink" href="#what-is-a-kuiper-image" title="Link to this heading"></a></h2>
+<p><a class="icon link reference external" href="https://github.com/analogdevicesinc/kuiper" target="_blank">ADI Kuiper Linux</a> is a
+Debian-based Linux distribution from Analog Devices (currently built on Debian
+Trixie), designed specifically for its hardware and evaluation boards. It is
+distributed as <strong>SD-card images</strong> that bundle the ADI Linux kernel with a Debian
+system, so you boot straight into a Linux that already knows the hardware
+instead of building one by hand.</p>
+<p>A Kuiper image comes in two <strong>editions</strong> and two <strong>architectures</strong>:</p>
+<ul class="simple">
+<li><p><strong>Basic</strong> — a minimal system: the ADI Linux kernel on a Debian base, with no
+desktop and no ADI libraries or tools. Suited to headless use.</p></li>
+<li><p><strong>Full</strong> — the Basic system plus an <strong>XFCE desktop</strong> (with a VNC server for
+remote access) and the ADI software stack: <code class="docutils literal notranslate"><span class="pre">libiio</span></code> and the <code class="docutils literal notranslate"><span class="pre">pyadi-iio</span></code>
+Python bindings, <code class="docutils literal notranslate"><span class="pre">libm2k</span></code>, the IIO Oscilloscope, Scopy, GNU Radio, and more.</p></li>
+<li><p><strong>64-bit (arm64)</strong> and <strong>32-bit (armhf)</strong> builds, matching the processor on
+your board.</p></li>
+</ul>
+<p>The two editions differ only by which features were enabled when the image was
+built, so <a class="reference internal" href="getting-started/cli-walkthrough.html#customize"><span class="std std-ref">customize</span></a> can add the Full-image features to a
+Basic image after the fact.</p>
+</section>
+<hr class="docutils" />
+<section id="what-is-it-used-for">
+<h2>What is it used for?<a class="headerlink" href="#what-is-it-used-for" title="Link to this heading"></a></h2>
+<p>You use a Kuiper image to <strong>bring up an Analog Devices evaluation board</strong> and
+run or develop software against it. Kuiper supports Raspberry Pi, AMD/Xilinx
+(Zynq, ZynqMP, Versal — e.g. ZedBoard, ZCU102, VCK190), and Intel/Altera
+(Arria 10, Cyclone 5 — e.g. DE10-Nano) platforms. Writing a Kuiper image to the
+card gives you a Linux that already knows the hardware — so you can scope signals
+in the IIO Oscilloscope, drive the part from <code class="docutils literal notranslate"><span class="pre">libiio</span></code>, or prototype in Python.</p>
+<p>A Raspberry Pi image boots out of the box. An <strong>ADI evaluation board must be
+configured first</strong> — the image needs the correct boot files for your exact
+board-and-carrier combination before it will boot — which is precisely the step
+Kuiper Imager automates below.</p>
+</section>
+<hr class="docutils" />
+<section id="how-kuiper-imager-helps">
+<h2>How Kuiper Imager helps<a class="headerlink" href="#how-kuiper-imager-helps" title="Link to this heading"></a></h2>
+<p>Preparing a card by hand has meant juggling several tools and a set of
+easy-to-get-wrong steps — finding the right image, writing it safely, and then
+copying the correct boot files for your exact board-and-carrier combination.
+Kuiper Imager replaces that with one application and a guided <strong>Fetch → Flash →
+Configure</strong> workflow:</p>
 <dl class="simple">
 <dt><strong>Fetch</strong></dt><dd><p>List official and CI-built Kuiper releases and download the one you want.</p>
 </dd>
 <dt><strong>Flash</strong></dt><dd><p>Write an image to an SD card or drive, with progress and read-back
-verification.</p>
+verification so you know the bytes on the card match the image.</p>
 </dd>
-<dt><strong>Configure</strong></dt><dd><p>Scan the boot partition and copy the correct boot files for your specific
-eval-board and carrier combination — the most error-prone manual step.</p>
+<dt><strong>Configure</strong></dt><dd><p>Copy the correct kernel and boot files for your specific eval-board and
+carrier combination — the most error-prone manual step, done for you.
+(Raspberry Pi cards boot without this step.)</p>
 </dd>
 </dl>
-<p>Preparing a Kuiper card has meant juggling several tools and a set of
-easy-to-get-wrong manual steps. Kuiper Imager replaces that with one application
-and a guided <strong>Fetch → Flash → Configure</strong> workflow: each command finishes by
-suggesting the next, so a first-time user is walked from a blank card to a
-booting board, while the steps stay independent for anyone who only needs one.</p>
-<p>It is <strong>CLI-first</strong>: all the logic lives in a UI-agnostic core library that the
-<code class="docutils literal notranslate"><span class="pre">kli</span></code> command-line tool and the (planned) GUI both drive in-process, so the two
-front-ends behave identically. See <a class="reference internal" href="how-it-works/architecture.html#architecture"><span class="std std-ref">Architecture Overview</span></a> for how that fits
-together, or <a class="reference internal" href="getting-started/quick-start.html#quick-start"><span class="std std-ref">Quick Start</span></a> to get going.</p>
+<p>Each command ends by suggesting the next, so a first-time user is walked from a
+blank card to a booting board, while the steps stay independent for anyone who
+only needs one. A fourth operation, <a class="reference internal" href="getting-started/cli-walkthrough.html#customize"><span class="std std-ref">customize</span></a>, turns a basic
+image into a full one by installing the ADI features you pick.</p>
+<p>Kuiper Imager is <strong>CLI-first</strong>: all the logic lives in a UI-agnostic core
+library (<code class="docutils literal notranslate"><span class="pre">libkuiper</span></code>) that the <code class="docutils literal notranslate"><span class="pre">kli</span></code> command-line tool and the Qt desktop
+GUI both drive in-process, so the two front-ends behave identically. The GUI
+suits most users; the CLI suits scripting, automation, and headless servers.
+Flashing writes to raw devices, so it guards against erasing the wrong disk:
+the running system disk can never be a target, and every write is verified by
+reading the card back. See <a class="reference internal" href="how-it-works/architecture.html#architecture"><span class="std std-ref">Architecture Overview</span></a> for how it all fits together.</p>
+</section>
 <hr class="docutils" />
-<section id="status">
-<h2>Status<a class="headerlink" href="#status" title="Link to this heading"></a></h2>
-<p>Kuiper Imager is in early development on the <code class="docutils literal notranslate"><span class="pre">v2.0</span></code> branch. What works today is
-the <code class="docutils literal notranslate"><span class="pre">kli</span></code> CLI on <strong>Linux</strong>:</p>
+<section id="platform-support">
+<h2>Platform support<a class="headerlink" href="#platform-support" title="Link to this heading"></a></h2>
+<p>Kuiper Imager is version 2.0 and runs on Linux and Windows, with macOS planned.
+Capabilities differ by platform:</p>
+<div class="table-wrapper colwidths-given docutils container">
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16.0%" />
+<col style="width: 84.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Platform</p></th>
+<th class="head"><p>Status</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Linux</strong></p></td>
+<td><p>Complete. <code class="docutils literal notranslate"><span class="pre">list-drives</span></code>, <code class="docutils literal notranslate"><span class="pre">flash</span></code>, <code class="docutils literal notranslate"><span class="pre">list-projects</span></code> / <code class="docutils literal notranslate"><span class="pre">configure</span></code>
+(including the Intel preloader), <code class="docutils literal notranslate"><span class="pre">list-releases</span></code> / <code class="docutils literal notranslate"><span class="pre">fetch</span></code> (stable and
+CI channels), <code class="docutils literal notranslate"><span class="pre">customize</span></code>, and the full GUI.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Windows</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list-drives</span></code>, <code class="docutils literal notranslate"><span class="pre">flash</span></code> (with verification), safe eject,
+<code class="docutils literal notranslate"><span class="pre">list-releases</span></code> / <code class="docutils literal notranslate"><span class="pre">fetch</span></code>, and <code class="docutils literal notranslate"><span class="pre">list-projects</span></code> / <code class="docutils literal notranslate"><span class="pre">configure</span></code> for
+ordinary (non-Intel) boards. The Intel preloader write and <code class="docutils literal notranslate"><span class="pre">customize</span></code>
+are Linux-only for now.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>macOS</strong></p></td>
+<td><p>Planned. The drive backend is a compilable stub, so the structure is in
+place but imaging is not yet implemented (see <a class="reference internal" href="how-it-works/platform-backends.html#platform-backends"><span class="std std-ref">Platform Backends</span></a>).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<hr class="docutils" />
+<section id="where-to-go-next">
+<h2>Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">list-drives</span></code> — enumerate removable drives</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">flash</span></code> — write a local image (raw or compressed) with read-back verification</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">list-projects</span></code> / <code class="docutils literal notranslate"><span class="pre">configure</span></code> — set up boot files for your eval-board</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">list-releases</span> <span class="pre">--unstable</span></code> / <code class="docutils literal notranslate"><span class="pre">fetch</span></code> — discover and download CI images</p></li>
+<li><p>New here? Start with <a class="reference internal" href="getting-started/quick-setup.html#installation"><span class="std std-ref">Quick Setup</span></a> to get Kuiper Imager, then follow the
+<a class="reference internal" href="getting-started/gui-walkthrough.html#quick-start"><span class="std std-ref">GUI walkthrough</span></a> (or the <a class="reference internal" href="getting-started/cli-walkthrough.html#cli-overview"><span class="std std-ref">CLI walkthrough</span></a> for scripting).</p></li>
+<li><p>Want to understand the internals? The <a class="reference internal" href="how-it-works/architecture.html#architecture"><span class="std std-ref">Architecture Overview</span></a> overview is the
+entry point to the <em>How It Works</em> section.</p></li>
 </ul>
-<p>A Qt GUI drives the same core: pick a local or downloaded image, choose a drive,
-and flash / configure / safely eject it (see <a class="reference internal" href="how-it-works/gui-console.html#gui-console"><span class="std std-ref">The GUI Console</span></a>). The macOS drive
-backend and the stable (non-CI) release source are postponed but have their seams
-in place — see the <a class="reference internal" href="development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a>.</p>
-</section>
-</section>
-<hr class="docutils" />
-<section id="documentation">
-<h1>Documentation<a class="headerlink" href="#documentation" title="Link to this heading"></a></h1>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="getting-started/installation.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="getting-started/installation.html#prerequisites">Prerequisites</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting-started/installation.html#build-from-source-docker">Build from Source (Docker)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting-started/installation.html#build-from-source-native">Build from Source (Native)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting-started/installation.html#debian-packages">Debian Packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/quick-setup.html">Quick Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/quick-setup.html#what-you-need">What you need</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/quick-setup.html#install-on-linux-debian-ubuntu">Install on Linux (Debian/Ubuntu)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/quick-setup.html#install-on-windows">Install on Windows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/quick-setup.html#macos">macOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/quick-setup.html#next-steps">Next steps</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="getting-started/quick-start.html">Quick Start</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="getting-started/quick-start.html#fetch-an-image">1. Fetch an image</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting-started/quick-start.html#flash-it-to-a-drive">2. Flash it to a drive</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting-started/quick-start.html#configure-boot-files">3. Configure boot files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/gui-walkthrough.html">GUI Walkthrough</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/gui-walkthrough.html#choose-an-image">1. Choose an image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/gui-walkthrough.html#choose-the-drive">2. Choose the drive</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/gui-walkthrough.html#write">3. Write</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/gui-walkthrough.html#configure-the-card">4. Configure the card</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/gui-walkthrough.html#customize-an-image-linux-only">5. Customize an image (Linux only)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/gui-walkthrough.html#eject-safely">6. Eject safely</a></li>
 </ul>
 </li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Using the CLI</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/cli-overview.html">CLI Overview</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/cli-overview.html#the-whole-drive-model">The Whole-Drive Model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/cli-overview.html#output-conventions">Output Conventions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/cli-overview.html#exit-codes">Exit Codes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/cli-overview.html#privileges-and-tokens">Privileges and Tokens</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/fetch.html">Fetch: List and Download Releases</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/fetch.html#list-releases">list-releases</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/fetch.html#id1">fetch</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/fetch.html#tokens-rate-limits-and-expiry">Tokens, Rate Limits, and Expiry</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/flash.html">Flash: Write an Image to a Drive</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/flash.html#the-flash-command">The flash command</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/flash.html#options">Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/flash.html#verification-and-safety">Verification and Safety</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/configure.html">Configure: Set Up Boot Files</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/configure.html#list-projects">list-projects</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/configure.html#id1">configure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/configure.html#intel-preloader-and-extlinux">Intel Preloader and extlinux</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="using-the-cli/customize.html">Customize: Add ADI Features to an Image</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/customize.html#list-features">list-features</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/customize.html#id1">customize</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/customize.html#the-desktop-feature">The Desktop Feature</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using-the-cli/customize.html#architecture-detection-and-the-chroot">Architecture detection and the chroot</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/cli-walkthrough.html">CLI Walkthrough</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/cli-walkthrough.html#conventions">Conventions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/cli-walkthrough.html#inspecting-drives-and-releases">Inspecting drives and releases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/cli-walkthrough.html#fetch-download-an-image">fetch — download an image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/cli-walkthrough.html#flash-write-an-image-to-a-drive">flash — write an image to a drive</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/cli-walkthrough.html#configure-set-up-boot-files">configure — set up boot files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/cli-walkthrough.html#customize-add-adi-features-to-an-image-linux-only">customize — add ADI features to an image (Linux only)</a></li>
 </ul>
 </li>
 </ul>
@@ -351,25 +391,21 @@ in place — see the <a class="reference internal" href="development/roadmap.htm
 <li class="toctree-l2"><a class="reference internal" href="how-it-works/gui-console.html#safety-guards">Safety Guards</a></li>
 </ul>
 </li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="development/development.html">Development</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="development/development.html#project-layout">Project Layout</a></li>
-<li class="toctree-l2"><a class="reference internal" href="development/development.html#dev-environment-and-presets">Dev Environment and Presets</a></li>
-<li class="toctree-l2"><a class="reference internal" href="development/development.html#verification">Verification</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="development/contributing.html">Contributing</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="development/contributing.html#comments">Comments</a></li>
-<li class="toctree-l2"><a class="reference internal" href="development/contributing.html#commits">Commits</a></li>
+<li class="toctree-l1"><a class="reference internal" href="how-it-works/dev-container.html">The Dev Container</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/dev-container.html#why-a-container">Why a container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/dev-container.html#project-layout">Project layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/dev-container.html#building-in-the-container">Building in the container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/dev-container.html#build-presets">Build presets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/dev-container.html#building-natively">Building natively</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/dev-container.html#running-the-gui-from-the-container">Running the GUI from the container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/dev-container.html#debian-packages">Debian packages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/dev-container.html#verification">Verification</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="development/roadmap.html">Roadmap</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="development/roadmap.html#phase-status">Phase Status</a></li>
-<li class="toctree-l2"><a class="reference internal" href="development/roadmap.html#deferred-design-pieces">Deferred Design Pieces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="how-it-works/github-actions.html">GitHub Actions CI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/github-actions.html#build-yml-build-and-package">build.yml — build and package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/github-actions.html#gh-pages-yml-the-documentation-site">gh-pages.yml — the documentation site</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how-it-works/github-actions.html#relationship-to-the-image-sources">Relationship to the image sources</a></li>
 </ul>
 </li>
 </ul>
@@ -383,11 +419,25 @@ in place — see the <a class="reference internal" href="development/roadmap.htm
 <li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#drive-not-found-or-not-a-kuiper-card">Drive Not Found or Not a Kuiper Card</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#fetch-fails-with-401-or-token-errors">Fetch Fails with 401 or Token Errors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#hash-mismatch">Hash Mismatch</a></li>
-<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#the-gui-only-lists-drives">The GUI Only Lists Drives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#write-is-disabled-in-the-gui">Write Is Disabled in the GUI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#fetch-says-it-needs-a-token">Fetch Says It Needs a Token</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#customize-fails-before-it-starts">Customize Fails Before It Starts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/troubleshooting.html#safe-eject-reports-the-card-is-busy">Safe Eject Reports the Card Is Busy</a></li>
 </ul>
 </li>
 </ul>
 </div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="development/contributing.html">Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/contributing.html#comments">Comments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/contributing.html#commits">Commits</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
 </section>
 
 
@@ -395,7 +445,7 @@ in place — see the <a class="reference internal" href="development/roadmap.htm
               <div class="related">
                 &nbsp;
     <div></div>
-    <a href="getting-started/installation.html" title="Next document (Alt+Shift+RightArrow)" class="next">Installation</a>
+    <a href="getting-started/quick-setup.html" title="Next document (Alt+Shift+RightArrow)" class="next">Quick Setup</a>
               </div>
           
         </div>

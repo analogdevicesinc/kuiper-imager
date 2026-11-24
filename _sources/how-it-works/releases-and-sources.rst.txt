@@ -150,8 +150,8 @@ Caching and the Offline Seed
 ``list()`` and ``resolve()`` both resolve the catalog through four steps, in
 order, stopping at the first that yields a usable manifest:
 
-#. a **fresh on-disk cache** — served with no network, within a six-hour window
-   keyed off the cache file's modification time;
+#. a **fresh on-disk cache** — served with no network, within a ten-minute
+   window keyed off the cache file's modification time;
 #. else a **live GET** of the manifest — cached atomically on success (write to a
    ``.part`` sibling, then rename);
 #. else **any cached copy**, even if stale;

@@ -3,76 +3,136 @@ Kuiper Imager
 
 .. description::
 
-   Cross-platform tool to fetch, flash, and configure ADI Kuiper Linux images
-   for Analog Devices hardware — CLI-first, with a GUI on top
+   Fetch, flash, and configure ADI Kuiper Linux images for Analog Devices
+   hardware — one cross-platform app, CLI-first with a GUI on top
 
-Kuiper Imager is a tool for preparing bootable `ADI Kuiper Linux
-<https://github.com/analogdevicesinc/kuiper>`__ SD cards for Analog Devices
-hardware. It consolidates a fragmented,
-error-prone, multi-tool process into a single application with three core
-operations:
+Kuiper Imager prepares a bootable Analog Devices system on an SD card in one
+guided flow. Before the details, it helps to know what it is writing.
+
+----
+
+What is a Kuiper image?
+-----------------------
+
+`ADI Kuiper Linux <https://github.com/analogdevicesinc/kuiper>`__ is a
+Debian-based Linux distribution from Analog Devices (currently built on Debian
+Trixie), designed specifically for its hardware and evaluation boards. It is
+distributed as **SD-card images** that bundle the ADI Linux kernel with a Debian
+system, so you boot straight into a Linux that already knows the hardware
+instead of building one by hand.
+
+A Kuiper image comes in two **editions** and two **architectures**:
+
+- **Basic** — a minimal system: the ADI Linux kernel on a Debian base, with no
+  desktop and no ADI libraries or tools. Suited to headless use.
+- **Full** — the Basic system plus an **XFCE desktop** (with a VNC server for
+  remote access) and the ADI software stack: ``libiio`` and the ``pyadi-iio``
+  Python bindings, ``libm2k``, the IIO Oscilloscope, Scopy, GNU Radio, and more.
+- **64-bit (arm64)** and **32-bit (armhf)** builds, matching the processor on
+  your board.
+
+The two editions differ only by which features were enabled when the image was
+built, so :ref:`customize <customize>` can add the Full-image features to a
+Basic image after the fact.
+
+----
+
+What is it used for?
+--------------------
+
+You use a Kuiper image to **bring up an Analog Devices evaluation board** and
+run or develop software against it. Kuiper supports Raspberry Pi, AMD/Xilinx
+(Zynq, ZynqMP, Versal — e.g. ZedBoard, ZCU102, VCK190), and Intel/Altera
+(Arria 10, Cyclone 5 — e.g. DE10-Nano) platforms. Writing a Kuiper image to the
+card gives you a Linux that already knows the hardware — so you can scope signals
+in the IIO Oscilloscope, drive the part from ``libiio``, or prototype in Python.
+
+A Raspberry Pi image boots out of the box. An **ADI evaluation board must be
+configured first** — the image needs the correct boot files for your exact
+board-and-carrier combination before it will boot — which is precisely the step
+Kuiper Imager automates below.
+
+----
+
+How Kuiper Imager helps
+-----------------------
+
+Preparing a card by hand has meant juggling several tools and a set of
+easy-to-get-wrong steps — finding the right image, writing it safely, and then
+copying the correct boot files for your exact board-and-carrier combination.
+Kuiper Imager replaces that with one application and a guided **Fetch → Flash →
+Configure** workflow:
 
 **Fetch**
    List official and CI-built Kuiper releases and download the one you want.
 
 **Flash**
    Write an image to an SD card or drive, with progress and read-back
-   verification.
+   verification so you know the bytes on the card match the image.
 
 **Configure**
-   Scan the boot partition and copy the correct boot files for your specific
-   eval-board and carrier combination — the most error-prone manual step.
+   Copy the correct kernel and boot files for your specific eval-board and
+   carrier combination — the most error-prone manual step, done for you.
+   (Raspberry Pi cards boot without this step.)
 
-Preparing a Kuiper card has meant juggling several tools and a set of
-easy-to-get-wrong manual steps. Kuiper Imager replaces that with one application
-and a guided **Fetch → Flash → Configure** workflow: each command finishes by
-suggesting the next, so a first-time user is walked from a blank card to a
-booting board, while the steps stay independent for anyone who only needs one.
+Each command ends by suggesting the next, so a first-time user is walked from a
+blank card to a booting board, while the steps stay independent for anyone who
+only needs one. A fourth operation, :ref:`customize <customize>`, turns a basic
+image into a full one by installing the ADI features you pick.
 
-It is **CLI-first**: all the logic lives in a UI-agnostic core library that the
-``kli`` command-line tool and the (planned) GUI both drive in-process, so the two
-front-ends behave identically. See :ref:`architecture` for how that fits
-together, or :ref:`quick-start` to get going.
-
-----
-
-Status
-------
-
-Kuiper Imager is in early development on the ``v2.0`` branch. What works today is
-the ``kli`` CLI on **Linux**:
-
-- ``list-drives`` — enumerate removable drives
-- ``flash`` — write a local image (raw or compressed) with read-back verification
-- ``list-projects`` / ``configure`` — set up boot files for your eval-board
-- ``list-releases --unstable`` / ``fetch`` — discover and download CI images
-
-A Qt GUI drives the same core: pick a local or downloaded image, choose a drive,
-and flash / configure / safely eject it (see :ref:`gui-console`). The macOS drive
-backend and the stable (non-CI) release source are postponed but have their seams
-in place — see the :ref:`roadmap`.
+Kuiper Imager is **CLI-first**: all the logic lives in a UI-agnostic core
+library (``libkuiper``) that the ``kli`` command-line tool and the Qt desktop
+GUI both drive in-process, so the two front-ends behave identically. The GUI
+suits most users; the CLI suits scripting, automation, and headless servers.
+Flashing writes to raw devices, so it guards against erasing the wrong disk:
+the running system disk can never be a target, and every write is verified by
+reading the card back. See :ref:`architecture` for how it all fits together.
 
 ----
 
-Documentation
-=============
+Platform support
+----------------
+
+Kuiper Imager is version 2.0 and runs on Linux and Windows, with macOS planned.
+Capabilities differ by platform:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 16 84
+
+   * - Platform
+     - Status
+   * - **Linux**
+     - Complete. ``list-drives``, ``flash``, ``list-projects`` / ``configure``
+       (including the Intel preloader), ``list-releases`` / ``fetch`` (stable and
+       CI channels), ``customize``, and the full GUI.
+   * - **Windows**
+     - ``list-drives``, ``flash`` (with verification), safe eject,
+       ``list-releases`` / ``fetch``, and ``list-projects`` / ``configure`` for
+       ordinary (non-Intel) boards. The Intel preloader write and ``customize``
+       are Linux-only for now.
+   * - **macOS**
+     - Planned. The drive backend is a compilable stub, so the structure is in
+       place but imaging is not yet implemented (see :ref:`platform-backends`).
+
+----
+
+Where to go next
+----------------
+
+- New here? Start with :ref:`installation` to get Kuiper Imager, then follow the
+  :ref:`GUI walkthrough <quick-start>` (or the :ref:`CLI walkthrough
+  <cli-overview>` for scripting).
+- Want to understand the internals? The :ref:`architecture` overview is the
+  entry point to the *How It Works* section.
 
 .. toctree::
    :maxdepth: 2
    :caption: Getting Started
 
-   getting-started/installation
-   getting-started/quick-start
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Using the CLI
-
-   using-the-cli/cli-overview
-   using-the-cli/fetch
-   using-the-cli/flash
-   using-the-cli/configure
-   using-the-cli/customize
+   getting-started/quick-setup
+   getting-started/gui-walkthrough
+   getting-started/cli-walkthrough
 
 .. toctree::
    :maxdepth: 2
@@ -85,17 +145,17 @@ Documentation
    how-it-works/platform-backends
    how-it-works/releases-and-sources
    how-it-works/gui-console
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Development
-
-   development/development
-   development/contributing
-   development/roadmap
+   how-it-works/dev-container
+   how-it-works/github-actions
 
 .. toctree::
    :maxdepth: 2
    :caption: Reference
 
    reference/troubleshooting
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contributing
+
+   development/contributing

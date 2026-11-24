@@ -8,7 +8,7 @@
 
     <title>Platform Backends &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
-    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=07ad7716" />
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=6cfc7fee" />
     <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
     <link rel="icon" href="../_static/icon.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -131,20 +131,9 @@ Content on this topic
 </p>
 
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../getting-started/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../getting-started/quick-start.html">Quick Start</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Using the CLI</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/cli-overview.html">CLI Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/fetch.html">Fetch: List and Download Releases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/flash.html">Flash: Write an Image to a Drive</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/configure.html">Configure: Set Up Boot Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/customize.html">Customize: Add ADI Features to an Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/quick-setup.html">Quick Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/gui-walkthrough.html">GUI Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/cli-walkthrough.html">CLI Walkthrough</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -159,16 +148,8 @@ Content on this topic
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Platform Backends</a></li>
 <li class="toctree-l1"><a class="reference internal" href="releases-and-sources.html">Releases and Sources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gui-console.html">The GUI Console</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Development</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../development/development.html">Development</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../development/roadmap.html">Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-container.html">The Dev Container</a></li>
+<li class="toctree-l1"><a class="reference internal" href="github-actions.html">GitHub Actions CI</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -177,6 +158,14 @@ Content on this topic
 
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Contributing</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
 </ul>
 
 
@@ -291,7 +280,7 @@ a built-in SD reader reads as non-removable, and a USB-booted OS lives on
 removable media.</p>
 <p><em>isSystem</em> — “does this disk host the <strong>running</strong> OS?” — is the safety-critical
 signal, and a system disk is <strong>never</strong> a flash candidate (see
-<a class="reference internal" href="../using-the-cli/flash.html#flash"><span class="std std-ref">the flash safety model</span></a>). A disk is system if any node in its full
+<a class="reference internal" href="../getting-started/cli-walkthrough.html#flash"><span class="std std-ref">the flash safety model</span></a>). A disk is system if any node in its full
 subtree (a partition, or a mapper stacked above one via LVM/LUKS/RAID) is mounted
 at <code class="docutils literal notranslate"><span class="pre">/</span></code>, under <code class="docutils literal notranslate"><span class="pre">/boot</span></code> / <code class="docutils literal notranslate"><span class="pre">/usr</span></code> / <code class="docutils literal notranslate"><span class="pre">/var</span></code> / <code class="docutils literal notranslate"><span class="pre">/etc</span></code>, or is swap — <strong>or</strong>
 its <code class="docutils literal notranslate"><span class="pre">MAJ:MIN</span></code> matches the device backing <code class="docutils literal notranslate"><span class="pre">/</span></code> (from <code class="docutils literal notranslate"><span class="pre">stat(&quot;/&quot;)</span></code>; skipped if
@@ -477,8 +466,8 @@ Linux build keeps using the distro packages.</p>
 <p>The macOS backend is still a <strong>structural stub</strong>: it implements
 <code class="docutils literal notranslate"><span class="pre">IDriveBackend</span></code>’s methods so the tool compiles and links, but every operation
 returns <code class="docutils literal notranslate"><span class="pre">UnsupportedPlatform</span></code>. A front-end surfaces that error, so the platform
-reads as unsupported up front. The port
-(see <a class="reference internal" href="../development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a>) will add enumeration via DiskArbitration + IOKit and a raw
+reads as unsupported up front. The planned port
+will add enumeration via DiskArbitration + IOKit and a raw
 open of <code class="docutils literal notranslate"><span class="pre">/dev/rdiskN</span></code> using a descriptor from <code class="docutils literal notranslate"><span class="pre">authopen</span></code> passed over
 <code class="docutils literal notranslate"><span class="pre">SCM_RIGHTS</span></code> (<code class="docutils literal notranslate"><span class="pre">DKIOCGETBLOCKCOUNT</span></code> for size) — reusing the same
 <code class="docutils literal notranslate"><span class="pre">AlignedRawDevice</span></code> engine behind a macOS <code class="docutils literal notranslate"><span class="pre">BlockIo</span></code>.</p>

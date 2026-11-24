@@ -8,12 +8,13 @@
 
     <title>Troubleshooting &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
-    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=07ad7716" />
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=6cfc7fee" />
     <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
     <link rel="icon" href="../_static/icon.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="prev" title="Roadmap" href="../development/roadmap.html" />
+    <link rel="next" title="Contributing" href="../development/contributing.html" />
+    <link rel="prev" title="GitHub Actions CI" href="../how-it-works/github-actions.html" />
    
   
   
@@ -98,7 +99,10 @@
 <li><a class="reference internal" href="#drive-not-found-or-not-a-kuiper-card">Drive Not Found or Not a Kuiper Card</a></li>
 <li><a class="reference internal" href="#fetch-fails-with-401-or-token-errors">Fetch Fails with 401 or Token Errors</a></li>
 <li><a class="reference internal" href="#hash-mismatch">Hash Mismatch</a></li>
-<li><a class="reference internal" href="#the-gui-only-lists-drives">The GUI Only Lists Drives</a></li>
+<li><a class="reference internal" href="#write-is-disabled-in-the-gui">Write Is Disabled in the GUI</a></li>
+<li><a class="reference internal" href="#fetch-says-it-needs-a-token">Fetch Says It Needs a Token</a></li>
+<li><a class="reference internal" href="#customize-fails-before-it-starts">Customize Fails Before It Starts</a></li>
+<li><a class="reference internal" href="#safe-eject-reports-the-card-is-busy">Safe Eject Reports the Card Is Busy</a></li>
 </ul>
 </li>
 </ul>
@@ -130,20 +134,9 @@ Content on this topic
 </p>
 
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../getting-started/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../getting-started/quick-start.html">Quick Start</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Using the CLI</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/cli-overview.html">CLI Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/fetch.html">Fetch: List and Download Releases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/flash.html">Flash: Write an Image to a Drive</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/configure.html">Configure: Set Up Boot Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/customize.html">Customize: Add ADI Features to an Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/quick-setup.html">Quick Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/gui-walkthrough.html">GUI Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/cli-walkthrough.html">CLI Walkthrough</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -158,16 +151,8 @@ Content on this topic
 <li class="toctree-l1"><a class="reference internal" href="../how-it-works/platform-backends.html">Platform Backends</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../how-it-works/releases-and-sources.html">Releases and Sources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../how-it-works/gui-console.html">The GUI Console</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Development</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../development/development.html">Development</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../development/roadmap.html">Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/dev-container.html">The Dev Container</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how-it-works/github-actions.html">GitHub Actions CI</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -176,6 +161,14 @@ Content on this topic
 
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Troubleshooting</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Contributing</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
 </ul>
 
 
@@ -194,7 +187,7 @@ Content on this topic
   <section id="troubleshooting">
 <span id="id1"></span><h1>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h1>
 <p>Every failure prints a single <code class="docutils literal notranslate"><span class="pre">error</span> <span class="pre">[Code]:</span> <span class="pre">message</span></code> line to stderr — often
-with a <code class="docutils literal notranslate"><span class="pre">hint:</span></code> — and the process exits with a <a class="reference internal" href="../using-the-cli/cli-overview.html#cli-overview"><span class="std std-ref">stable code</span></a>
+with a <code class="docutils literal notranslate"><span class="pre">hint:</span></code> — and the process exits with a <a class="reference internal" href="../getting-started/cli-walkthrough.html#cli-overview"><span class="std std-ref">stable code</span></a>
 you can branch on. This page groups the failures you are most likely to see by
 what you can do about them.</p>
 <hr class="docutils" />
@@ -227,7 +220,7 @@ front instead of corrupting an in-use device.</p>
 <code class="docutils literal notranslate"><span class="pre">--drive</span></code> must be a <strong>whole drive</strong> exactly as <code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">list-drives</span></code> reports it
 (for example <code class="docutils literal notranslate"><span class="pre">/dev/sda</span></code>, not <code class="docutils literal notranslate"><span class="pre">/dev/sda1</span></code>). <code class="docutils literal notranslate"><span class="pre">configure</span></code> additionally needs a
 card that has already been flashed: if it can’t find a BOOT partition, the card
-isn’t a Kuiper 2.0 card yet — <a class="reference internal" href="../using-the-cli/flash.html#flash"><span class="std std-ref">flash</span></a> it first.</p>
+isn’t a Kuiper 2.0 card yet — <a class="reference internal" href="../getting-started/cli-walkthrough.html#flash"><span class="std std-ref">flash</span></a> it first.</p>
 </section>
 <hr class="docutils" />
 <section id="fetch-fails-with-401-or-token-errors">
@@ -241,7 +234,7 @@ gh<span class="w"> </span>auth<span class="w"> </span>login<span class="w">     
 </div>
 <p>A <code class="docutils literal notranslate"><span class="pre">404</span></code> on an identifier that used to work usually means the artifact
 <strong>expired</strong> — CI artifacts are retained for a limited time. Re-run
-<code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">list-releases</span> <span class="pre">--unstable</span></code> for a current identifier. See <a class="reference internal" href="../using-the-cli/fetch.html#fetch"><span class="std std-ref">Fetch: List and Download Releases</span></a>.</p>
+<code class="docutils literal notranslate"><span class="pre">kli</span> <span class="pre">list-releases</span> <span class="pre">--unstable</span></code> for a current identifier. See <a class="reference internal" href="../getting-started/cli-walkthrough.html#fetch"><span class="std std-ref">fetch — download an image</span></a>.</p>
 </section>
 <hr class="docutils" />
 <section id="hash-mismatch">
@@ -250,15 +243,44 @@ gh<span class="w"> </span>auth<span class="w"> </span>login<span class="w">     
 back and compares hashes; this code means what’s on the card does not match what
 was written — a failing card or a bad connection. The partition table is left
 wiped so a corrupt card cannot appear bootable. Try a different card or reader,
-then reflash. You can skip verification with <code class="docutils literal notranslate"><span class="pre">--no-verify</span></code> (see <a class="reference internal" href="../using-the-cli/flash.html#flash"><span class="std std-ref">Flash: Write an Image to a Drive</span></a>),
+then reflash. You can skip verification with <code class="docutils literal notranslate"><span class="pre">--no-verify</span></code> (see <a class="reference internal" href="../getting-started/cli-walkthrough.html#flash"><span class="std std-ref">flash — write an image to a drive</span></a>),
 but only when you have another reason to trust the media.</p>
 </section>
 <hr class="docutils" />
-<section id="the-gui-only-lists-drives">
-<h2>The GUI Only Lists Drives<a class="headerlink" href="#the-gui-only-lists-drives" title="Link to this heading"></a></h2>
-<p>The Qt GUI is an early skeleton — today it enumerates drives and nothing more.
-Use the <code class="docutils literal notranslate"><span class="pre">kli</span></code> CLI for <code class="docutils literal notranslate"><span class="pre">fetch</span></code>, <code class="docutils literal notranslate"><span class="pre">flash</span></code>, and <code class="docutils literal notranslate"><span class="pre">configure</span></code>. Wiring the GUI to
-the core is a postponed phase; see <a class="reference internal" href="../development/roadmap.html#roadmap"><span class="std std-ref">Roadmap</span></a>.</p>
+<section id="write-is-disabled-in-the-gui">
+<h2>Write Is Disabled in the GUI<a class="headerlink" href="#write-is-disabled-in-the-gui" title="Link to this heading"></a></h2>
+<p>If the <strong>Write</strong> button stays greyed out, check the Storage card. A drive tagged
+red <strong>System</strong> hosts your running operating system and can never be a write
+target — this guard cannot be overridden. Select a removable card instead. Write
+is also disabled until both an image and a drive are selected, and while another
+operation is in flight. See <a class="reference internal" href="../how-it-works/gui-console.html#gui-console"><span class="std std-ref">The GUI Console</span></a> for the full GUI safety model.</p>
+</section>
+<hr class="docutils" />
+<section id="fetch-says-it-needs-a-token">
+<h2>Fetch Says It Needs a Token<a class="headerlink" href="#fetch-says-it-needs-a-token" title="Link to this heading"></a></h2>
+<p>Downloading a <strong>CI</strong> image (the <code class="docutils literal notranslate"><span class="pre">--unstable</span></code> channel) goes through the
+authenticated GitHub API and needs a token with <code class="docutils literal notranslate"><span class="pre">actions:read</span></code>; see
+<a class="reference internal" href="../getting-started/cli-walkthrough.html#fetch"><span class="std std-ref">Fetch Fails with 401 or Token Errors</span></a> above. The <strong>stable</strong>
+channel needs no token — if you only need a published release, list without
+<code class="docutils literal notranslate"><span class="pre">--unstable</span></code> and fetch that instead.</p>
+</section>
+<hr class="docutils" />
+<section id="customize-fails-before-it-starts">
+<h2>Customize Fails Before It Starts<a class="headerlink" href="#customize-fails-before-it-starts" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">customize</span></code> is <strong>Linux only</strong> and, on an x86 host, needs ARM emulation to run
+apt inside the image’s chroot. If it fails up front with a hint about
+<code class="docutils literal notranslate"><span class="pre">binfmt</span></code>, install <code class="docutils literal notranslate"><span class="pre">qemu-user-static</span></code> and <code class="docutils literal notranslate"><span class="pre">binfmt-support</span></code> (the GUI package
+recommends them). It also needs root and the physically-last rootfs to grow into
+free space. See <a class="reference internal" href="../getting-started/cli-walkthrough.html#customize"><span class="std std-ref">customize — add ADI features to an image (Linux only)</span></a> and <a class="reference internal" href="../how-it-works/customize-pipeline.html#customize-pipeline"><span class="std std-ref">The Customize Pipeline</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="safe-eject-reports-the-card-is-busy">
+<h2>Safe Eject Reports the Card Is Busy<a class="headerlink" href="#safe-eject-reports-the-card-is-busy" title="Link to this heading"></a></h2>
+<p><em>Exit code 5 (``DeviceBusy``).</em> The card is left mounted after a write so
+<a class="reference internal" href="../getting-started/cli-walkthrough.html#configure"><span class="std std-ref">configure — set up boot files</span></a> keeps working. If <strong>Safe eject</strong> reports the card is busy,
+something still has a file open on it (a file manager, an indexer). Close it and
+retry — the action is re-offered so you can try again once whatever held the
+card lets go.</p>
 </section>
 </section>
 
@@ -266,8 +288,8 @@ the core is a postponed phase; see <a class="reference internal" href="../develo
           </div>
               <div class="related">
                 &nbsp;
-    <a href="../development/roadmap.html" title="Previous document (Alt+Shift+LeftArrow)" class="prev">Roadmap</a>
-    <div></div>
+    <a href="../how-it-works/github-actions.html" title="Previous document (Alt+Shift+LeftArrow)" class="prev">GitHub Actions CI</a>
+    <a href="../development/contributing.html" title="Next document (Alt+Shift+RightArrow)" class="next">Contributing</a>
               </div>
           
         </div>

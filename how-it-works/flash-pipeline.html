@@ -8,7 +8,7 @@
 
     <title>The Flash Pipeline &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
-    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=07ad7716" />
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=6cfc7fee" />
     <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
     <link rel="icon" href="../_static/icon.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -131,20 +131,9 @@ Content on this topic
 </p>
 
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../getting-started/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../getting-started/quick-start.html">Quick Start</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Using the CLI</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/cli-overview.html">CLI Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/fetch.html">Fetch: List and Download Releases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/flash.html">Flash: Write an Image to a Drive</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/configure.html">Configure: Set Up Boot Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/customize.html">Customize: Add ADI Features to an Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/quick-setup.html">Quick Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/gui-walkthrough.html">GUI Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/cli-walkthrough.html">CLI Walkthrough</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -159,16 +148,8 @@ Content on this topic
 <li class="toctree-l1"><a class="reference internal" href="platform-backends.html">Platform Backends</a></li>
 <li class="toctree-l1"><a class="reference internal" href="releases-and-sources.html">Releases and Sources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gui-console.html">The GUI Console</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Development</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../development/development.html">Development</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../development/roadmap.html">Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-container.html">The Dev Container</a></li>
+<li class="toctree-l1"><a class="reference internal" href="github-actions.html">GitHub Actions CI</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -177,6 +158,14 @@ Content on this topic
 
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Contributing</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
 </ul>
 
 
@@ -207,7 +196,7 @@ and are documented in <a class="reference internal" href="platform-backends.html
 <section id="accepted-formats">
 <h2>Accepted Formats<a class="headerlink" href="#accepted-formats" title="Link to this heading"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">flash()</span></code> takes a <strong>local file</strong> (downloading is a separate step —
-<a class="reference internal" href="../using-the-cli/fetch.html#fetch"><span class="std std-ref">Fetch: List and Download Releases</span></a>) and decompresses it through libarchive. Accepted inputs are a raw
+<a class="reference internal" href="../getting-started/cli-walkthrough.html#fetch"><span class="std std-ref">fetch — download an image</span></a>) and decompresses it through libarchive. Accepted inputs are a raw
 <code class="docutils literal notranslate"><span class="pre">.img</span></code> or a single-stream <code class="docutils literal notranslate"><span class="pre">.gz</span></code> / <code class="docutils literal notranslate"><span class="pre">.xz</span></code> / <code class="docutils literal notranslate"><span class="pre">.zst</span></code> / <code class="docutils literal notranslate"><span class="pre">.bz2</span></code>, or a
 <code class="docutils literal notranslate"><span class="pre">.zip</span></code>.</p>
 <p>Only the codecs Kuiper actually ships images in are enabled — the gzip, xz,
@@ -367,14 +356,14 @@ buffered I/O would push it).</p>
 <h2>Writing the Preloader<a class="headerlink" href="#writing-the-preloader" title="Link to this heading"></a></h2>
 <p>Intel-based Kuiper cards carry a small bootloader (preloader) on a raw,
 unformatted partition. <code class="docutils literal notranslate"><span class="pre">DriveService::writePreloader()</span></code> handles it — a
-narrower cousin of <code class="docutils literal notranslate"><span class="pre">flash()</span></code> invoked by <a class="reference internal" href="../using-the-cli/configure.html#configure"><span class="std std-ref">Configure: Set Up Boot Files</span></a>.</p>
+narrower cousin of <code class="docutils literal notranslate"><span class="pre">flash()</span></code> invoked by <a class="reference internal" href="../getting-started/cli-walkthrough.html#configure"><span class="std std-ref">configure — set up boot files</span></a>.</p>
 <p>The differences from a whole-drive flash: it writes an uncompressed blob to a
 <strong>partition</strong> at offset 0 (a preloader must start at the partition head, so
 there is no defer-head), it computes a single digest, and it adds a
 mounted-target guard — a partition is a plausible live filesystem, so a mounted
 one is refused unless <code class="docutils literal notranslate"><span class="pre">--force</span></code>. It still validates, unmounts, opens
 exclusively, size-checks, flushes, and verifies by read-back. Keeping this
-device write in <code class="docutils literal notranslate"><span class="pre">DriveService</span></code> is what lets <a class="reference internal" href="../using-the-cli/configure.html#configure"><span class="std std-ref">ConfigurationService</span></a> stay platform-free: it reaches the write through an injected
+device write in <code class="docutils literal notranslate"><span class="pre">DriveService</span></code> is what lets <a class="reference internal" href="../getting-started/cli-walkthrough.html#configure"><span class="std std-ref">ConfigurationService</span></a> stay platform-free: it reaches the write through an injected
 callback rather than touching a device itself.</p>
 </section>
 </section>

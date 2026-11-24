@@ -8,7 +8,7 @@
 
     <title>Releases and Sources &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
-    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=07ad7716" />
+    <link rel="stylesheet" type="text/css" href="../_static/app.min.css?v=6cfc7fee" />
     <script async="async" src="../_static/app.umd.js?v=2fe15c61"></script>
     <link rel="icon" href="../_static/icon.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -136,20 +136,9 @@ Content on this topic
 </p>
 
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../getting-started/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../getting-started/quick-start.html">Quick Start</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Using the CLI</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/cli-overview.html">CLI Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/fetch.html">Fetch: List and Download Releases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/flash.html">Flash: Write an Image to a Drive</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/configure.html">Configure: Set Up Boot Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../using-the-cli/customize.html">Customize: Add ADI Features to an Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/quick-setup.html">Quick Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/gui-walkthrough.html">GUI Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/cli-walkthrough.html">CLI Walkthrough</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -164,16 +153,8 @@ Content on this topic
 <li class="toctree-l1"><a class="reference internal" href="platform-backends.html">Platform Backends</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Releases and Sources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gui-console.html">The GUI Console</a></li>
-</ul>
-
-<p class="caption" role="heading">
-  <span class="caption-text">Development</span>
-</p>
-
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../development/development.html">Development</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../development/roadmap.html">Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev-container.html">The Dev Container</a></li>
+<li class="toctree-l1"><a class="reference internal" href="github-actions.html">GitHub Actions CI</a></li>
 </ul>
 
 <p class="caption" role="heading">
@@ -182,6 +163,14 @@ Content on this topic
 
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../reference/troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+<p class="caption" role="heading">
+  <span class="caption-text">Contributing</span>
+</p>
+
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
 </ul>
 
 
@@ -335,8 +324,8 @@ absent <code class="docutils literal notranslate"><span class="pre">sha256</span
 <p><code class="docutils literal notranslate"><span class="pre">list()</span></code> and <code class="docutils literal notranslate"><span class="pre">resolve()</span></code> both resolve the catalog through four steps, in
 order, stopping at the first that yields a usable manifest:</p>
 <ol class="arabic simple">
-<li><p>a <strong>fresh on-disk cache</strong> — served with no network, within a six-hour window
-keyed off the cache file’s modification time;</p></li>
+<li><p>a <strong>fresh on-disk cache</strong> — served with no network, within a ten-minute
+window keyed off the cache file’s modification time;</p></li>
 <li><p>else a <strong>live GET</strong> of the manifest — cached atomically on success (write to a
 <code class="docutils literal notranslate"><span class="pre">.part</span></code> sibling, then rename);</p></li>
 <li><p>else <strong>any cached copy</strong>, even if stale;</p></li>
@@ -360,7 +349,7 @@ app-name-independent per-user cache directory (<code class="docutils literal not
 yields several runs, forcing an opaque artifact id — this triple is unique, so
 the identifier is also human-readable. <code class="docutils literal notranslate"><span class="pre">resolve()</span></code> finds the matching entry and
 returns its download URL, its canonical filename (the last path segment of the
-URL), and its <code class="docutils literal notranslate"><span class="pre">sha256</span></code> as the expected hash. That hash is what <a class="reference internal" href="../using-the-cli/fetch.html#fetch"><span class="std std-ref">fetch</span></a> checks the downloaded bytes against before saving them.</p>
+URL), and its <code class="docutils literal notranslate"><span class="pre">sha256</span></code> as the expected hash. That hash is what <a class="reference internal" href="../getting-started/cli-walkthrough.html#fetch"><span class="std std-ref">fetch</span></a> checks the downloaded bytes against before saving them.</p>
 </section>
 </section>
 <hr class="docutils" />
@@ -400,7 +389,7 @@ streamed into the output file. <code class="docutils literal notranslate"><span 
 401/403 → <code class="docutils literal notranslate"><span class="pre">PermissionDenied</span></code> (token scope), 404 → <code class="docutils literal notranslate"><span class="pre">NotFound</span></code> (likely
 expired), other non-2xx → <code class="docutils literal notranslate"><span class="pre">NetworkFailure</span></code>. The fetch pipeline itself — atomic
 <code class="docutils literal notranslate"><span class="pre">.part</span></code> rename, the free-space guard, and path-traversal safety — is described
-in <a class="reference internal" href="../using-the-cli/fetch.html#fetch"><span class="std std-ref">Fetch: List and Download Releases</span></a>.</p>
+in <a class="reference internal" href="../getting-started/cli-walkthrough.html#fetch"><span class="std std-ref">fetch — download an image</span></a>.</p>
 </section>
 <hr class="docutils" />
 <section id="resolving-a-path-without-fetching">
