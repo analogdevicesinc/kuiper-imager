@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta content="The two CI workflows: the cross-platform build-and-package matrix, and the documentation site deploy" name="description" />
+<meta content="The CI workflows: the cross-platform build-and-package pipeline, and the documentation site deploy" name="description" />
 
     <title>GitHub Actions CI &#8212; Kuiper Imager  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8e8a900e" />
@@ -94,8 +94,8 @@
         <nav>
           <ul>
 <li><a class="reference internal" href="#">GitHub Actions CI</a><ul>
-<li><a class="reference internal" href="#build-yml-build-and-package">build.yml — build and package</a><ul>
-<li><a class="reference internal" href="#the-build-job-compile-smoke">The <code class="docutils literal notranslate"><span class="pre">build</span></code> job (compile + smoke)</a></li>
+<li><a class="reference internal" href="#ci-yml-build-yml-build-and-package">ci.yml / _build.yml — build and package</a><ul>
+<li><a class="reference internal" href="#the-build-linux-and-build-windows-jobs-compile-smoke">The <code class="docutils literal notranslate"><span class="pre">build-linux</span></code> and <code class="docutils literal notranslate"><span class="pre">build-windows</span></code> jobs (compile + smoke)</a></li>
 <li><a class="reference internal" href="#the-package-deb-job-debian-packages">The <code class="docutils literal notranslate"><span class="pre">package-deb</span></code> job (Debian packages)</a></li>
 </ul>
 </li>
@@ -184,19 +184,23 @@ Content on this topic
             
   <section id="github-actions-ci">
 <span id="github-actions"></span><h1>GitHub Actions CI<a class="headerlink" href="#github-actions-ci" title="Link to this heading"></a></h1>
-<p>Kuiper Imager’s continuous integration lives in two GitHub Actions workflows
-under <code class="docutils literal notranslate"><span class="pre">.github/workflows/</span></code>. One builds, smoke-tests, and packages the tool
-across platforms; the other builds and publishes this documentation. Both run on
-pushes and pull requests against <code class="docutils literal notranslate"><span class="pre">main</span></code> and <code class="docutils literal notranslate"><span class="pre">v2.0</span></code>.</p>
+<p>Kuiper Imager’s continuous integration lives in GitHub Actions workflows under
+<code class="docutils literal notranslate"><span class="pre">.github/workflows/</span></code>. Dev CI (<code class="docutils literal notranslate"><span class="pre">ci.yml</span></code>) builds, smoke-tests, and packages the
+tool across platforms on every push and pull request against <code class="docutils literal notranslate"><span class="pre">main</span></code>; a separate
+workflow (<code class="docutils literal notranslate"><span class="pre">gh-pages.yml</span></code>) builds and publishes this documentation.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ci.yml</span></code> is only a thin trigger: it delegates the actual work to a <strong>reusable
+workflow</strong>, <code class="docutils literal notranslate"><span class="pre">_build.yml</span></code>, so the same build steps can be driven from a release
+pipeline without being copy-pasted. The jobs below live in <code class="docutils literal notranslate"><span class="pre">_build.yml</span></code>.</p>
 <hr class="docutils" />
-<section id="build-yml-build-and-package">
-<h2>build.yml — build and package<a class="headerlink" href="#build-yml-build-and-package" title="Link to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">build.yml</span></code> builds the tool, proves each build actually runs, and produces
-installable artifacts. It has two jobs.</p>
-<section id="the-build-job-compile-smoke">
-<h3>The <code class="docutils literal notranslate"><span class="pre">build</span></code> job (compile + smoke)<a class="headerlink" href="#the-build-job-compile-smoke" title="Link to this heading"></a></h3>
-<p>A matrix builds on <strong>Linux</strong> (<code class="docutils literal notranslate"><span class="pre">ubuntu-24.04</span></code>, preset <code class="docutils literal notranslate"><span class="pre">ci-linux</span></code>) and
-<strong>Windows</strong> (<code class="docutils literal notranslate"><span class="pre">windows-latest</span></code>, preset <code class="docutils literal notranslate"><span class="pre">ci-windows</span></code>). Qt 6.8.2 is installed
+<section id="ci-yml-build-yml-build-and-package">
+<h2>ci.yml / _build.yml — build and package<a class="headerlink" href="#ci-yml-build-yml-build-and-package" title="Link to this heading"></a></h2>
+<p>The build pipeline compiles the tool, proves each build actually runs, and
+produces installable artifacts, in three jobs.</p>
+<section id="the-build-linux-and-build-windows-jobs-compile-smoke">
+<h3>The <code class="docutils literal notranslate"><span class="pre">build-linux</span></code> and <code class="docutils literal notranslate"><span class="pre">build-windows</span></code> jobs (compile + smoke)<a class="headerlink" href="#the-build-linux-and-build-windows-jobs-compile-smoke" title="Link to this heading"></a></h3>
+<p>One job per platform — <strong>Linux</strong> (<code class="docutils literal notranslate"><span class="pre">ubuntu-24.04</span></code>, preset <code class="docutils literal notranslate"><span class="pre">ci-linux</span></code>) and
+<strong>Windows</strong> (<code class="docutils literal notranslate"><span class="pre">windows-latest</span></code>, preset <code class="docutils literal notranslate"><span class="pre">ci-windows</span></code>) — so no step needs an OS
+guard. Qt 6.8.2 is installed
 via <code class="docutils literal notranslate"><span class="pre">install-qt-action</span></code>; Windows additionally wires up MSVC (<code class="docutils literal notranslate"><span class="pre">msvc-dev-cmd</span></code>)
 and Ninja, and the C libraries (libarchive, curl, openssl) come from <strong>vcpkg</strong>
 manifest mode through the <code class="docutils literal notranslate"><span class="pre">ci-windows</span></code> preset’s toolchain. Each platform
@@ -211,12 +215,14 @@ with a bare <code class="docutils literal notranslate"><span class="pre">PATH</s
 and <code class="docutils literal notranslate"><span class="pre">list-drives</span></code> exercises the real SetupAPI enumeration on the runner.</p></li>
 </ul>
 <p>The unpackaged Linux binaries and the Windows bundle are uploaded as artifacts
-(retained 14 days). There is no macOS row yet — the macOS
-<a class="reference internal" href="platform-backends.html#platform-backends"><span class="std std-ref">backend</span></a> is a stub.</p>
+(retained 14 days). <code class="docutils literal notranslate"><span class="pre">build-linux</span></code> serves dev CI only — a release caller skips
+it (<code class="docutils literal notranslate"><span class="pre">run-linux-build:</span> <span class="pre">false</span></code>), since <code class="docutils literal notranslate"><span class="pre">package-deb</span></code> already builds and tests
+Linux and the <code class="docutils literal notranslate"><span class="pre">.deb</span></code> is the shippable artifact. There is no macOS row yet — the
+macOS <a class="reference internal" href="platform-backends.html#platform-backends"><span class="std std-ref">backend</span></a> is a stub.</p>
 </section>
 <section id="the-package-deb-job-debian-packages">
 <h3>The <code class="docutils literal notranslate"><span class="pre">package-deb</span></code> job (Debian packages)<a class="headerlink" href="#the-package-deb-job-debian-packages" title="Link to this heading"></a></h3>
-<p>A second matrix builds the Debian packages for <strong>amd64</strong> and <strong>arm64</strong>, each
+<p>A matrix builds the Debian packages for <strong>amd64</strong> and <strong>arm64</strong>, each
 inside a pinned <code class="docutils literal notranslate"><span class="pre">debian:12</span></code> container so they link the Qt the target users
 have. It installs the packaging toolchain and the build-deps from
 <code class="docutils literal notranslate"><span class="pre">debian/control</span></code> (<code class="docutils literal notranslate"><span class="pre">mk-build-deps</span></code>), builds with <code class="docutils literal notranslate"><span class="pre">dpkg-buildpackage</span> <span class="pre">-us</span> <span class="pre">-uc</span>
@@ -236,7 +242,7 @@ packages locally.</p>
 <section id="gh-pages-yml-the-documentation-site">
 <h2>gh-pages.yml — the documentation site<a class="headerlink" href="#gh-pages-yml-the-documentation-site" title="Link to this heading"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">gh-pages.yml</span></code> builds and deploys this Sphinx site. It triggers only on
-changes under <code class="docutils literal notranslate"><span class="pre">docs/**</span></code> (on the same branches, plus pull requests). The
+changes under <code class="docutils literal notranslate"><span class="pre">docs/**</span></code> (on <code class="docutils literal notranslate"><span class="pre">main</span></code> and <code class="docutils literal notranslate"><span class="pre">v2.0</span></code>, plus pull requests). The
 <code class="docutils literal notranslate"><span class="pre">build-doc</span></code> job installs <code class="docutils literal notranslate"><span class="pre">docs/requirements.txt</span></code> and runs:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>html<span class="w"> </span><span class="nv">SPHINXOPTS</span><span class="o">=</span><span class="s1">'-W --keep-going'</span>
 </pre></div>
