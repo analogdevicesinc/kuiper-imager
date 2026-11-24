@@ -84,9 +84,44 @@ but only when you have another reason to trust the media.
 
 ----
 
-The GUI Only Lists Drives
--------------------------
+Write Is Disabled in the GUI
+----------------------------
 
-The Qt GUI is an early skeleton — today it enumerates drives and nothing more.
-Use the ``kli`` CLI for ``fetch``, ``flash``, and ``configure``. Wiring the GUI to
-the core is a postponed phase; see :ref:`roadmap`.
+If the **Write** button stays greyed out, check the Storage card. A drive tagged
+red **System** hosts your running operating system and can never be a write
+target — this guard cannot be overridden. Select a removable card instead. Write
+is also disabled until both an image and a drive are selected, and while another
+operation is in flight. See :ref:`gui-console` for the full GUI safety model.
+
+----
+
+Fetch Says It Needs a Token
+---------------------------
+
+Downloading a **CI** image (the ``--unstable`` channel) goes through the
+authenticated GitHub API and needs a token with ``actions:read``; see
+:ref:`Fetch Fails with 401 or Token Errors <fetch>` above. The **stable**
+channel needs no token — if you only need a published release, list without
+``--unstable`` and fetch that instead.
+
+----
+
+Customize Fails Before It Starts
+--------------------------------
+
+``customize`` is **Linux only** and, on an x86 host, needs ARM emulation to run
+apt inside the image's chroot. If it fails up front with a hint about
+``binfmt``, install ``qemu-user-static`` and ``binfmt-support`` (the GUI package
+recommends them). It also needs root and the physically-last rootfs to grow into
+free space. See :ref:`customize` and :ref:`customize-pipeline`.
+
+----
+
+Safe Eject Reports the Card Is Busy
+-----------------------------------
+
+*Exit code 5 (``DeviceBusy``).* The card is left mounted after a write so
+:ref:`configure` keeps working. If **Safe eject** reports the card is busy,
+something still has a file open on it (a file manager, an indexer). Close it and
+retry — the action is re-offered so you can try again once whatever held the
+card lets go.
