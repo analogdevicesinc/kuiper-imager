@@ -1,0 +1,54 @@
+Kuiper Imager
+Copyright (c) 2026 Analog Devices, Inc.
+
+This product is licensed under the Apache License, Version 2.0. A copy of the
+license is in the LICENSE file in the root of this repository.
+
+================================================================================
+Assets bundled in this repository under a different license
+================================================================================
+
+The following files are redistributed in source form in this repository and
+carry their own license, separate from the Apache-2.0 license of the Kuiper
+Imager code.
+
+--------------------------------------------------------------------------------
+ADI Kuiper Linux desktop assets                                 BSD-3-Clause
+--------------------------------------------------------------------------------
+  Vendored verbatim from the ADI Kuiper Linux (kuiper2.0) project and embedded
+  into the imager so they can be injected into a customized image.
+
+    src/core/assets/desktop/adi-xserver.sh
+    src/core/assets/desktop/xserver.service
+    src/core/assets/desktop/x11vnc.service
+    src/core/assets/desktop/99-vc4.conf
+
+  Copyright (c) 2024 Analog Devices, Inc.
+  SPDX-License-Identifier: BSD-3-Clause
+
+================================================================================
+Third-party libraries linked at build time / runtime
+================================================================================
+
+The Kuiper Imager binaries link the libraries below. On Linux these are provided
+by the distribution and linked dynamically; on Windows and macOS they are built
+from source via vcpkg (see vcpkg.json) and redistributed with the application.
+Binary distributions MUST ship the corresponding license texts (and, for LGPL,
+the means to relink) alongside the application.
+
+  Qt 6         Qt Core, Gui, Widgets, Concurrent, Network
+               GNU Lesser General Public License v3.0 (LGPL-3.0) — open-source
+               edition. The Qt modules used here are linked, not modified. To
+               keep LGPL-3.0 obligations satisfied, Qt must be dynamically
+               linked (or relinkable) in distributed binaries.
+               https://www.qt.io/
+
+  libcurl      curl license (MIT/X-derivative, permissive)
+               https://curl.se/docs/copyright.html
+
+  OpenSSL      Apache License 2.0 (OpenSSL 3.x). Only libcrypto is linked,
+               for SHA-256 verification of fetched images.
+               https://www.openssl.org/
+
+  libarchive   BSD-2-Clause
+               https://www.libarchive.org/
