@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Analog Devices, Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "kuiper/Error.hpp"
+#include "kuiper/Progress.hpp"
+#include "kuiper/Release.hpp"
+#include "kuiper/http/HttpClient.hpp"
+
+namespace kuiper {
+
+class ReleaseProvider;
+
+// Result of a successful fetch: where the bytes landed, how many, and their
+// SHA-256 (of the file exactly as downloaded).
+struct FetchSummary {
+    std::string outputPath;
+    std::uint64_t bytesWritten = 0;
+    std::string sha256;  // lowercase hex
+};
+
+// Portable image-source facade — no device, no platform code. Dispatches
+// listReleases()/fetch() to a per-channel ReleaseProvider; HTTP is injected so it
+// and its providers are unit-testable with a fake. See docs: releases-and-sources.
+class ImageService {
+public:
+    // `manifestCacheDir` holds the cached stable-release manifest; empty (the
+    // default) resolves to a shared per-user cache dir. See docs:
+    // releases-and-sources.
+    explicit ImageService(std::unique_ptr<IHttpClient> http = makeHttpClient(),
+                          std::optional<std::string> githubToken = std::nullopt,
+                          std::string manifestCacheDir = {});
+
+    Result<std::vector<Release>> listReleases(const ReleaseQuery& query = {});
+
+    // Download the artifact named by `id` (e.g. "gh:<artifactId>") to
+    // `outputPath`, verbatim (no decompression). Streams to a temporary file and
+    // renames on success, so a failed or cancelled fetch never leaves a partial
+    // file at outputPath. Refuses to overwrite an existing file unless `force`.
+    Result<FetchSummary> fetch(const std::string& id,
+                               const std::string& outputPath,
+                               bool force = false, ProgressFn onProgress = {},
+                               CancelToken cancel = {});
+
+    // The path fetch(id, outputDir) would write to, resolved WITHOUT downloading.
+    // Does not check existence — the caller tests the returned path (this is how
+    // the GUI caches downloads). See docs: releases-and-sources.
+    Result<std::string> artifactPath(const std::string& id,
+                                     const std::string& outputDir);
+
+private:
+    // The provider serving a channel ("stable" | "unstable"), or nullptr if the
+    // channel is unknown. fetch() maps an id's scheme to its channel first.
+    std::unique_ptr<ReleaseProvider> makeProvider(std::string_view channel);
+
+    std::unique_ptr<IHttpClient> http_;
+    std::optional<std::string> githubToken_;
+    std::string manifestCacheDir_;
+};
+
+}  // namespace kuiper

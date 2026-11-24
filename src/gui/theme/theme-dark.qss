@@ -1,0 +1,265 @@
+/* Kuiper GUI theme — dark. Hand-authored Qt stylesheet.
+   Keep theme-light.qss and theme-dark.qss in sync; Tokens.hpp carries the
+   QColor constants that custom-painted widgets read. */
+
+/* --- app surfaces --- */
+/* Base text/font only — NOT background: a universal background-color would paint
+   every child (labels, rows) and hide the card surfaces. The canvas colour is set
+   on the window instead, and children stay transparent unless a rule opts in. */
+QWidget {
+    color: #ffffff;
+    font-family: "Inter";
+    font-size: 14px;
+}
+QMainWindow, QDialog { background-color: #101820; }
+
+QTableWidget, QTableView {
+    background-color: #293038;
+    alternate-background-color: #101820;
+    gridline-color: #4b545d;
+    border: 1px solid #4b545d;
+    border-radius: 4px;
+    selection-background-color: #92befc;
+    selection-color: #101820;
+}
+QHeaderView::section {
+    background-color: #293038;
+    color: #848b95;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 1px solid #4b545d;
+    font-weight: 600;
+}
+QStatusBar { color: #848b95; }
+QStatusBar QLabel { color: #848b95; }
+
+/* --- KuiperButton (QPushButton skin, keyed on dynamic props) --- */
+QPushButton[kuiperButton="true"] {
+    border: none;
+    border-radius: 4px;
+    font-family: "Inter";
+    font-weight: 600;
+    font-size: 14px;
+    min-height: 40px;
+    padding: 0 16px;
+}
+QPushButton[kuiperButton="true"][size="md"] {
+    min-height: 40px; padding: 0 16px; font-size: 14px;
+}
+QPushButton[kuiperButton="true"][size="sm"] {
+    min-height: 32px; padding: 0 12px; font-size: 14px;
+}
+QPushButton[kuiperButton="true"][size="xs"] {
+    min-height: 24px; padding: 0 8px; font-size: 12px;
+}
+QPushButton[kuiperButton="true"][kind="primary"] {
+    background-color: #92befc;
+    color: #101820;
+}
+QPushButton[kuiperButton="true"][kind="primary"]:hover,
+QPushButton[kuiperButton="true"][kind="primary"]:pressed {
+    background-color: #edf3fc;
+    color: #101820;
+}
+QPushButton[kuiperButton="true"][kind="primary"]:disabled,
+QPushButton[kuiperButton="true"][kind="primary"][processing="true"] {
+    background-color: rgba(58, 142, 233, 0.4);
+    color: #101820;
+}
+QPushButton[kuiperButton="true"][kind="secondary"] {
+    background-color: transparent;
+    border: 1px solid #92befc;
+    color: #92befc;
+}
+QPushButton[kuiperButton="true"][kind="secondary"]:hover,
+QPushButton[kuiperButton="true"][kind="secondary"]:pressed {
+    background-color: rgba(0, 103, 185, 0.55);
+    border: 1px solid #edf3fc;
+    color: #edf3fc;
+}
+QPushButton[kuiperButton="true"][kind="secondary"]:disabled,
+QPushButton[kuiperButton="true"][kind="secondary"][processing="true"] {
+    border: 1px solid rgba(58, 142, 233, 0.4);
+    color: rgba(58, 142, 233, 0.4);
+}
+QPushButton[kuiperButton="true"][kind="tertiary"] {
+    background-color: transparent;
+    border: 1px solid #848b95;
+    color: #ffffff;
+}
+QPushButton[kuiperButton="true"][kind="tertiary"]:hover,
+QPushButton[kuiperButton="true"][kind="tertiary"]:pressed {
+    background-color: rgba(94, 103, 115, 0.5);
+    border: 1px solid #b7bbc3;
+    color: #ffffff;
+}
+QPushButton[kuiperButton="true"][kind="tertiary"]:disabled,
+QPushButton[kuiperButton="true"][kind="tertiary"][processing="true"] {
+    border: 1px solid rgba(132, 139, 149, 0.58);
+    color: #848b95;
+}
+QPushButton[kuiperButton="true"][kind="ghost"] {
+    background-color: transparent;
+    color: #ffffff;
+}
+QPushButton[kuiperButton="true"][kind="ghost"]:hover,
+QPushButton[kuiperButton="true"][kind="ghost"]:pressed {
+    background-color: rgba(94, 103, 115, 0.5);
+    color: #ffffff;
+}
+QPushButton[kuiperButton="true"][kind="ghost"]:disabled,
+QPushButton[kuiperButton="true"][kind="ghost"][processing="true"] {
+    color: rgba(132, 139, 149, 0.58);
+}
+QPushButton[kuiperButton="true"]:focus {
+    border: 2px solid #b16ee0;
+}
+
+/* --- chrome --- */
+QFrame[kuiperHeaderBar="true"] { background-color: #293038; border-bottom: 1px solid #4b545d; }
+QFrame[kuiperDivider="true"] { background-color: #4b545d; max-height: 1px; min-height: 1px; }
+/* --- KuiperCard --- */
+QFrame[kuiperCard="true"] {
+    background-color: #293038;
+    border: 1px solid #4b545d;
+    border-radius: 8px;
+}
+/* --- KuiperContainerHeader --- */
+QLabel[kuiperHeading="true"] { color: #ffffff; font-weight: 700; font-size: 16px; }
+QLabel[kuiperHeading="true"][density="low"] { font-size: 20px; font-weight: 600; }
+QLabel[kuiperSubtitle="true"] { color: #b7bbc3; font-weight: 400; font-size: 14px; }
+QLabel[kuiperCaption="true"] { color: #848b95; font-size: 12px; }
+/* --- KuiperTag --- */
+QLabel[kuiperTag="true"][status="info"] {
+    background-color: #3a424b; color: #ffffff;
+    border: 1px solid #5e6773; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+QLabel[kuiperTag="true"][status="success"] {
+    background-color: #114a32; color: #ffffff;
+    border: 1px solid #2e9e6f; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+QLabel[kuiperTag="true"][status="warning"] {
+    background-color: #702c0a; color: #ffffff;
+    border: 1px solid #e76423; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+QLabel[kuiperTag="true"][status="danger"] {
+    background-color: #840d17; color: #ffffff;
+    border: 1px solid #ffa3ab; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+QLabel[kuiperTag="true"][status="highlight"] {
+    background-color: #5d2287; color: #ffffff;
+    border: 1px solid #b16ee0; border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-weight: 600;
+}
+/* --- KuiperProgressBar --- */
+QProgressBar[kuiperProgress="true"] {
+    background-color: rgba(132, 139, 149, 0.43);
+    border: none; border-radius: 4px; max-height: 8px; min-height: 8px;
+}
+QProgressBar[kuiperProgress="true"]::chunk { background-color: #92befc; border-radius: 4px; }
+QProgressBar[kuiperProgress="true"][status="success"]::chunk { background-color: #2e9e6f; }
+QProgressBar[kuiperProgress="true"][status="danger"]::chunk { background-color: #ffa3ab; }
+/* --- KuiperLogView --- */
+QPlainTextEdit[kuiperLog="true"] {
+    background-color: #293038;
+    color: #b7bbc3;
+    border: 1px solid #848b95;
+    border-radius: 4px;
+    selection-background-color: #92befc;
+    selection-color: #293038;
+}
+/* --- KuiperSpinner --- */
+KuiperSpinner { qproperty-arcColor: #92befc; }
+/* --- KuiperSegmentedControl --- */
+QFrame[kuiperSegmented="true"] { border: 1px solid #848b95; border-radius: 4px; }
+QPushButton[kuiperSegment="true"] {
+    border: none; border-radius: 0; background-color: transparent;
+    color: #ffffff;
+    padding: 0 16px; min-height: 38px; font-size: 14px; font-weight: 600;
+}
+QPushButton[kuiperSegment="true"][pos="mid"], QPushButton[kuiperSegment="true"][pos="last"] {
+    border-left: 1px solid #848b95;
+}
+QPushButton[kuiperSegment="true"][pos="first"] { border-top-left-radius: 3px; border-bottom-left-radius: 3px; }
+QPushButton[kuiperSegment="true"][pos="last"] { border-top-right-radius: 3px; border-bottom-right-radius: 3px; }
+QPushButton[kuiperSegment="true"]:checked {
+    background-color: rgba(0, 103, 185, 0.18);
+    color: #92befc;
+}
+QPushButton[kuiperSegment="true"][compact="true"] { padding: 0 12px; min-height: 26px; font-size: 13px; }
+/* --- KuiperCheckBox --- */
+QCheckBox[kuiperCheck="true"] { color: #ffffff; spacing: 8px; font-size: 14px; }
+QCheckBox[kuiperCheck="true"]::indicator {
+    width: 16px; height: 16px; border-radius: 4px;
+    border: 1px solid #848b95;
+    background-color: #293038;
+}
+QCheckBox[kuiperCheck="true"]::indicator:hover { border-color: #b7bbc3; }
+QCheckBox[kuiperCheck="true"]::indicator:checked {
+    border: none; background-color: #92befc;
+    image: url(:/theme/check.svg);
+}
+/* --- QComboBox (dropdown skin) --- */
+QComboBox {
+    background-color: #293038;
+    color: #ffffff;
+    border: 1px solid #848b95;
+    border-radius: 4px; padding: 4px 8px; min-height: 30px; font-size: 14px;
+}
+QComboBox:hover { border-color: #b7bbc3; }
+QComboBox:focus { border: 2px solid #b16ee0; padding: 3px 7px; }
+QComboBox:disabled {
+    background-color: rgba(94, 103, 115, 0.5);
+    color: #848b95;
+    border-color: rgba(132, 139, 149, 0.58);
+}
+QComboBox::drop-down { border: none; width: 24px; }
+QComboBox QAbstractItemView {
+    background-color: #293038;
+    color: #ffffff;
+    border: 1px solid #4b545d;
+    selection-background-color: #92befc;
+    selection-color: #101820;
+    outline: none;
+}
+/* --- QLineEdit (input skin) --- */
+QLineEdit {
+    background-color: #293038;
+    color: #ffffff;
+    border: 1px solid #848b95;
+    border-radius: 4px; padding: 4px 8px; min-height: 30px; font-size: 14px;
+    selection-background-color: #92befc;
+    selection-color: #101820;
+}
+QLineEdit:hover { border-color: #b7bbc3; }
+QLineEdit:focus { border: 2px solid #b16ee0; padding: 3px 7px; }
+QLineEdit:disabled {
+    background-color: rgba(94, 103, 115, 0.5);
+    color: #848b95;
+    border-color: rgba(132, 139, 149, 0.58);
+}
+/* --- KuiperBanner (subtle) --- */
+QFrame[kuiperBanner="true"][status="info"] {
+    background-color: #3a424b; border: 1px solid #5e6773; border-radius: 8px;
+}
+QFrame[kuiperBanner="true"][status="info"] QLabel { color: #ffffff; background: transparent; }
+QFrame[kuiperBanner="true"][status="success"] {
+    background-color: #114a32; border: 1px solid #2e9e6f; border-radius: 8px;
+}
+QFrame[kuiperBanner="true"][status="success"] QLabel { color: #ffffff; background: transparent; }
+QFrame[kuiperBanner="true"][status="warning"] {
+    background-color: #702c0a; border: 1px solid #e76423; border-radius: 8px;
+}
+QFrame[kuiperBanner="true"][status="warning"] QLabel { color: #ffffff; background: transparent; }
+QFrame[kuiperBanner="true"][status="danger"] {
+    background-color: #840d17; border: 1px solid #ffa3ab; border-radius: 8px;
+}
+QFrame[kuiperBanner="true"][status="danger"] QLabel { color: #ffffff; background: transparent; }
+QFrame[kuiperBanner="true"][status="highlight"] {
+    background-color: #5d2287; border: 1px solid #b16ee0; border-radius: 8px;
+}
+QFrame[kuiperBanner="true"][status="highlight"] QLabel { color: #ffffff; background: transparent; }

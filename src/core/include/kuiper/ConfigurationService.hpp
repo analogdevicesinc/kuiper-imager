@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Analog Devices, Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <functional>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "kuiper/Error.hpp"
+#include "kuiper/Progress.hpp"
+#include "kuiper/Project.hpp"
+
+namespace kuiper {
+
+// Injected raw preloader writer, so ConfigurationService stays portable and never
+// touches a drive itself. The CLI wires it to DriveService::writePreloader.
+using PreloaderSink =
+    std::function<Result<void>(const std::string& preloaderFile, ProgressFn)>;
+
+// The on-card release marker, parsed from `kuiper-release.json`. A
+// kuiper-imager-supported Kuiper 2 image carries this file at the BOOT-partition
+// root (and mirrors it at /etc on the rootfs). Its presence is what identifies a
+// supported card; the fields are best-effort and may be empty on older images.
+struct KuiperRelease {
+    std::string version;       // e.g. "2026.1.1"
+    std::string variant;       // e.g. "basic"
+    std::string architecture;  // e.g. "arm64"
+};
+
+// Options for configureProject.
+struct ConfigureOptions {
+    bool dryRun = false;  // compute the copy plan without touching the card
+};
+
+// One boot file that configure copies into the boot-partition root.
+struct CopyOp {
+    std::string source;  // absolute path within the boot partition
+    std::string dest;    // absolute path at the boot-partition root
+};
+
+// What configureProject did (or, in dry-run, would do).
+struct ConfigureSummary {
+    std::vector<CopyOp> files;
+    bool dryRun = false;
+    std::optional<std::string> preloader;  // resolved source, intel only
+};
+
+// Reads and applies the ADI boot-file configuration on the mounted BOOT
+// partition. Path-based by design (manifests are files in the FAT filesystem), so
+// it stays portable and the partition must already be mounted. See docs:
+// configure.
+class ConfigurationService {
+public:
+    ConfigurationService() = default;
+
+    // Read the `kuiper-release.json` marker at the BOOT-partition root. Its
+    // presence identifies a kuiper-imager-supported Kuiper 2 card; returns
+    // NotKuiper2 when the file is absent or not a JSON object, and Unknown when
+    // it is present but cannot be read (an I/O error, not a verdict on the card).
+    // Parsing is defensive — a present-but-sparse file still succeeds with the
+    // recognised fields left empty.
+    Result<KuiperRelease> readRelease(const std::string& bootPath = "/boot");
+
+    // Recursively scan `bootPath` for *.json manifests and collect every project
+    // they declare. Malformed/non-manifest JSON is skipped silently; an empty
+    // result is not an error, but a missing/non-directory path is.
+    Result<ProjectList> listProjects(const std::string& bootPath = "/boot");
+
+    // Find the project matching `name` + `board`; the first match wins. Returns
+    // NotFound if none matches.
+    Result<Project> findProject(const std::string& bootPath,
+                                const std::string& name,
+                                const std::string& board);
+
+    // Apply a project's boot files: copy its kernel and files[] into the
+    // boot-partition root. Fails fast — a missing source leaves the card
+    // untouched. Intel projects also need a raw preloader write: pass
+    // `writePreloader`, or without a sink they return the manual procedure.
+    Result<ConfigureSummary> configureProject(
+        const std::string& bootPath, const Project& project,
+        const ConfigureOptions& opts = {}, ProgressFn onProgress = {},
+        PreloaderSink writePreloader = {});
+
+    const char* backendName() const noexcept;
+};
+
+}  // namespace kuiper

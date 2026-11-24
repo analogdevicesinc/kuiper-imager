@@ -1,0 +1,15 @@
+/build*/
+
+/CMakeFiles/
+/CMakeCache.txt
+
+CMakeUserPresets.json
+
+/docs/_build/
+
+.vscode/
+.idea/
+.qtcreator/
+*.user
+
+.DS_Store
