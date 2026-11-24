@@ -1,0 +1,7 @@
+.git
+build
+build-cli
+build*
+.vscode
+.idea
+.DS_Store

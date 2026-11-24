@@ -1,0 +1,8 @@
+// Windows application icon, compiled into the .exe so Explorer, the taskbar,
+// and the window title bar show it — the platform equivalent of the Linux
+// .desktop icon (which is installed as a separate file; see the top-level
+// CMakeLists). The path is injected by CMake as an absolute, forward-slash
+// path (rc.exe resolves a bare relative name against its working directory,
+// the build tree, not this file's folder — so a relative path would miss).
+// IDI_ICON1: Windows shows the lowest-numbered ICON resource as the app icon.
+IDI_ICON1 ICON "@KUIPER_WINDOWS_ICON@"

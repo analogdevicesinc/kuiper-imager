@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>Analog Devices</vendor>
+  <vendor_url>https://github.com/analogdevicesinc/kuiper-imager</vendor_url>
+
+  <action id="com.analogdevices.kuiperimager.helper">
+    <description>Write a Kuiper Linux image to a storage device</description>
+    <message>Authentication is required to write to the storage device</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <!-- Keep: a second write in the same session won't re-prompt. -->
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <!-- Bind this action to exactly the helper binary, so `pkexec <helper>` uses
+         this branded prompt and cached auth instead of the generic one. -->
+    <annotate key="org.freedesktop.policykit.exec.path">@KUIPER_HELPER_INSTALL_PATH@</annotate>
+  </action>
+</policyconfig>

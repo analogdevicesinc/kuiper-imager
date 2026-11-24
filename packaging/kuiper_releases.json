@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "generated": "2026-11-19T00:00:00Z",
+  "baseUrl": "https://packages.analog.com/public/raw/files",
+  "releases": [
+    {
+      "version": "2026.1.1", "variant": "full", "arch": "arm64",
+      "file": "kuiper_full_64_image_2026.1.1.zip",
+      "sha256": "26ac95a6fbb977c94d35d325db52dbc819be68c0256eae318737ff3dcb6cb27a",
+      "recommended": true
+    },
+    {
+      "version": "2026.1.1", "variant": "basic", "arch": "arm64",
+      "file": "kuiper_basic_64_image_2026.1.1.zip",
+      "sha256": "a28504cdc86e40549b979a0e6dc623903bb91703ffdd144db4383aa52ae694a5",
+      "recommended": true
+    },
+    {
+      "version": "2026.1.0", "variant": "full", "arch": "arm32",
+      "file": "kuiper_full_32_image_2026.1.0.zip",
+      "sha256": "8afedf5d53d96f2ff3be564354fbce7b72fb2f086c333d3dc9d5fbf500fa7255",
+      "recommended": true
+    },
+    {
+      "version": "2026.1.0", "variant": "basic", "arch": "arm32",
+      "file": "kuiper_basic_32_image_2026.1.0.zip",
+      "sha256": "a31592534f4605331dcc4b3aee73c5bf29001a3653fca58ac44bea201a6e8d9d",
+      "recommended": true
+    },
+    {
+      "version": "2026.1.0", "variant": "full", "arch": "arm64",
+      "file": "kuiper_full_64_image_2026.1.0.zip",
+      "sha256": "92b0b3e48c52f144e1ade369b41aee48c053979770a7cca473d09ef6578aae36",
+      "recommended": false
+    },
+    {
+      "version": "2026.1.0", "variant": "basic", "arch": "arm64",
+      "file": "kuiper_basic_64_image_2026.1.0.zip",
+      "sha256": "43a0acaa09eefb09930a67bdad51db421eeaed1a702e760fd2d14dcac0b7ab7f",
+      "recommended": false
+    }
+  ]
+}

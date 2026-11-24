@@ -1,0 +1,19 @@
+<!DOCTYPE RCC>
+<!-- Desktop asset files vendored verbatim from the Kuiper repo and embedded into
+     libkuiper via rcc, so they stay byte-identical to the build. See docs:
+     customize-pipeline (vendored assets). -->
+<RCC>
+    <qresource prefix="/kuiper/desktop">
+        <file alias="x11vnc.service">desktop/x11vnc.service</file>
+        <file alias="xserver.service">desktop/xserver.service</file>
+        <file alias="adi-xserver.sh">desktop/adi-xserver.sh</file>
+        <file alias="99-vc4.conf">desktop/99-vc4.conf</file>
+        <file alias="wallpaper.png">desktop/wallpaper.png</file>
+        <file alias="org.xfce.panel.applicationsmenu.png">desktop/org.xfce.panel.applicationsmenu.png</file>
+    </qresource>
+    <qresource prefix="/kuiper/releases">
+        <!-- Offline fallback for the stable channel when the hosted manifest is
+             unreachable and nothing is cached. See docs: releases-and-sources. -->
+        <file alias="seed.json">releases/seed.json</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,5 @@
+usr/bin/kuiper-imager
+usr/libexec/kuiper-imager-helper
+usr/share/polkit-1/actions/com.analogdevices.kuiperimager.policy
+usr/share/applications/com.analogdevices.kuiperimager.desktop
+usr/share/icons/hicolor/256x256/apps/com.analogdevices.kuiperimager.png

@@ -1,0 +1,190 @@
+name: _build
+
+on:
+  workflow_call:
+    inputs:
+      retention-days:
+        description: How long to keep the uploaded artifacts.
+        type: number
+        default: 14
+        required: false
+      run-linux-build:
+        description: >-
+          Run the build-linux job (ci-linux preset + raw-binary upload). True for
+          dev CI, where the unpackaged binaries are a quick-download convenience;
+          set false for release, where the shippable Linux artifact is the .deb
+          from package-deb and that job already compiles and smoke-tests Linux.
+        type: boolean
+        default: true
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  QT_VERSION: 6.8.2
+
+jobs:
+  build-linux:
+    name: linux
+    if: ${{ inputs.run-linux-build }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build \
+            libarchive-dev \
+            libssl-dev \
+            libcurl4-openssl-dev \
+            libgl1-mesa-dev \
+            libxkbcommon-dev \
+            libfontconfig1 \
+            libdbus-1-3 \
+            libglib2.0-0t64
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Configure
+        run: cmake --preset ci-linux
+
+      - name: Build
+        run: cmake --build --preset ci-linux
+
+      - name: Smoke test
+        run: ./build-ci/src/cli/kli version
+
+      - name: Upload Linux binaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: kuiper-imager-linux-unpackaged
+          path: |
+            build-ci/src/cli/kli
+            build-ci/src/gui/kuiper-imager
+            build-ci/src/helper/kuiper-imager-helper
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention-days }}
+
+  build-windows:
+    name: windows
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up MSVC + Ninja
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Ninja
+        run: choco install ninja --no-progress
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Configure
+        run: cmake --preset ci-windows
+
+      - name: Build
+        run: cmake --build --preset ci-windows
+
+      - name: Stage runnable Windows bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build-ci/src/cli/kli.exe dist
+          Copy-Item build-ci/src/gui/kuiper-imager.exe dist
+          Copy-Item build-ci/src/helper/kuiper-imager-helper.exe dist
+          $vcpkgBin = "build-ci/vcpkg_installed/x64-windows/bin"
+          if (Test-Path $vcpkgBin) { Copy-Item "$vcpkgBin/*.dll" dist }
+          Copy-Item build-ci/src/cli/*.dll dist -ErrorAction SilentlyContinue
+          Copy-Item build-ci/src/gui/*.dll dist -ErrorAction SilentlyContinue
+          windeployqt --release --no-translations --compiler-runtime dist/kli.exe
+          windeployqt --release --no-translations --compiler-runtime dist/kuiper-imager.exe
+          windeployqt --release --no-translations --compiler-runtime dist/kuiper-imager-helper.exe
+
+      - name: Smoke test the Windows bundle (clean PATH)
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:SystemRoot;$env:SystemRoot\System32"
+          ./dist/kli.exe version
+          ./dist/kli.exe list-drives
+
+      - name: Upload Windows bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: kuiper-imager-windows
+          path: dist/**
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention-days }}
+
+  package-deb:
+    name: package (deb, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    container: debian:12@sha256:268fb24c39bca92d326dd83ea3abebe4a3f7751c804ffef23bb6d857dd343ff8
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install packaging toolchain + build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential \
+            devscripts \
+            equivs \
+            lintian \
+            desktop-file-utils \
+            ca-certificates \
+            git
+          mk-build-deps --install --remove \
+            --tool 'apt-get -y --no-install-recommends' debian/control
+
+      - name: Build binary packages (dpkg-buildpackage)
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Collect packages into the workspace
+        run: |
+          mkdir -p dist
+          mv ../*.deb dist/
+          ls -l dist
+
+      - name: Validate desktop entry
+        run: desktop-file-validate packaging/linux/com.analogdevices.kuiperimager.desktop
+
+      - name: Lint packages (lintian, fail on error)
+        run: lintian --fail-on error dist/*.deb
+
+      - name: Install built packages (deps only, no Recommends)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ./dist/kuiper-imager-cli_*.deb ./dist/kuiper-imager_*.deb
+
+      - name: Smoke test — CLI
+        run: kli version
+
+      - name: Upload .debs
+        uses: actions/upload-artifact@v7
+        with:
+          name: kuiper-imager-deb-${{ matrix.arch }}
+          path: |
+            dist/*.deb
+            !dist/*-dbgsym_*.deb
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention-days }}

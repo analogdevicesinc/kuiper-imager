@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Analog Devices, Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "KuiperSpinner.hpp"
+
+#include <QPainter>
+#include <QTimer>
+
+#include "theme/Tokens.hpp"
+
+KuiperSpinner::KuiperSpinner(const QString& size, QWidget* parent)
+    : QWidget(parent),
+      extent_(size == "md" ? 24 : 16),
+      arcColor_(kuiper::theme::light::interactivePrimary) {
+    setFixedSize(extent_, extent_);
+    timer_ = new QTimer(this);
+    timer_->setInterval(16);  // ~60fps
+    connect(timer_, &QTimer::timeout, this, [this] {
+        angle_ = (angle_ + 8) % 360;
+        update();
+    });
+}
+
+QSize KuiperSpinner::sizeHint() const { return {extent_, extent_}; }
+
+void KuiperSpinner::showEvent(QShowEvent*) { timer_->start(); }
+void KuiperSpinner::hideEvent(QHideEvent*) { timer_->stop(); }
+
+void KuiperSpinner::paintEvent(QPaintEvent*) {
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    const qreal pen = extent_ >= 24 ? 3.0 : 2.0;
+    const qreal inset = pen / 2 + 1;
+    const QRectF ring(inset, inset, extent_ - 2 * inset, extent_ - 2 * inset);
+
+    // Faint full track + a bright 90° arc that sweeps. arcColor_ is set from the
+    // active theme's QSS (qproperty-arcColor); the token is only the fallback.
+    QColor track = arcColor_;
+    track.setAlpha(40);
+    p.setPen(QPen(track, pen));
+    p.drawArc(ring, 0, 360 * 16);
+
+    p.setPen(QPen(arcColor_, pen, Qt::SolidLine, Qt::RoundCap));
+    p.drawArc(ring, -angle_ * 16, 90 * 16);
+}
