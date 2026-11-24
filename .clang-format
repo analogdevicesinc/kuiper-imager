@@ -1,0 +1,13 @@
+# Pinned to clang-format 18 (Ubuntu 24.04), the version in the dev image and CI.
+BasedOnStyle: Google
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 80
+AccessModifierOffset: -4
+NamespaceIndentation: None
+PointerAlignment: Left
+DerivePointerAlignment: false
+ReflowComments: false
+SortIncludes: false
+BreakStringLiterals: false

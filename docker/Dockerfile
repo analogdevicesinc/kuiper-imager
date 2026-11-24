@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
         ninja-build \
+        clang-format \
         git \
         ca-certificates \
         python3-pip python3-venv \
