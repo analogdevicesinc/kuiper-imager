@@ -1,4 +1,4 @@
-kuiper-imager (0.1.0) unstable; urgency=medium
+kuiper-imager (2.0.0) unstable; urgency=medium
 
   * Package the Qt Widgets GUI (kuiper-imager) and its privileged write helper
     alongside the CLI, split into two binary packages: kuiper-imager-cli (lean,
@@ -7,4 +7,4 @@ kuiper-imager (0.1.0) unstable; urgency=medium
   * Qt 6 is system-provided and dynamically linked; nothing from Qt is bundled
     in the .deb.
 
- -- Alisa-Dariana Roman <alisa.roman@analog.com>  Thu, 05 Nov 2026 18:16:14 +0200
+ -- Alisa-Dariana Roman <alisa.roman@analog.com>  Tue, 24 Nov 2026 12:00:00 +0200
