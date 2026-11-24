@@ -1,5 +1,21 @@
 # Contributing
 
+## Formatting
+
+Layout is mechanical, so a tool owns it: `.clang-format` (clang-format 18, the
+version in the dev container and CI) is the single source of truth for C++
+layout. Run it before you commit — the dev image ships it:
+
+```sh
+clang-format -i $(git ls-files '*.cpp' '*.hpp')
+```
+
+CI fails on any diff (`clang-format --dry-run --Werror`), so an unformatted
+change won't merge. Two things the config deliberately leaves to you, because it
+can't judge them: it **won't reflow comments** (they're wrapped by hand for
+sense — see below) and **won't re-sort includes** (grouped stdlib → third-party
+→ project by hand). Keep those as the surrounding code has them.
+
 ## Comments
 
 The full design, workflows, and CLI reference live in the docs. Comments in the
