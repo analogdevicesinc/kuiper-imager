@@ -5,27 +5,32 @@ GitHub Actions CI
 
 .. description::
 
-   The two CI workflows: the cross-platform build-and-package matrix, and the
+   The CI workflows: the cross-platform build-and-package pipeline, and the
    documentation site deploy
 
-Kuiper Imager's continuous integration lives in two GitHub Actions workflows
-under ``.github/workflows/``. One builds, smoke-tests, and packages the tool
-across platforms; the other builds and publishes this documentation. Both run on
-pushes and pull requests against ``main`` and ``v2.0``.
+Kuiper Imager's continuous integration lives in GitHub Actions workflows under
+``.github/workflows/``. Dev CI (``ci.yml``) builds, smoke-tests, and packages the
+tool across platforms on every push and pull request against ``main``; a separate
+workflow (``gh-pages.yml``) builds and publishes this documentation.
+
+``ci.yml`` is only a thin trigger: it delegates the actual work to a **reusable
+workflow**, ``_build.yml``, so the same build steps can be driven from a release
+pipeline without being copy-pasted. The jobs below live in ``_build.yml``.
 
 ----
 
-build.yml — build and package
-------------------------------
+ci.yml / _build.yml — build and package
+---------------------------------------
 
-``build.yml`` builds the tool, proves each build actually runs, and produces
-installable artifacts. It has two jobs.
+The build pipeline compiles the tool, proves each build actually runs, and
+produces installable artifacts, in three jobs.
 
-The ``build`` job (compile + smoke)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The ``build-linux`` and ``build-windows`` jobs (compile + smoke)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A matrix builds on **Linux** (``ubuntu-24.04``, preset ``ci-linux``) and
-**Windows** (``windows-latest``, preset ``ci-windows``). Qt 6.8.2 is installed
+One job per platform — **Linux** (``ubuntu-24.04``, preset ``ci-linux``) and
+**Windows** (``windows-latest``, preset ``ci-windows``) — so no step needs an OS
+guard. Qt 6.8.2 is installed
 via ``install-qt-action``; Windows additionally wires up MSVC (``msvc-dev-cmd``)
 and Ninja, and the C libraries (libarchive, curl, openssl) come from **vcpkg**
 manifest mode through the ``ci-windows`` preset's toolchain. Each platform
@@ -40,13 +45,15 @@ configures and builds with its preset, then smoke-tests:
   and ``list-drives`` exercises the real SetupAPI enumeration on the runner.
 
 The unpackaged Linux binaries and the Windows bundle are uploaded as artifacts
-(retained 14 days). There is no macOS row yet — the macOS
-:ref:`backend <platform-backends>` is a stub.
+(retained 14 days). ``build-linux`` serves dev CI only — a release caller skips
+it (``run-linux-build: false``), since ``package-deb`` already builds and tests
+Linux and the ``.deb`` is the shippable artifact. There is no macOS row yet — the
+macOS :ref:`backend <platform-backends>` is a stub.
 
 The ``package-deb`` job (Debian packages)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A second matrix builds the Debian packages for **amd64** and **arm64**, each
+A matrix builds the Debian packages for **amd64** and **arm64**, each
 inside a pinned ``debian:12`` container so they link the Qt the target users
 have. It installs the packaging toolchain and the build-deps from
 ``debian/control`` (``mk-build-deps``), builds with ``dpkg-buildpackage -us -uc
@@ -67,7 +74,7 @@ gh-pages.yml — the documentation site
 --------------------------------------
 
 ``gh-pages.yml`` builds and deploys this Sphinx site. It triggers only on
-changes under ``docs/**`` (on the same branches, plus pull requests). The
+changes under ``docs/**`` (on ``main`` and ``v2.0``, plus pull requests). The
 ``build-doc`` job installs ``docs/requirements.txt`` and runs:
 
 .. code-block:: bash
