@@ -59,9 +59,10 @@ cite in a bug report years from now — shape each one so it stands on its own.
    commit and it compiles with its tests green. A change that only makes sense
    alongside the next one belongs _in_ the next one.
 3. **Subject is `area: imperative summary`.** Areas are `core`, `cli`, `gui`,
-   `build`, `ci`, `docs`. Imperative mood ("add", not "added" or "adds"), no
-   trailing period, kept short (~50 chars). The subject names the real change —
-   never `wip`, `fixes`, `improvements`, or `ggg`.
+   `helper`, `build`, `ci`, `docs`. A narrower scope may be added in parens when
+   it earns its place (`core(windows): …`). Imperative mood ("add", not "added"
+   or "adds"), no trailing period, kept short (~50 chars). The subject names the
+   real change — never `wip`, `fixes`, `improvements`, or `ggg`.
 4. **The body explains _why_, wrapped at 72.** The diff already shows what
    changed; the body carries what it can't — the constraint, the rejected
    alternative, the invariant being preserved. Skip the body only when the
