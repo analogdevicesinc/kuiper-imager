@@ -59,6 +59,12 @@ if(WIN32)
     # Shell32: ShellExecuteEx("runas"). Advapi32: the helper pipe's security
     # descriptor (SDDL) and the current user's SID.
     target_link_libraries(kuiper-imager PRIVATE Shell32 Advapi32)
+
+    set(KUIPER_WINDOWS_ICON "${CMAKE_SOURCE_DIR}/packaging/windows/kuiper-imager.ico")
+    configure_file(
+        ${CMAKE_SOURCE_DIR}/packaging/windows/kuiper-imager.rc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/kuiper-imager.rc @ONLY)
+    target_sources(kuiper-imager PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/kuiper-imager.rc)
 else()
     target_sources(kuiper-imager PRIVATE
         task/PkexecHelperSession.cpp
