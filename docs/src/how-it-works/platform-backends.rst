@@ -314,8 +314,8 @@ macOS (Planned)
 The macOS backend is still a **structural stub**: it implements
 ``IDriveBackend``'s methods so the tool compiles and links, but every operation
 returns ``UnsupportedPlatform``. A front-end surfaces that error, so the platform
-reads as unsupported up front. The port
-(see :ref:`roadmap`) will add enumeration via DiskArbitration + IOKit and a raw
+reads as unsupported up front. The planned port
+will add enumeration via DiskArbitration + IOKit and a raw
 open of ``/dev/rdiskN`` using a descriptor from ``authopen`` passed over
 ``SCM_RIGHTS`` (``DKIOCGETBLOCKCOUNT`` for size) — reusing the same
 ``AlignedRawDevice`` engine behind a macOS ``BlockIo``.
