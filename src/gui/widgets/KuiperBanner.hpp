@@ -6,15 +6,15 @@
 
 class QLabel;
 class QHBoxLayout;
-class HmcButton;
+class KuiperButton;
 
-// Harmonic banner-message (subtle emphasis): a tinted, bordered block carrying a
+// banner-message (subtle emphasis): a tinted, bordered block carrying a
 // title and body, plus an optional right-aligned action button. status is
 // info | success | warning | danger | highlight.
-class HmcBanner : public QFrame {
+class KuiperBanner : public QFrame {
     Q_OBJECT
 public:
-    explicit HmcBanner(const QString& status, const QString& title,
+    explicit KuiperBanner(const QString& status, const QString& title,
                        const QString& message = QString(),
                        QWidget* parent = nullptr);
 
@@ -31,6 +31,6 @@ private:
     QHBoxLayout* row_;
     QLabel* title_;
     QLabel* message_;
-    HmcButton* action_ = nullptr;
+    KuiperButton* action_ = nullptr;
     QMetaObject::Connection actionConn_;
 };

@@ -1,11 +1,11 @@
-#include "HmcSpinner.hpp"
+#include "KuiperSpinner.hpp"
 
 #include <QPainter>
 #include <QTimer>
 
 #include "theme/Tokens.hpp"
 
-HmcSpinner::HmcSpinner(const QString& size, QWidget* parent)
+KuiperSpinner::KuiperSpinner(const QString& size, QWidget* parent)
     : QWidget(parent),
       extent_(size == "md" ? 24 : 16),
       arcColor_(kuiper::theme::light::interactivePrimary) {
@@ -18,12 +18,12 @@ HmcSpinner::HmcSpinner(const QString& size, QWidget* parent)
     });
 }
 
-QSize HmcSpinner::sizeHint() const { return {extent_, extent_}; }
+QSize KuiperSpinner::sizeHint() const { return {extent_, extent_}; }
 
-void HmcSpinner::showEvent(QShowEvent*) { timer_->start(); }
-void HmcSpinner::hideEvent(QHideEvent*) { timer_->stop(); }
+void KuiperSpinner::showEvent(QShowEvent*) { timer_->start(); }
+void KuiperSpinner::hideEvent(QHideEvent*) { timer_->stop(); }
 
-void HmcSpinner::paintEvent(QPaintEvent*) {
+void KuiperSpinner::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
 

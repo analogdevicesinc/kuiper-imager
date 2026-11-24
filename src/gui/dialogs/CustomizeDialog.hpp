@@ -12,11 +12,11 @@
 
 class QLabel;
 class QLineEdit;
-class HmcCheckBox;
-class HmcBanner;
-class HmcButton;
-class HmcProgressBar;
-class HmcLogView;
+class KuiperCheckBox;
+class KuiperBanner;
+class KuiperButton;
+class KuiperProgressBar;
+class KuiperLogView;
 class QScrollArea;
 class HelperProcess;
 
@@ -45,18 +45,18 @@ private:
     std::uint64_t imageBytes_ = 0;
     HelperProcess* helper_;
 
-    std::vector<std::pair<std::string, HmcCheckBox*>> checks_;  // id -> checkbox
+    std::vector<std::pair<std::string, KuiperCheckBox*>> checks_;  // id -> checkbox
     QScrollArea* scroll_;  // the feature list; hidden by the log during a run
     QLabel* estimate_;
-    HmcCheckBox* grow_;    // auto-grow the rootfs to fit (default on)
+    KuiperCheckBox* grow_;    // auto-grow the rootfs to fit (default on)
     QLineEdit* growSize_;  // optional explicit size (e.g. "4G"); overrides auto
     QString scriptPath_;      // host script run as root in the chroot (optional)
-    HmcButton* scriptBtn_;    // picks the script
+    KuiperButton* scriptBtn_;    // picks the script
     QLabel* scriptLabel_;     // shows the chosen script's name, or a hint
-    HmcButton* scriptClear_;  // clears the chosen script
-    HmcBanner* result_;
-    HmcProgressBar* progress_;  // indeterminate activity + coarse phase heading
-    HmcLogView* log_;           // streamed helper/apt output (the real readout)
-    HmcButton* runBtn_;
-    HmcButton* closeBtn_;  // "Close", or "Cancel" while running
+    KuiperButton* scriptClear_;  // clears the chosen script
+    KuiperBanner* result_;
+    KuiperProgressBar* progress_;  // indeterminate activity + coarse phase heading
+    KuiperLogView* log_;           // streamed helper/apt output (the real readout)
+    KuiperButton* runBtn_;
+    KuiperButton* closeBtn_;  // "Close", or "Cancel" while running
 };

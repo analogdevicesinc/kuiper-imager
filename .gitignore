@@ -9,6 +9,7 @@ CMakeUserPresets.json
 
 .vscode/
 .idea/
+.qtcreator/
 *.user
 
 .DS_Store

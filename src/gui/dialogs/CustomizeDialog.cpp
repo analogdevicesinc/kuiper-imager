@@ -14,12 +14,12 @@
 
 #include "task/HelperProcess.hpp"
 #include "util/Format.hpp"
-#include "widgets/HmcBanner.hpp"
-#include "widgets/HmcButton.hpp"
-#include "widgets/HmcCheckBox.hpp"
-#include "widgets/HmcContainerHeader.hpp"
-#include "widgets/HmcLogView.hpp"
-#include "widgets/HmcProgressBar.hpp"
+#include "widgets/KuiperBanner.hpp"
+#include "widgets/KuiperButton.hpp"
+#include "widgets/KuiperCheckBox.hpp"
+#include "widgets/KuiperContainerHeader.hpp"
+#include "widgets/KuiperLogView.hpp"
+#include "widgets/KuiperProgressBar.hpp"
 
 namespace {
 
@@ -51,7 +51,7 @@ QLabel* groupHeading(const QString& text) {
     QFont f = l->font();
     f.setWeight(QFont::DemiBold);
     l->setFont(f);
-    l->setProperty("hmcCaption", true);
+    l->setProperty("kuiperCaption", true);
     return l;
 }
 
@@ -72,7 +72,7 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
     col->setContentsMargins(24, 24, 24, 24);
     col->setSpacing(16);
 
-    col->addWidget(new HmcContainerHeader(
+    col->addWidget(new KuiperContainerHeader(
         "Customize image",
         "Add ADI full-image features to " + QFileInfo(imagePath_).fileName()));
 
@@ -93,10 +93,10 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
             label += QString("  (~%1)").arg(
                 kuiper::gui::formatBytes(static_cast<std::uint64_t>(f.sizeEstimateMB) *
                                          kMiB));
-        auto* cb = new HmcCheckBox(label, listHost);
+        auto* cb = new KuiperCheckBox(label, listHost);
         if (!f.description.empty())
             cb->setToolTip(QString::fromStdString(f.description));
-        connect(cb, &HmcCheckBox::toggled, this, [this] { updateEstimate(); });
+        connect(cb, &KuiperCheckBox::toggled, this, [this] { updateEstimate(); });
         listCol->addWidget(cb);
         checks_.emplace_back(f.id, cb);
     }
@@ -109,7 +109,7 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
 
     // Takes the feature list's place during a run (see setRunning): the streamed
     // helper/apt output, which is the honest readout of an apt-driven install.
-    log_ = new HmcLogView(this);
+    log_ = new KuiperLogView(this);
     log_->setVisible(false);
     col->addWidget(log_, 1);
 
@@ -117,7 +117,7 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
     auto* growRow = new QHBoxLayout();
     growRow->setContentsMargins(0, 0, 0, 0);
     growRow->setSpacing(10);
-    grow_ = new HmcCheckBox("Grow rootfs to fit", this);
+    grow_ = new KuiperCheckBox("Grow rootfs to fit", this);
     grow_->setChecked(true);
     grow_->setToolTip(
         "Enlarge the image's rootfs before installing. Off = install without "
@@ -125,7 +125,7 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
     growSize_ = new QLineEdit(this);
     growSize_->setPlaceholderText("auto (e.g. 4G)");
     growSize_->setMaximumWidth(140);
-    connect(grow_, &HmcCheckBox::toggled, this, [this](bool on) {
+    connect(grow_, &KuiperCheckBox::toggled, this, [this](bool on) {
         growSize_->setEnabled(on);
         updateEstimate();
     });
@@ -141,12 +141,12 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
     auto* scriptRow = new QHBoxLayout();
     scriptRow->setContentsMargins(0, 0, 0, 0);
     scriptRow->setSpacing(10);
-    scriptBtn_ = new HmcButton("Custom script…");
+    scriptBtn_ = new KuiperButton("Custom script…");
     scriptBtn_->setKind("secondary");
     scriptBtn_->setToolTip(
         "Pick a host script to run as root inside the image (like apt, it can "
         "install packages). It runs after the selected features.");
-    connect(scriptBtn_, &HmcButton::clicked, this, [this] {
+    connect(scriptBtn_, &KuiperButton::clicked, this, [this] {
         const QString p = QFileDialog::getOpenFileName(
             this, "Choose a script to run in the image", QString(),
             "Scripts (*.sh *.bash);;All files (*)");
@@ -156,11 +156,11 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
         }
     });
     scriptLabel_ = new QLabel(this);
-    scriptLabel_->setProperty("hmcCaption", true);
-    scriptClear_ = new HmcButton("✕");
+    scriptLabel_->setProperty("kuiperCaption", true);
+    scriptClear_ = new KuiperButton("✕");
     scriptClear_->setKind("ghost");
     scriptClear_->setToolTip("Remove the custom script");
-    connect(scriptClear_, &HmcButton::clicked, this, [this] {
+    connect(scriptClear_, &KuiperButton::clicked, this, [this] {
         scriptPath_.clear();
         updateEstimate();
     });
@@ -170,14 +170,14 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
     col->addLayout(scriptRow);
 
     estimate_ = new QLabel(this);
-    estimate_->setProperty("hmcCaption", true);
+    estimate_->setProperty("kuiperCaption", true);
     col->addWidget(estimate_);
 
-    result_ = new HmcBanner("info", QString());
+    result_ = new KuiperBanner("info", QString());
     result_->setVisible(false);
     col->addWidget(result_);
 
-    progress_ = new HmcProgressBar(this);
+    progress_ = new KuiperProgressBar(this);
     progress_->setVisible(false);
     col->addWidget(progress_);
 
@@ -191,9 +191,9 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
 
     // --- buttons ---
     auto* buttons = new QHBoxLayout();
-    closeBtn_ = new HmcButton("Close");
+    closeBtn_ = new KuiperButton("Close");
     closeBtn_->setKind("ghost");
-    connect(closeBtn_, &HmcButton::clicked, this, [this] {
+    connect(closeBtn_, &KuiperButton::clicked, this, [this] {
         if (helper_->busy()) {
             helper_->cancel();
             closeBtn_->setEnabled(false);
@@ -203,8 +203,8 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
     });
     buttons->addWidget(closeBtn_);
     buttons->addStretch(1);
-    runBtn_ = new HmcButton("Customize");
-    connect(runBtn_, &HmcButton::clicked, this, [this] { run(); });
+    runBtn_ = new KuiperButton("Customize");
+    connect(runBtn_, &KuiperButton::clicked, this, [this] { run(); });
     buttons->addWidget(runBtn_);
     col->addLayout(buttons);
 

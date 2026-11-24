@@ -1,4 +1,4 @@
-#include "HmcLogView.hpp"
+#include "KuiperLogView.hpp"
 
 #include <QFontDatabase>
 #include <QPlainTextEdit>
@@ -13,13 +13,13 @@ namespace {
 constexpr int kMaxBlocks = 5000;
 }  // namespace
 
-HmcLogView::HmcLogView(QWidget* parent) : QWidget(parent) {
+KuiperLogView::KuiperLogView(QWidget* parent) : QWidget(parent) {
     auto* col = new QVBoxLayout(this);
     col->setContentsMargins(0, 0, 0, 0);
 
     edit_ = new QPlainTextEdit(this);
     edit_->setReadOnly(true);
-    edit_->setProperty("hmcLog", true);
+    edit_->setProperty("kuiperLog", true);
     edit_->setFrameShape(QFrame::NoFrame);  // the border comes from QSS
     edit_->setMaximumBlockCount(kMaxBlocks);
     // Wrap instead of scrolling sideways: a long apt line must never force the
@@ -31,7 +31,7 @@ HmcLogView::HmcLogView(QWidget* parent) : QWidget(parent) {
     col->addWidget(edit_);
 }
 
-void HmcLogView::appendLine(const QString& line) {
+void KuiperLogView::appendLine(const QString& line) {
     // Follow the tail only if the user is already there; otherwise leave their
     // scroll position alone so they can read back through the output mid-run.
     auto* sb = edit_->verticalScrollBar();
@@ -40,4 +40,4 @@ void HmcLogView::appendLine(const QString& line) {
     if (atBottom) sb->setValue(sb->maximum());
 }
 
-void HmcLogView::clear() { edit_->clear(); }
+void KuiperLogView::clear() { edit_->clear(); }

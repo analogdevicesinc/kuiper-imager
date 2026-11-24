@@ -19,13 +19,13 @@
 class QCloseEvent;
 class QComboBox;
 class QLabel;
-class HmcBanner;
-class HmcButton;
-class HmcCheckBox;
-class HmcProgressBar;
-class HmcSegmentedControl;
-class HmcSpinner;
-class HmcTag;
+class KuiperBanner;
+class KuiperButton;
+class KuiperCheckBox;
+class KuiperProgressBar;
+class KuiperSegmentedControl;
+class KuiperSpinner;
+class KuiperTag;
 class BackgroundTask;
 class HelperProcess;
 
@@ -135,28 +135,28 @@ private:
 
     QLabel* imageValue_;
     QLabel* imageCaption_;
-    HmcTag* imageTag_;                   // provenance pill: Local | Downloaded
-    HmcButton* chooseFileBtn_;
-    HmcButton* downloadBtn_;
-    HmcButton* customizeBtn_ = nullptr;  // Linux only; nullptr elsewhere
+    KuiperTag* imageTag_;                   // provenance pill: Local | Downloaded
+    KuiperButton* chooseFileBtn_;
+    KuiperButton* downloadBtn_;
+    KuiperButton* customizeBtn_ = nullptr;  // Linux only; nullptr elsewhere
 
     QComboBox* driveCombo_;
-    HmcButton* rescanBtn_;
-    HmcTag* removableTag_;
-    HmcTag* systemTag_;
-    HmcTag* kuiperTag_;
-    HmcSpinner* probeSpinner_;
+    KuiperButton* rescanBtn_;
+    KuiperTag* removableTag_;
+    KuiperTag* systemTag_;
+    KuiperTag* kuiperTag_;
+    KuiperSpinner* probeSpinner_;
     QLabel* probeLabel_;
 
-    HmcCheckBox* verify_;
-    HmcButton* writeBtn_;
-    HmcButton* configureBtn_;
+    KuiperCheckBox* verify_;
+    KuiperButton* writeBtn_;
+    KuiperButton* configureBtn_;
 
     QWidget* buttonRow_;
     QWidget* progressRow_;
-    HmcProgressBar* progress_;
-    HmcButton* cancelBtn_;
-    HmcBanner* result_;
+    KuiperProgressBar* progress_;
+    KuiperButton* cancelBtn_;
+    KuiperBanner* result_;
 
     std::shared_ptr<std::optional<kuiper::Result<kuiper::DriveList>>> drivesOut_;
     std::shared_ptr<ProbeResult> probeOut_;

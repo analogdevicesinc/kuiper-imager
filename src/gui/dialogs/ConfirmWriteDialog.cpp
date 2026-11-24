@@ -3,8 +3,8 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
-#include "widgets/HmcBanner.hpp"
-#include "widgets/HmcButton.hpp"
+#include "widgets/KuiperBanner.hpp"
+#include "widgets/KuiperButton.hpp"
 
 ConfirmWriteDialog::ConfirmWriteDialog(const QString& target,
                                        const QString& image, QWidget* parent)
@@ -17,7 +17,7 @@ ConfirmWriteDialog::ConfirmWriteDialog(const QString& target,
     col->setContentsMargins(24, 24, 24, 24);
     col->setSpacing(20);
 
-    col->addWidget(new HmcBanner(
+    col->addWidget(new KuiperBanner(
         "danger", "All data on " + target + " will be permanently erased.",
         "Writing " + image + " replaces the entire contents of the drive. This "
         "cannot be undone."));
@@ -25,13 +25,13 @@ ConfirmWriteDialog::ConfirmWriteDialog(const QString& target,
     auto* buttons = new QHBoxLayout();
     buttons->addStretch(1);
 
-    auto* cancel = new HmcButton("Cancel");
+    auto* cancel = new KuiperButton("Cancel");
     cancel->setKind("secondary");
-    connect(cancel, &HmcButton::clicked, this, &QDialog::reject);
+    connect(cancel, &KuiperButton::clicked, this, &QDialog::reject);
     buttons->addWidget(cancel);
 
-    auto* write = new HmcButton("Erase and write");
-    connect(write, &HmcButton::clicked, this, &QDialog::accept);
+    auto* write = new KuiperButton("Erase and write");
+    connect(write, &KuiperButton::clicked, this, &QDialog::accept);
     buttons->addWidget(write);
 
     col->addLayout(buttons);
