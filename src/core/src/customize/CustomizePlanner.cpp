@@ -29,8 +29,9 @@ Result<std::vector<FeatureDef>> resolveFeatures(
     }
     const auto& catalog = featureCatalog();
     for (const auto& id : ids) {
-        const bool known = std::any_of(catalog.begin(), catalog.end(),
-                                       [&](const FeatureDef& f) { return f.id == id; });
+        const bool known =
+            std::any_of(catalog.begin(), catalog.end(),
+                        [&](const FeatureDef& f) { return f.id == id; });
         if (!known) {
             std::string valid;
             for (const auto& f : catalog)
@@ -56,7 +57,8 @@ std::uint64_t growBytesFor(const std::vector<FeatureDef>& features,
                            std::optional<std::uint64_t> override_) {
     if (override_) return *override_;
     std::uint64_t sumMB = 0;
-    for (const auto& f : features) sumMB += static_cast<std::uint64_t>(f.sizeEstimateMB);
+    for (const auto& f : features)
+        sumMB += static_cast<std::uint64_t>(f.sizeEstimateMB);
     return autoGrowBytes(sumMB);
 }
 
@@ -69,11 +71,16 @@ std::optional<std::uint64_t> parseSize(const std::string& text) {
     while (!suf.empty() && (suf.front() == ' ' || suf.front() == '\t'))
         suf.erase(suf.begin());
     std::uint64_t mult = 1;
-    if (suf.empty()) mult = 1;
-    else if (suf == "K" || suf == "k" || suf == "KiB") mult = kMiB / 1024;
-    else if (suf == "M" || suf == "m" || suf == "MiB") mult = kMiB;
-    else if (suf == "G" || suf == "g" || suf == "GiB") mult = 1024ull * kMiB;
-    else return std::nullopt;
+    if (suf.empty())
+        mult = 1;
+    else if (suf == "K" || suf == "k" || suf == "KiB")
+        mult = kMiB / 1024;
+    else if (suf == "M" || suf == "m" || suf == "MiB")
+        mult = kMiB;
+    else if (suf == "G" || suf == "g" || suf == "GiB")
+        mult = 1024ull * kMiB;
+    else
+        return std::nullopt;
     return static_cast<std::uint64_t>(val * static_cast<double>(mult));
 }
 
@@ -81,9 +88,14 @@ std::vector<std::string> aptInstallArgv(const std::string& rootMount,
                                         const FeatureDef& feature) {
     if (feature.packages.empty()) return {};
     const std::string root = rootMount.empty() ? "<rootfs>" : rootMount;
-    std::vector<std::string> argv = {
-        "chroot", root, "env", "LC_ALL=C", "DEBIAN_FRONTEND=noninteractive",
-        "apt-get", "install", "-y"};
+    std::vector<std::string> argv = {"chroot",
+                                     root,
+                                     "env",
+                                     "LC_ALL=C",
+                                     "DEBIAN_FRONTEND=noninteractive",
+                                     "apt-get",
+                                     "install",
+                                     "-y"};
     if (!feature.withRecommends) argv.push_back("--no-install-recommends");
     for (const auto& p : feature.packages) argv.push_back(p);
     return argv;

@@ -94,19 +94,20 @@ private:
     // and gates Customize (raw local .img only).
     enum class ImageOrigin { None, Local, Downloaded };
 
-    void pickImage();       // choose a local image file
-    void chooseRelease();   // list releases → pick → reuse-cached-or-fetch
+    void pickImage();      // choose a local image file
+    void chooseRelease();  // list releases → pick → reuse-cached-or-fetch
     void startFetch(const QString& id, const QString& label);
     void setLocalImage(const QString& path, ImageOrigin origin);
-    void clearImage();      // drop the selection and reset the Image card display
+    void clearImage();  // drop the selection and reset the Image card display
 
     // The per-user cache directory downloads land in, and the path a given
     // release id would occupy there if present (empty if it isn't cached).
     QString imageCacheDir() const;
     QString cachedImagePath(const QString& id);
     void startWrite();
-    void showWriteComplete();              // show the deferred post-write banner
-    void startEject(const QString& node);  // unmount + power off for safe removal
+    void showWriteComplete();  // show the deferred post-write banner
+    void startEject(
+        const QString& node);  // unmount + power off for safe removal
     void openConfigure();
     void openCustomize();  // Linux only: add ADI features to the selected .img
 
@@ -147,7 +148,7 @@ private:
 
     QLabel* imageValue_;
     QLabel* imageCaption_;
-    KuiperTag* imageTag_;                   // provenance pill: Local | Downloaded
+    KuiperTag* imageTag_;  // provenance pill: Local | Downloaded
     KuiperButton* chooseFileBtn_;
     KuiperButton* downloadBtn_;
     KuiperButton* customizeBtn_ = nullptr;  // Linux only; nullptr elsewhere
@@ -170,11 +171,13 @@ private:
     KuiperButton* cancelBtn_;
     KuiperBanner* result_;
 
-    std::shared_ptr<std::optional<kuiper::Result<kuiper::DriveList>>> drivesOut_;
+    std::shared_ptr<std::optional<kuiper::Result<kuiper::DriveList>>>
+        drivesOut_;
     std::shared_ptr<ProbeResult> probeOut_;
     std::shared_ptr<std::optional<kuiper::Result<std::vector<kuiper::Release>>>>
         releasesOut_;
-    std::shared_ptr<std::optional<kuiper::Result<kuiper::FetchSummary>>> fetchOut_;
+    std::shared_ptr<std::optional<kuiper::Result<kuiper::FetchSummary>>>
+        fetchOut_;
     std::shared_ptr<std::optional<kuiper::Result<void>>> ejectOut_;
     // Note: the flash result lives in helper_->result() (it runs elevated).
 };

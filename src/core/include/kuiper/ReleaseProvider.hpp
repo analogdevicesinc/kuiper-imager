@@ -29,7 +29,8 @@ struct DownloadSource {
     std::string url;
     std::vector<HttpHeader> headers;
     std::string filename;  // e.g. "kuiper_full_64_image.zip"
-    std::optional<std::string> expectedSha256;  // verify after download if set (stable)
+    std::optional<std::string>
+        expectedSha256;  // verify after download if set (stable)
 };
 
 // One release source: GitHub Actions CI artifacts (unstable) or published

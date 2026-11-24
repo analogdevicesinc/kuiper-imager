@@ -16,26 +16,25 @@
 
 PkexecHelperSession::PkexecHelperSession(QObject* parent)
     : IHelperSession(parent), proc_(new QProcess(this)) {
-    connect(proc_, &QProcess::readyReadStandardOutput, this, [this] {
-        emit bytesReceived(proc_->readAllStandardOutput());
-    });
-    connect(proc_,
-            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
-            [this](int code, QProcess::ExitStatus status) {
-                if (done_) return;
-                done_ = true;
-                Outcome o;
-                if (status != QProcess::NormalExit) {
-                    o = Outcome::Crashed;
-                } else if (code == 126) {
-                    o = Outcome::AuthCancelled;  // pkexec: auth dismissed/failed
-                } else if (code == 127) {
-                    o = Outcome::HelperNotFound;  // pkexec: helper not executable
-                } else {
-                    o = Outcome::Ok;
-                }
-                emit finished(code, o);
-            });
+    connect(proc_, &QProcess::readyReadStandardOutput, this,
+            [this] { emit bytesReceived(proc_->readAllStandardOutput()); });
+    connect(
+        proc_, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+        this, [this](int code, QProcess::ExitStatus status) {
+            if (done_) return;
+            done_ = true;
+            Outcome o;
+            if (status != QProcess::NormalExit) {
+                o = Outcome::Crashed;
+            } else if (code == 126) {
+                o = Outcome::AuthCancelled;  // pkexec: auth dismissed/failed
+            } else if (code == 127) {
+                o = Outcome::HelperNotFound;  // pkexec: helper not executable
+            } else {
+                o = Outcome::Ok;
+            }
+            emit finished(code, o);
+        });
     // If the program cannot be launched, finished() never fires — surface it.
     // Normally that program is pkexec (polkit missing), not the helper.
     connect(proc_, &QProcess::errorOccurred, this,

@@ -128,7 +128,10 @@ void writeCache(const fs::path& dir, const fs::path& cacheFile,
         std::ofstream out(part, std::ios::binary | std::ios::trunc);
         if (!out) return;
         out.write(body.data(), static_cast<std::streamsize>(body.size()));
-        if (!out.flush()) { fs::remove(part, ec); return; }
+        if (!out.flush()) {
+            fs::remove(part, ec);
+            return;
+        }
     }
     fs::rename(part, cacheFile, ec);
     if (ec) fs::remove(part, ec);

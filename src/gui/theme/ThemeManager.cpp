@@ -30,12 +30,14 @@ namespace {
 // the palette to match keeps those surfaces in step; QSS still wins where present.
 QPalette buildPalette(Theme theme) {
     const bool dark = theme == Theme::Dark;
-    const QColor window    = dark ? dark::layoutCanvas       : light::layoutCanvas;
-    const QColor container = dark ? dark::layoutContainer    : light::layoutContainer;
-    const QColor content   = dark ? dark::content            : light::content;
-    const QColor weak      = dark ? dark::contentWeak        : light::contentWeak;
-    const QColor base      = dark ? dark::inputBackground    : light::inputBackground;
-    const QColor primary   = dark ? dark::interactivePrimary : light::interactivePrimary;
+    const QColor window = dark ? dark::layoutCanvas : light::layoutCanvas;
+    const QColor container =
+        dark ? dark::layoutContainer : light::layoutContainer;
+    const QColor content = dark ? dark::content : light::content;
+    const QColor weak = dark ? dark::contentWeak : light::contentWeak;
+    const QColor base = dark ? dark::inputBackground : light::inputBackground;
+    const QColor primary =
+        dark ? dark::interactivePrimary : light::interactivePrimary;
 
     QPalette p;
     p.setColor(QPalette::Window, window);
@@ -61,8 +63,9 @@ QPalette buildPalette(Theme theme) {
 }  // namespace
 
 void applyTheme(QApplication& app, Theme theme) {
-    const QString path = theme == Theme::Dark ? QStringLiteral(":/theme/theme-dark.qss")
-                                              : QStringLiteral(":/theme/theme-light.qss");
+    const QString path = theme == Theme::Dark
+                             ? QStringLiteral(":/theme/theme-dark.qss")
+                             : QStringLiteral(":/theme/theme-light.qss");
     QFile file(path);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
         qWarning("ThemeManager: could not load %s", qPrintable(path));

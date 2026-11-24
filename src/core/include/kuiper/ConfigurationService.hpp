@@ -87,11 +87,10 @@ public:
     // boot-partition root. Fails fast — a missing source leaves the card
     // untouched. Intel projects also need a raw preloader write: pass
     // `writePreloader`, or without a sink they return the manual procedure.
-    Result<ConfigureSummary> configureProject(const std::string& bootPath,
-                                              const Project& project,
-                                              const ConfigureOptions& opts = {},
-                                              ProgressFn onProgress = {},
-                                              PreloaderSink writePreloader = {});
+    Result<ConfigureSummary> configureProject(
+        const std::string& bootPath, const Project& project,
+        const ConfigureOptions& opts = {}, ProgressFn onProgress = {},
+        PreloaderSink writePreloader = {});
 
     const char* backendName() const noexcept;
 };

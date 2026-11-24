@@ -45,8 +45,10 @@ class HelperProcess : public QObject {
 public:
     explicit HelperProcess(QObject* parent = nullptr);
 
-    void runFlash(const QString& driveNode, const QString& imagePath, bool verify);
-    void runWritePreloader(const QString& partitionNode, const QString& imagePath);
+    void runFlash(const QString& driveNode, const QString& imagePath,
+                  bool verify);
+    void runWritePreloader(const QString& partitionNode,
+                           const QString& imagePath);
 
     // Customize a local .img in place: install the given feature ids, growing the
     // rootfs (auto when growBytes is nullopt and !noGrow; explicit when set; not at
@@ -85,7 +87,8 @@ private:
     void start(Verb verb, const QStringList& verbArgs);
     void feed(const QByteArray& chunk);  // parse buffered NDJSON lines
     void onFinished(int exitCode, IHelperSession::Outcome outcome);
-    void setError(const kuiper::Error& e);  // route to the current verb's holder
+    void setError(
+        const kuiper::Error& e);  // route to the current verb's holder
     static QString resolveHelperPath();
 
     IHelperSession* session_;

@@ -64,9 +64,10 @@ void emitLine(const std::string& s) {
     g_channel->writeLine(s);  // the GUI parses lines as they arrive
 }
 
-int fail(kuiper::ErrorCode code, std::string message, std::string details = {}) {
-    emitLine(kuiper::ipc::encodeError(
-        kuiper::Error{code, std::move(message), std::move(details), std::nullopt}));
+int fail(kuiper::ErrorCode code, std::string message,
+         std::string details = {}) {
+    emitLine(kuiper::ipc::encodeError(kuiper::Error{
+        code, std::move(message), std::move(details), std::nullopt}));
     return 1;
 }
 
@@ -134,9 +135,11 @@ int runFlash(const std::vector<std::string>& args) {
 
     auto result = service.flash(drive, image, opts, makeProgressSink(),
                                 makeCancelToken());
-    if (!result) return fail(result.error().code, result.error().message,
-                             result.error().details);
-    settleDevice(drive);  // make the new partitions live before the GUI re-probes
+    if (!result)
+        return fail(result.error().code, result.error().message,
+                    result.error().details);
+    settleDevice(
+        drive);  // make the new partitions live before the GUI re-probes
     emitLine(kuiper::ipc::encodeResult(*result));
     return 0;
 }
@@ -160,8 +163,9 @@ int runWritePreloader(const std::vector<std::string>& args) {
 
     auto result = service.writePreloader(partition, image, opts,
                                          makeProgressSink(), makeCancelToken());
-    if (!result) return fail(result.error().code, result.error().message,
-                             result.error().details);
+    if (!result)
+        return fail(result.error().code, result.error().message,
+                    result.error().details);
     emitLine(kuiper::ipc::encodeResult(*result));
     return 0;
 }
@@ -184,7 +188,8 @@ int runCustomize(const std::vector<std::string>& args) {
             noGrow = true;
             continue;
         }
-        return fail(kuiper::ErrorCode::Unknown, "Unexpected argument: " + args[i]);
+        return fail(kuiper::ErrorCode::Unknown,
+                    "Unexpected argument: " + args[i]);
     }
     if (image.empty() || (features.empty() && script.empty()))
         return fail(kuiper::ErrorCode::Unknown,
@@ -199,8 +204,9 @@ int runCustomize(const std::vector<std::string>& args) {
         plan.growBytes = 0;  // 0 => don't grow; nullopt => auto-size
     else if (!grow.empty()) {
         const auto g = kuiper::customize::parseSize(grow);
-        if (!g) return fail(kuiper::ErrorCode::Unknown,
-                            "invalid --grow size: " + grow);
+        if (!g)
+            return fail(kuiper::ErrorCode::Unknown,
+                        "invalid --grow size: " + grow);
         plan.growBytes = *g;
     }
     if (!arch.empty()) plan.archOverride = arch;

@@ -28,14 +28,15 @@ namespace kuiper {
 // Wall-clock breakdown of a flash, in seconds — a diagnostic surface for seeing
 // where time goes and A/B-ing performance changes. See docs: flash-pipeline.
 struct FlashTimings {
-    double prepareSec = 0;      // unmount + open + wipe signatures
-    double writeSec = 0;        // decompress + device write, serialized
-    double decompressSec = 0;   //   of which: archive_read_data
-    double deviceWriteSec = 0;  //   of which: dev.write (memcpy + aligned device write)
-    double flushSec = 0;        // flushAndSync (fsync)
-    double verifySec = 0;       // body read-back + hash compare
-    double headSec = 0;         // commit + verify partition table
-    double totalSec = 0;        // whole flash() call
+    double prepareSec = 0;     // unmount + open + wipe signatures
+    double writeSec = 0;       // decompress + device write, serialized
+    double decompressSec = 0;  //   of which: archive_read_data
+    double deviceWriteSec =
+        0;  //   of which: dev.write (memcpy + aligned device write)
+    double flushSec = 0;   // flushAndSync (fsync)
+    double verifySec = 0;  // body read-back + hash compare
+    double headSec = 0;    // commit + verify partition table
+    double totalSec = 0;   // whole flash() call
 };
 
 // Result of a successful flash: bytes written and the SHA-256 of the

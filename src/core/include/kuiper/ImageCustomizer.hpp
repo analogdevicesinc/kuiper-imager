@@ -27,9 +27,10 @@ namespace kuiper {
 // A file a feature installs into the rootfs (apt can't). Content is a Qt resource
 // embedded in libkuiper, so it is byte-exact. See docs: customize-pipeline.
 struct FeatureFile {
-    std::string path;         // absolute path inside the rootfs
-    std::string resource;     // Qt resource path, e.g. ":/kuiper/desktop/x.service"
-    bool executable = false;  // 0755 if true, else 0644
+    std::string path;  // absolute path inside the rootfs
+    std::string
+        resource;  // Qt resource path, e.g. ":/kuiper/desktop/x.service"
+    bool executable = false;         // 0755 if true, else 0644
     std::vector<std::string> archs;  // restrict to these arches; empty => all
 };
 
@@ -42,11 +43,13 @@ struct FeatureDef {
     std::string description;  // one line
 
     std::vector<std::string> packages;  // apt-get install args (may be empty)
-    bool withRecommends = false;        // install recommends (desktop metapackages)
-    std::vector<std::string> chrootPost;  // /bin/sh -c snippets run after install
-    int sizeEstimateMB = 0;               // rough, for auto-sizing the grow
-    std::vector<std::string> archs;       // apply only to these arches; empty => all
-    std::vector<FeatureFile> files;       // files written after apt, before chrootPost
+    bool withRecommends = false;  // install recommends (desktop metapackages)
+    std::vector<std::string>
+        chrootPost;                  // /bin/sh -c snippets run after install
+    int sizeEstimateMB = 0;          // rough, for auto-sizing the grow
+    std::vector<std::string> archs;  // apply only to these arches; empty => all
+    std::vector<FeatureFile>
+        files;  // files written after apt, before chrootPost
 };
 
 // The full set of features a user may add, in stable display order. Pure data.
@@ -54,15 +57,17 @@ const std::vector<FeatureDef>& featureCatalog();
 
 // What to do to one image.
 struct CustomizePlan {
-    std::string imagePath;                   // the .img to modify in place
-    std::vector<std::string> featureIds;     // ids from the catalog
-    std::optional<std::uint64_t> growBytes;  // nullopt => auto-size; 0 => no grow
-    std::optional<std::string> archOverride; // for images lacking /etc/kuiper-release
+    std::string imagePath;                // the .img to modify in place
+    std::vector<std::string> featureIds;  // ids from the catalog
+    std::optional<std::uint64_t>
+        growBytes;  // nullopt => auto-size; 0 => no grow
+    std::optional<std::string>
+        archOverride;  // for images lacking /etc/kuiper-release
     // A host script run as root in the chroot after the features, before restamp
     // (copied in, run, removed). A plan needs features, a script, or both.
     std::optional<std::string> scriptPath;
-    bool restampVariant = true;              // set KUIPER_VARIANT=custom, refresh pkgs
-    bool dryRun = false;                     // compute/validate only; touch nothing
+    bool restampVariant = true;  // set KUIPER_VARIANT=custom, refresh pkgs
+    bool dryRun = false;         // compute/validate only; touch nothing
 };
 
 // What customize() did (or, in dry-run, would do).
@@ -70,7 +75,7 @@ struct CustomizeSummary {
     std::vector<std::string> installed;  // feature ids applied, in order
     std::uint64_t finalImageBytes = 0;   // image size after any grow
     std::string detectedArch;            // "armhf" | "arm64"
-    std::string ranScript;               // basename of the custom script, if any
+    std::string ranScript;  // basename of the custom script, if any
 };
 
 // Adds ADI full-image features to a basic .img in place. Linux-only and

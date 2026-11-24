@@ -63,13 +63,20 @@ constexpr int kWriteReprobeIntervalMs = 400;
 QString phaseLabel(kuiper::Progress::Phase p) {
     using P = kuiper::Progress::Phase;
     switch (p) {
-        case P::Preparing: return "Preparing…";
-        case P::Downloading: return "Downloading…";
-        case P::Writing: return "Writing…";
-        case P::Finalizing: return "Finalizing…";
-        case P::Verifying: return "Verifying…";
-        case P::Configuring: return "Configuring…";
-        case P::Done: return "Done";
+        case P::Preparing:
+            return "Preparing…";
+        case P::Downloading:
+            return "Downloading…";
+        case P::Writing:
+            return "Writing…";
+        case P::Finalizing:
+            return "Finalizing…";
+        case P::Verifying:
+            return "Verifying…";
+        case P::Configuring:
+            return "Configuring…";
+        case P::Done:
+            return "Done";
     }
     return "Working…";
 }
@@ -96,11 +103,14 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
     : QMainWindow(parent),
       task_(new BackgroundTask(this)),
       helper_(new HelperProcess(this)),
-      drivesOut_(std::make_shared<std::optional<kuiper::Result<kuiper::DriveList>>>()),
+      drivesOut_(
+          std::make_shared<std::optional<kuiper::Result<kuiper::DriveList>>>()),
       probeOut_(std::make_shared<ProbeResult>()),
-      releasesOut_(std::make_shared<
-                   std::optional<kuiper::Result<std::vector<kuiper::Release>>>>()),
-      fetchOut_(std::make_shared<std::optional<kuiper::Result<kuiper::FetchSummary>>>()),
+      releasesOut_(
+          std::make_shared<
+              std::optional<kuiper::Result<std::vector<kuiper::Release>>>>()),
+      fetchOut_(std::make_shared<
+                std::optional<kuiper::Result<kuiper::FetchSummary>>>()),
       ejectOut_(std::make_shared<std::optional<kuiper::Result<void>>>()) {
     setWindowTitle("Kuiper Imager");
     // Fixed-width column (the whole layout is tuned to 900px); height is free so
@@ -130,9 +140,9 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
     themeToggle->addSegment("Dark", "dark");
     connect(themeToggle, &KuiperSegmentedControl::valueChanged, this,
             [](const QString& v) {
-                kuiper::theme::applyTheme(*qApp, v == "dark"
-                                                     ? kuiper::theme::Theme::Dark
-                                                     : kuiper::theme::Theme::Light);
+                kuiper::theme::applyTheme(
+                    *qApp, v == "dark" ? kuiper::theme::Theme::Dark
+                                       : kuiper::theme::Theme::Light);
             });
     headerRow->addWidget(themeToggle);
     root->addWidget(header);
@@ -200,7 +210,8 @@ ConsoleWindow::ConsoleWindow(QWidget* parent)
     // follow-up job (a scan chains a probe), close() cancels that one too.
     auto retryClose = [this] {
         if (closePending_)
-            QMetaObject::invokeMethod(this, [this] { close(); }, Qt::QueuedConnection);
+            QMetaObject::invokeMethod(
+                this, [this] { close(); }, Qt::QueuedConnection);
     };
     connect(task_, &BackgroundTask::finished, this, retryClose);
     connect(helper_, &HelperProcess::finished, this, retryClose);
@@ -234,13 +245,15 @@ QWidget* ConsoleWindow::buildImageCard() {
     chooseFileBtn_ = new KuiperButton("Choose file…");
     chooseFileBtn_->setKind("secondary");
     chooseFileBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(chooseFileBtn_, &KuiperButton::clicked, this, [this] { pickImage(); });
+    connect(chooseFileBtn_, &KuiperButton::clicked, this,
+            [this] { pickImage(); });
     actionRow->addWidget(chooseFileBtn_, 1);
 
     downloadBtn_ = new KuiperButton("Download release…");
     downloadBtn_->setKind("secondary");
     downloadBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(downloadBtn_, &KuiperButton::clicked, this, [this] { chooseRelease(); });
+    connect(downloadBtn_, &KuiperButton::clicked, this,
+            [this] { chooseRelease(); });
     actionRow->addWidget(downloadBtn_, 1);
 
 #ifdef Q_OS_LINUX
@@ -251,7 +264,8 @@ QWidget* ConsoleWindow::buildImageCard() {
     customizeBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     customizeBtn_->setToolTip(
         "Add ADI full-image features (desktop, libraries, apps) to this image");
-    connect(customizeBtn_, &KuiperButton::clicked, this, [this] { openCustomize(); });
+    connect(customizeBtn_, &KuiperButton::clicked, this,
+            [this] { openCustomize(); });
     actionRow->addWidget(customizeBtn_, 1);
 #endif
     card->addLayout(actionRow);
@@ -260,7 +274,8 @@ QWidget* ConsoleWindow::buildImageCard() {
 
 QWidget* ConsoleWindow::buildStorageCard() {
     auto* card = new KuiperCard(this);
-    card->addWidget(new KuiperContainerHeader("Storage", "Choose the device to write to"));
+    card->addWidget(
+        new KuiperContainerHeader("Storage", "Choose the device to write to"));
 
     auto* pickRow = new QHBoxLayout();
     pickRow->setContentsMargins(0, 0, 0, 0);
@@ -272,7 +287,8 @@ QWidget* ConsoleWindow::buildStorageCard() {
     rescanBtn_ = new KuiperButton("↻");
     rescanBtn_->setKind("ghost");
     rescanBtn_->setToolTip("Rescan drives");
-    connect(rescanBtn_, &KuiperButton::clicked, this, [this] { refreshDrives(); });
+    connect(rescanBtn_, &KuiperButton::clicked, this,
+            [this] { refreshDrives(); });
     pickRow->addWidget(rescanBtn_);
     card->addLayout(pickRow);
 
@@ -284,9 +300,11 @@ QWidget* ConsoleWindow::buildStorageCard() {
     kuiperTag_ = new KuiperTag("Kuiper 2", "highlight");
     probeSpinner_ = new KuiperSpinner("sm", card);
     probeLabel_ = caption("Checking card…");
-    for (auto* w : {static_cast<QWidget*>(removableTag_), static_cast<QWidget*>(systemTag_),
-                    static_cast<QWidget*>(kuiperTag_), static_cast<QWidget*>(probeSpinner_),
-                    static_cast<QWidget*>(probeLabel_)})
+    for (auto* w :
+         {static_cast<QWidget*>(removableTag_),
+          static_cast<QWidget*>(systemTag_), static_cast<QWidget*>(kuiperTag_),
+          static_cast<QWidget*>(probeSpinner_),
+          static_cast<QWidget*>(probeLabel_)})
         w->setVisible(false);
     tagRow->addWidget(removableTag_);
     tagRow->addWidget(systemTag_);
@@ -302,7 +320,8 @@ QWidget* ConsoleWindow::buildStorageCard() {
     configureBtn_ = new KuiperButton("Configure projects →");
     configureBtn_->setKind("secondary");
     configureBtn_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(configureBtn_, &KuiperButton::clicked, this, [this] { openConfigure(); });
+    connect(configureBtn_, &KuiperButton::clicked, this,
+            [this] { openConfigure(); });
     card->addWidget(configureBtn_);
 
     return card;
@@ -376,7 +395,8 @@ void ConsoleWindow::refreshDrives(const QString& preferNode) {
                 driveCombo_->addItem("No drives found", -1);
             if (!preferNode.isEmpty()) {
                 for (int i = 0; i < static_cast<int>(driveList_.size()); ++i)
-                    if (QString::fromStdString(driveList_[i].node) == preferNode) {
+                    if (QString::fromStdString(driveList_[i].node) ==
+                        preferNode) {
                         driveCombo_->setCurrentIndex(i);
                         break;
                     }
@@ -484,7 +504,8 @@ void ConsoleWindow::probeCurrentDrive() {
         },
         Qt::SingleShotConnection);
 
-    task_->run([this, drive, out, stale](kuiper::ProgressFn, kuiper::CancelToken) {
+    task_->run([this, drive, out, stale](kuiper::ProgressFn,
+                                         kuiper::CancelToken) {
         stale->reset();  // unmount the previous card first (may block)
         auto layout = kuiper::identifyLayout(drive);
         if (!layout || !layout->boot) {
@@ -539,7 +560,8 @@ QString ConsoleWindow::imageCacheDir() const {
 }
 
 QString ConsoleWindow::cachedImagePath(const QString& id) {
-    auto p = images_.artifactPath(id.toStdString(), imageCacheDir().toStdString());
+    auto p =
+        images_.artifactPath(id.toStdString(), imageCacheDir().toStdString());
     if (!p) return QString();
     const QString path = QString::fromStdString(*p);
     return QFileInfo::exists(path) ? path : QString();
@@ -566,7 +588,8 @@ void ConsoleWindow::chooseRelease() {
             }
             // The picker badges/deletes cached releases; tell it where each lives.
             ReleasePickerDialog dlg(
-                *r, [this](const kuiper::Release& rel) {
+                *r,
+                [this](const kuiper::Release& rel) {
                     return cachedImagePath(QString::fromStdString(rel.id));
                 },
                 this);
@@ -625,10 +648,10 @@ void ConsoleWindow::startFetch(const QString& id, const QString& label) {
 
     setBusyUi(true);
     progress_->setIndeterminate(false);
-    task_->run([this, fid, outDir, out](kuiper::ProgressFn p,
-                                        kuiper::CancelToken c) {
-        *out = images_.fetch(fid, outDir, /*force=*/false, std::move(p), c);
-    });
+    task_->run(
+        [this, fid, outDir, out](kuiper::ProgressFn p, kuiper::CancelToken c) {
+            *out = images_.fetch(fid, outDir, /*force=*/false, std::move(p), c);
+        });
 }
 
 void ConsoleWindow::startWrite() {
@@ -660,7 +683,8 @@ void ConsoleWindow::startWrite() {
             if (!*r) {
                 if (r->error().code != kuiper::ErrorCode::UserCancelled)
                     showResult("danger", "Write failed",
-                               QString::fromStdString(r->error().message) + "\n" +
+                               QString::fromStdString(r->error().message) +
+                                   "\n" +
                                    QString::fromStdString(r->error().details));
                 else
                     showResult("warning", "Write cancelled",
@@ -710,9 +734,8 @@ void ConsoleWindow::startWrite() {
             helper_->runFlash(node, imagePath_, verify);
         },
         Qt::SingleShotConnection);
-    task_->run([stale](kuiper::ProgressFn, kuiper::CancelToken) {
-        stale->reset();
-    });
+    task_->run(
+        [stale](kuiper::ProgressFn, kuiper::CancelToken) { stale->reset(); });
 }
 
 void ConsoleWindow::showWriteComplete() {
@@ -759,18 +782,19 @@ void ConsoleWindow::startEject(const QString& node) {
     setBusyUi(true);
     progress_->setIndeterminate(true);
     progress_->setPhase("Ejecting…");
-    task_->run([this, stale, node, out](kuiper::ProgressFn, kuiper::CancelToken) {
-        stale->reset();
-        *out = drives_.eject(node.toStdString());
-    });
+    task_->run(
+        [this, stale, node, out](kuiper::ProgressFn, kuiper::CancelToken) {
+            stale->reset();
+            *out = drives_.eject(node.toStdString());
+        });
 }
 
 void ConsoleWindow::openConfigure() {
     if (!bootCtx_ || bootCtx_->projects.empty() || busy()) return;
 
-    // Composition root: wire the Intel-only raw preloader write, keeping
-    // ConfigurationService portable. The partition comes from the identified
-    // layout, never a composed node string (mirrors the CLI).
+        // Composition root: wire the Intel-only raw preloader write, keeping
+        // ConfigurationService portable. The partition comes from the identified
+        // layout, never a composed node string (mirrors the CLI).
 #ifdef Q_OS_WIN
     // Also mirrors the CLI: the Windows backend can't yet do the raw preloader
     // write (a base-offset write into a partition of the physical drive). An
@@ -782,9 +806,11 @@ void ConsoleWindow::openConfigure() {
     // unprivileged GUI cannot open the partition.
     kuiper::PreloaderSink sink;
     if (bootCtx_->layout.bootloader) {
-        sink = makeElevatedPreloaderSink(this, bootCtx_->layout.bootloader->node);
+        sink =
+            makeElevatedPreloaderSink(this, bootCtx_->layout.bootloader->node);
     } else {
-        sink = [](const std::string&, kuiper::ProgressFn) -> kuiper::Result<void> {
+        sink = [](const std::string&,
+                  kuiper::ProgressFn) -> kuiper::Result<void> {
             return kuiper::Err(kuiper::ErrorCode::NotFound,
                                "No bootloader partition on this card",
                                "This Intel project needs a raw preloader "
@@ -823,7 +849,8 @@ void ConsoleWindow::applyState() {
         imageTag_->setVisible(true);
     } else {
         imageValue_->setText("No image selected");
-        imageCaption_->setText("Choose a local image file or download a release.");
+        imageCaption_->setText(
+            "Choose a local image file or download a release.");
         imageTag_->setVisible(false);
     }
 
@@ -832,7 +859,9 @@ void ConsoleWindow::applyState() {
     if (customizeBtn_) {
         const bool rawLocalImg =
             hasImage && imageOrigin_ == ImageOrigin::Local &&
-            QFileInfo(imagePath_).suffix().compare("img", Qt::CaseInsensitive) == 0;
+            QFileInfo(imagePath_)
+                    .suffix()
+                    .compare("img", Qt::CaseInsensitive) == 0;
         customizeBtn_->setEnabled(rawLocalImg && !busy);
     }
 
@@ -843,9 +872,7 @@ void ConsoleWindow::applyState() {
     configureBtn_->setEnabled(kuiper2 && hasProjects && !busy && !probing_);
 }
 
-bool ConsoleWindow::busy() const {
-    return task_->busy() || helper_->busy();
-}
+bool ConsoleWindow::busy() const { return task_->busy() || helper_->busy(); }
 
 void ConsoleWindow::setBusyUi(bool busy) {
     buttonRow_->setVisible(!busy);

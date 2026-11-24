@@ -32,15 +32,15 @@ void BackgroundTask::run(Job job) {
     // alive until finished(): QFutureWatcher does not wait for the job on
     // destruction. ConsoleWindow and ConfigureDialog refuse to close while
     // busy() for exactly this reason.
-    QFuture<void> fut = QtConcurrent::run([this, job = std::move(job),
-                                           cancelFlag]() {
-        kuiper::ProgressFn onProgress = [this](const kuiper::Progress& p) {
-            emit progress(p);
-        };
-        kuiper::CancelToken cancel;
-        cancel.cancelled = [cancelFlag] { return cancelFlag->load(); };
-        job(std::move(onProgress), std::move(cancel));
-    });
+    QFuture<void> fut =
+        QtConcurrent::run([this, job = std::move(job), cancelFlag]() {
+            kuiper::ProgressFn onProgress = [this](const kuiper::Progress& p) {
+                emit progress(p);
+            };
+            kuiper::CancelToken cancel;
+            cancel.cancelled = [cancelFlag] { return cancelFlag->load(); };
+            job(std::move(onProgress), std::move(cancel));
+        });
     watcher_.setFuture(fut);
 }
 

@@ -20,7 +20,7 @@ class KuiperTag : public QLabel {
     Q_OBJECT
 public:
     explicit KuiperTag(const QString& text, const QString& status = "info",
-                    QWidget* parent = nullptr);
+                       QWidget* parent = nullptr);
 
     // Re-tint the pill after construction (keyed on the dynamic "status"
     // property, so it repolishes — see theme-*.qss).

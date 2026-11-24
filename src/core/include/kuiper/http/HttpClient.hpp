@@ -29,8 +29,9 @@ struct HttpHeader {
 };
 
 struct HttpResponse {
-    long status = 0;   // HTTP status code (e.g. 200, 404); 0 if none received
-    std::string body;  // response body (empty for download() — bytes go to the sink)
+    long status = 0;  // HTTP status code (e.g. 200, 404); 0 if none received
+    std::string
+        body;  // response body (empty for download() — bytes go to the sink)
 };
 
 // Receives a chunk of the response body as it arrives. Return false to abort the
@@ -51,16 +52,16 @@ struct DownloadOptions {
 // buffering (multi-GB images). Injected so callers are unit-testable with a fake.
 class IHttpClient {
 public:
-    virtual Result<HttpResponse> get(const std::string& url,
-                                     const std::vector<HttpHeader>& headers = {}) = 0;
+    virtual Result<HttpResponse> get(
+        const std::string& url,
+        const std::vector<HttpHeader>& headers = {}) = 0;
 
     // Streams the response body to `sink` chunk by chunk. Returns the final
     // status (with an empty body). A sink/progress abort surfaces as
     // ErrorCode::UserCancelled; a transport failure as NetworkFailure.
-    virtual Result<HttpResponse> download(const std::string& url,
-                                          const std::vector<HttpHeader>& headers,
-                                          const DownloadSink& sink,
-                                          const DownloadOptions& opts = {}) = 0;
+    virtual Result<HttpResponse> download(
+        const std::string& url, const std::vector<HttpHeader>& headers,
+        const DownloadSink& sink, const DownloadOptions& opts = {}) = 0;
 
     virtual ~IHttpClient() = default;
 };

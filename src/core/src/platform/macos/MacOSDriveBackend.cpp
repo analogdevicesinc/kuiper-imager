@@ -30,13 +30,17 @@ public:
         return std::unexpected(unsupported().error());
     }
 
-    Result<void> unmountAll(const std::string&) override { return unsupported(); }
+    Result<void> unmountAll(const std::string&) override {
+        return unsupported();
+    }
     Result<void> eject(const std::string&) override { return unsupported(); }
 
-    Result<std::unique_ptr<IRawDevice>> openForWrite(const std::string&) override {
+    Result<std::unique_ptr<IRawDevice>> openForWrite(
+        const std::string&) override {
         return std::unexpected(unsupported().error());
     }
-    Result<std::unique_ptr<IRawDevice>> openForRead(const std::string&) override {
+    Result<std::unique_ptr<IRawDevice>> openForRead(
+        const std::string&) override {
         return std::unexpected(unsupported().error());
     }
 

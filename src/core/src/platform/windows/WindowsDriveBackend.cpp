@@ -63,8 +63,7 @@ std::string narrow(const wchar_t* w) {
 // UTF-8 -> UTF-16.
 std::wstring widen(const std::string& s) {
     if (s.empty()) return {};
-    const int n =
-        ::MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
+    const int n = ::MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
     if (n <= 1) return {};
     std::wstring w(static_cast<std::size_t>(n - 1), L'\0');
     ::MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, w.data(), n);
@@ -136,11 +135,11 @@ struct Handle {
 
 // One mounted volume mapped to its backing disk, for partition enrichment.
 struct VolumeInfo {
-    std::wstring guidPath;        // "\\?\Volume{...}\"  (trailing backslash)
-    DWORD diskNumber = 0;         // physical drive it lives on
+    std::wstring guidPath;  // "\\?\Volume{...}\"  (trailing backslash)
+    DWORD diskNumber = 0;   // physical drive it lives on
     std::int64_t startingOffset = 0;
-    std::string driveLetter;     // "E:\"  (mountpoint), empty if none
-    std::string fsType;          // "vfat" | "ntfs" | ...  ("" if unreadable)
+    std::string driveLetter;  // "E:\"  (mountpoint), empty if none
+    std::string fsType;       // "vfat" | "ntfs" | ...  ("" if unreadable)
     std::string label;
 };
 
@@ -246,7 +245,8 @@ bool queryDescriptor(HANDLE h, std::string& model, STORAGE_BUS_TYPE& bus,
         vendor = reinterpret_cast<const char*>(buf.data() + d->VendorIdOffset);
     }
     if (d->ProductIdOffset && d->ProductIdOffset < buf.size()) {
-        product = reinterpret_cast<const char*>(buf.data() + d->ProductIdOffset);
+        product =
+            reinterpret_cast<const char*>(buf.data() + d->ProductIdOffset);
     }
     model = trim(trim(vendor) + " " + trim(product));
     return true;
@@ -323,7 +323,7 @@ int driveNumberOf(const std::string& node) {
     return n;
 }
 
-constexpr int kLockRetries = 20;    // ~2 s total
+constexpr int kLockRetries = 20;  // ~2 s total
 constexpr DWORD kLockSleepMs = 100;
 
 // One open raw-device session on Windows: owns the physical-drive handle and the
@@ -403,7 +403,8 @@ public:
 
 private:
     Handle disk_;
-    std::vector<Handle> locks_;  // held for the session; close releases the lock
+    std::vector<Handle>
+        locks_;  // held for the session; close releases the lock
     unsigned blockSize_ = 512;
     std::uint64_t devSize_ = 0;
 };
@@ -471,8 +472,7 @@ Result<std::unique_ptr<IRawDevice>> openSession(const std::string& node,
                                                 bool write) {
     const int driveNo = driveNumberOf(node);
     if (driveNo < 0) {
-        return Err(ErrorCode::InvalidImage,
-                   "Not a physical drive: " + node,
+        return Err(ErrorCode::InvalidImage, "Not a physical drive: " + node,
                    "--drive must be a whole drive like \\\\.\\PhysicalDrive1");
     }
 
@@ -480,11 +480,10 @@ Result<std::unique_ptr<IRawDevice>> openSession(const std::string& node,
     if (!locks) return std::unexpected(locks.error());
 
     const DWORD access = write ? (GENERIC_READ | GENERIC_WRITE) : GENERIC_READ;
-    Handle disk(::CreateFileW(widen(node).c_str(), access,
-                              FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-                              OPEN_EXISTING,
-                              FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH,
-                              nullptr));
+    Handle disk(::CreateFileW(
+        widen(node).c_str(), access, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr, OPEN_EXISTING,
+        FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH, nullptr));
     if (!disk.valid()) {
         return winError(::GetLastError(),
                         "Cannot open device for " +
@@ -499,8 +498,8 @@ Result<std::unique_ptr<IRawDevice>> openSession(const std::string& node,
     const unsigned bs = queryBlockSize(disk.get());
     const std::uint64_t size = queryLength(disk.get());
 
-    auto io = std::make_unique<WindowsBlockIo>(std::move(disk), std::move(*locks),
-                                               bs, size);
+    auto io = std::make_unique<WindowsBlockIo>(std::move(disk),
+                                               std::move(*locks), bs, size);
     auto dev = std::make_unique<detail::AlignedRawDevice>(std::move(io));
     if (auto r = dev->init(); !r) return std::unexpected(r.error());
     return std::move(dev);
@@ -519,7 +518,8 @@ bool diskDevInst(int driveNo, DEVINST& out) {
              di, nullptr, &kDiskInterfaceGuid, idx, &ifd);
          ++idx) {
         DWORD needed = 0;
-        ::SetupDiGetDeviceInterfaceDetailW(di, &ifd, nullptr, 0, &needed, nullptr);
+        ::SetupDiGetDeviceInterfaceDetailW(di, &ifd, nullptr, 0, &needed,
+                                           nullptr);
         if (!needed) continue;
         std::vector<BYTE> buf(needed);
         auto* detail =
@@ -527,8 +527,8 @@ bool diskDevInst(int driveNo, DEVINST& out) {
         detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W);
         SP_DEVINFO_DATA info{};
         info.cbSize = sizeof(info);
-        if (!::SetupDiGetDeviceInterfaceDetailW(di, &ifd, detail, needed, nullptr,
-                                                &info))
+        if (!::SetupDiGetDeviceInterfaceDetailW(di, &ifd, detail, needed,
+                                                nullptr, &info))
             continue;
         Handle h(::CreateFileW(detail->DevicePath, 0,
                                FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
@@ -536,8 +536,8 @@ bool diskDevInst(int driveNo, DEVINST& out) {
         if (!h.valid()) continue;
         STORAGE_DEVICE_NUMBER sdn{};
         DWORD br = 0;
-        if (::DeviceIoControl(h.get(), IOCTL_STORAGE_GET_DEVICE_NUMBER, nullptr, 0,
-                              &sdn, sizeof(sdn), &br, nullptr) &&
+        if (::DeviceIoControl(h.get(), IOCTL_STORAGE_GET_DEVICE_NUMBER, nullptr,
+                              0, &sdn, sizeof(sdn), &br, nullptr) &&
             static_cast<int>(sdn.DeviceNumber) == driveNo) {
             out = info.DevInst;
             found = true;
@@ -553,15 +553,17 @@ bool diskDevInst(int driveNo, DEVINST& out) {
 Result<void> pnpEjectDrive(int driveNo) {
     DEVINST disk{};
     if (!diskDevInst(driveNo, disk))
-        return Err(ErrorCode::DeviceRemoved, "Could not find the drive to eject");
+        return Err(ErrorCode::DeviceRemoved,
+                   "Could not find the drive to eject");
 
     // The ejectable unit is the nearest removable ancestor, not the (fixed)
     // GenDisk node.
     DEVINST target = disk;
     for (DEVINST node = disk;;) {
         ULONG caps = 0, len = sizeof(caps);
-        if (::CM_Get_DevNode_Registry_PropertyW(node, CM_DRP_CAPABILITIES, nullptr,
-                                                &caps, &len, 0) == CR_SUCCESS &&
+        if (::CM_Get_DevNode_Registry_PropertyW(node, CM_DRP_CAPABILITIES,
+                                                nullptr, &caps, &len,
+                                                0) == CR_SUCCESS &&
             (caps & CM_DEVCAP_REMOVABLE)) {
             target = node;
             break;
@@ -594,9 +596,9 @@ public:
     const char* name() const noexcept override { return "windows"; }
 
     Result<DriveList> listDrives() override {
-        HDEVINFO di = ::SetupDiGetClassDevsW(
-            &kDiskInterfaceGuid, nullptr, nullptr,
-            DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+        HDEVINFO di =
+            ::SetupDiGetClassDevsW(&kDiskInterfaceGuid, nullptr, nullptr,
+                                   DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
         if (di == INVALID_HANDLE_VALUE) {
             return winError(::GetLastError(),
                             "Cannot enumerate disks (SetupDiGetClassDevs)");
@@ -704,9 +706,10 @@ public:
         }
         // A raw slot (the intel preloader partition) or a filesystem Windows can't
         // read (ext4): nothing to configure here. Mirrors the Linux "no filesystem".
-        return Err(ErrorCode::NotFound,
-                   "Partition has no mountable filesystem: " + partition.node,
-                   "Only a FAT/exFAT/NTFS partition can be configured on Windows.");
+        return Err(
+            ErrorCode::NotFound,
+            "Partition has no mountable filesystem: " + partition.node,
+            "Only a FAT/exFAT/NTFS partition can be configured on Windows.");
     }
 
     Result<void> unmountAll(const std::string&) override {
@@ -720,7 +723,8 @@ public:
     Result<void> eject(const std::string& node) override {
         const int driveNo = driveNumberOf(node);
         if (driveNo < 0)
-            return Err(ErrorCode::InvalidImage, "Not a physical drive: " + node);
+            return Err(ErrorCode::InvalidImage,
+                       "Not a physical drive: " + node);
         return pnpEjectDrive(driveNo);
     }
 

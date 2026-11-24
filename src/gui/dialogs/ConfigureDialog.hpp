@@ -46,7 +46,7 @@ public:
     void reject() override;
 
 private:
-    void rebuildTable();                 // apply the current platform filter
+    void rebuildTable();  // apply the current platform filter
     const kuiper::Project* selected() const;
     void onSelectionChanged();
     void runConfigure(bool dryRun);
@@ -69,6 +69,7 @@ private:
     KuiperButton* closeBtn_;
 
     // Result holder shared with the worker job.
-    std::shared_ptr<std::optional<kuiper::Result<kuiper::ConfigureSummary>>> out_;
+    std::shared_ptr<std::optional<kuiper::Result<kuiper::ConfigureSummary>>>
+        out_;
     bool lastWasDryRun_ = false;
 };

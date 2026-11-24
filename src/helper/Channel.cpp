@@ -128,9 +128,9 @@ private:
 HANDLE connectPipe(const std::string& name) {
     const std::wstring w(name.begin(), name.end());
     for (int attempt = 0; attempt < 10; ++attempt) {
-        HANDLE h = ::CreateFileW(w.c_str(), GENERIC_READ | GENERIC_WRITE, 0,
-                                 nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED,
-                                 nullptr);
+        HANDLE h =
+            ::CreateFileW(w.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+                          OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
         if (h != INVALID_HANDLE_VALUE) return h;
         const DWORD e = ::GetLastError();
         if (e == ERROR_PIPE_BUSY) {

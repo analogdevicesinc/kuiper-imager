@@ -22,9 +22,10 @@ namespace kuiper {
 // The three partitions a Kuiper card can carry, each optional. See docs:
 // core-library (layout identification).
 struct KuiperLayout {
-    std::optional<Partition> boot;        // vfat, holds the boot files + manifests
-    std::optional<Partition> root;        // ext4 rootfs
-    std::optional<Partition> bootloader;  // unformatted partition (intel preloader)
+    std::optional<Partition> boot;  // vfat, holds the boot files + manifests
+    std::optional<Partition> root;  // ext4 rootfs
+    std::optional<Partition>
+        bootloader;  // unformatted partition (intel preloader)
 };
 
 // Classify a drive's partitions into Kuiper roles by INSPECTION, never by index —

@@ -57,18 +57,20 @@ private:
     std::uint64_t imageBytes_ = 0;
     HelperProcess* helper_;
 
-    std::vector<std::pair<std::string, KuiperCheckBox*>> checks_;  // id -> checkbox
+    std::vector<std::pair<std::string, KuiperCheckBox*>>
+        checks_;           // id -> checkbox
     QScrollArea* scroll_;  // the feature list; hidden by the log during a run
     QLabel* estimate_;
-    KuiperCheckBox* grow_;    // auto-grow the rootfs to fit (default on)
+    KuiperCheckBox* grow_;  // auto-grow the rootfs to fit (default on)
     QLineEdit* growSize_;  // optional explicit size (e.g. "4G"); overrides auto
-    QString scriptPath_;      // host script run as root in the chroot (optional)
+    QString scriptPath_;   // host script run as root in the chroot (optional)
     KuiperButton* scriptBtn_;    // picks the script
-    QLabel* scriptLabel_;     // shows the chosen script's name, or a hint
+    QLabel* scriptLabel_;        // shows the chosen script's name, or a hint
     KuiperButton* scriptClear_;  // clears the chosen script
     KuiperBanner* result_;
-    KuiperProgressBar* progress_;  // indeterminate activity + coarse phase heading
-    KuiperLogView* log_;           // streamed helper/apt output (the real readout)
+    KuiperProgressBar*
+        progress_;        // indeterminate activity + coarse phase heading
+    KuiperLogView* log_;  // streamed helper/apt output (the real readout)
     KuiperButton* runBtn_;
     KuiperButton* closeBtn_;  // "Close", or "Cancel" while running
 };

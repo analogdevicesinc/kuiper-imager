@@ -32,6 +32,8 @@ public:
 
 private:
     QProcess* proc_;
-    bool done_ = false;  // guards a single finished() across error/finished signals
-    bool direct_ = false;  // KUIPER_HELPER_NO_PKEXEC: launching the helper itself
+    bool done_ =
+        false;  // guards a single finished() across error/finished signals
+    bool direct_ =
+        false;  // KUIPER_HELPER_NO_PKEXEC: launching the helper itself
 };

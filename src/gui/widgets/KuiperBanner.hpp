@@ -27,8 +27,8 @@ class KuiperBanner : public QFrame {
     Q_OBJECT
 public:
     explicit KuiperBanner(const QString& status, const QString& title,
-                       const QString& message = QString(),
-                       QWidget* parent = nullptr);
+                          const QString& message = QString(),
+                          QWidget* parent = nullptr);
 
     void setStatus(const QString& status);
     void setTitle(const QString& title);

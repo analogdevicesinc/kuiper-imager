@@ -49,8 +49,10 @@ Variant variantOf(const std::string& artifactName) {
     if (parts.size() == 4 && parts.back() == QStringLiteral("image.zip")) {
         const QString bits = parts[2];  // "32" | "64"
         std::string arch;
-        if (bits == QStringLiteral("64")) arch = "arm64";
-        else if (bits == QStringLiteral("32")) arch = "arm32";
+        if (bits == QStringLiteral("64"))
+            arch = "arm64";
+        else if (bits == QStringLiteral("32"))
+            arch = "arm32";
         return {parts[1].toStdString(), std::move(arch)};
     }
     std::string v = artifactName;
@@ -66,7 +68,8 @@ GitHubActionsProvider::GitHubActionsProvider(IHttpClient& http,
 
 std::vector<HttpHeader> GitHubActionsProvider::apiHeaders() const {
     std::vector<HttpHeader> headers = {
-        {"User-Agent", std::string("kli/") + version()},  // GitHub requires a UA
+        {"User-Agent",
+         std::string("kli/") + version()},  // GitHub requires a UA
         {"Accept", "application/vnd.github+json"},
         {"X-GitHub-Api-Version", "2022-11-28"},
     };
@@ -82,7 +85,8 @@ Result<HttpResponse> GitHubActionsProvider::apiGet(const std::string& url) {
     if (s >= 200 && s < 300) return resp;
     if (s == 401) {
         return Err(ErrorCode::PermissionDenied, "GitHub rejected the API token",
-                   url, "Check $GH_TOKEN / $GITHUB_TOKEN, or run 'gh auth token'.");
+                   url,
+                   "Check $GH_TOKEN / $GITHUB_TOKEN, or run 'gh auth token'.");
     }
     if (s == 403 || s == 429) {
         return Err(ErrorCode::NetworkFailure,
@@ -104,14 +108,14 @@ Result<std::vector<Release>> GitHubActionsProvider::list(
 
     // One request for the recent runs, then one per run for its artifacts (1+N):
     // this spends the unauthenticated rate budget quickly — hence the token.
-    std::string runsUrl = std::string(kApiBase) + "/actions/workflows/" +
-                          kWorkflowFile +
-                          "/runs?status=success&per_page=" + std::to_string(limit);
+    std::string runsUrl =
+        std::string(kApiBase) + "/actions/workflows/" + kWorkflowFile +
+        "/runs?status=success&per_page=" + std::to_string(limit);
     if (query.branch && !query.branch->empty()) {
         // Git ref names may contain &, #, =, % — percent-encode for the query.
-        runsUrl += "&branch=" +
-                   QUrl::toPercentEncoding(QString::fromStdString(*query.branch))
-                       .toStdString();
+        runsUrl += "&branch=" + QUrl::toPercentEncoding(
+                                    QString::fromStdString(*query.branch))
+                                    .toStdString();
     }
 
     auto runsResp = apiGet(runsUrl);
@@ -128,11 +132,13 @@ Result<std::vector<Release>> GitHubActionsProvider::list(
     std::vector<Release> releases;
     for (const QJsonValue& rv : runs) {
         const QJsonObject run = rv.toObject();
-        const auto runId = static_cast<std::int64_t>(run.value("id").toInteger());
+        const auto runId =
+            static_cast<std::int64_t>(run.value("id").toInteger());
         const std::string branch =
             run.value("head_branch").toString().toStdString();
         const std::string sha = run.value("head_sha").toString().toStdString();
-        const std::string sha7 = sha.substr(0, std::min<std::size_t>(7, sha.size()));
+        const std::string sha7 =
+            sha.substr(0, std::min<std::size_t>(7, sha.size()));
 
         const std::string artUrl = std::string(kApiBase) + "/actions/runs/" +
                                    std::to_string(runId) + "/artifacts";
@@ -161,8 +167,8 @@ Result<std::vector<Release>> GitHubActionsProvider::list(
             Variant variant = variantOf(name);
             r.variant = std::move(variant.type);
             r.arch = std::move(variant.arch);
-            r.sizeBytes =
-                static_cast<std::uint64_t>(art.value("size_in_bytes").toInteger());
+            r.sizeBytes = static_cast<std::uint64_t>(
+                art.value("size_in_bytes").toInteger());
             r.available = !art.value("expired").toBool();
             if (const QJsonValue e = art.value("expires_at"); e.isString()) {
                 r.expiresAt = e.toString().toStdString();
@@ -186,16 +192,18 @@ Result<DownloadSource> GitHubActionsProvider::resolve(const std::string& id) {
     const std::string artId(id.substr(kScheme.size()));
     if (artId.empty() ||
         artId.find_first_not_of("0123456789") != std::string::npos) {
-        return Err(ErrorCode::NotFound, "Malformed image identifier: " + id,
-                   "The GitHub artifact id must be numeric, e.g. 'gh:9607528144'.");
+        return Err(
+            ErrorCode::NotFound, "Malformed image identifier: " + id,
+            "The GitHub artifact id must be numeric, e.g. 'gh:9607528144'.");
     }
     if (!token_) {
-        return Err(ErrorCode::PermissionDenied,
-                   "Downloading Kuiper CI artifacts requires a GitHub token",
-                   "The artifact download endpoint is authenticated (unlike "
-                   "listing).",
-                   "Set $GH_TOKEN / $GITHUB_TOKEN (or run 'gh auth token'); the "
-                   "token needs the 'actions:read' scope.");
+        return Err(
+            ErrorCode::PermissionDenied,
+            "Downloading Kuiper CI artifacts requires a GitHub token",
+            "The artifact download endpoint is authenticated (unlike "
+            "listing).",
+            "Set $GH_TOKEN / $GITHUB_TOKEN (or run 'gh auth token'); the "
+            "token needs the 'actions:read' scope.");
     }
 
     // Read the artifact metadata for its canonical name — and to fail early if it
