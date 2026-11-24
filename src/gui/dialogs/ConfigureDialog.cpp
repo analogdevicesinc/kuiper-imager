@@ -63,7 +63,8 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
 
     table_ = new QTableWidget(this);
     table_->setColumnCount(4);
-    table_->setHorizontalHeaderLabels({"Project", "Architecture", "Board", "Platform"});
+    table_->setHorizontalHeaderLabels(
+        {"Project", "Architecture", "Board", "Platform"});
     table_->horizontalHeader()->setStretchLastSection(true);
     table_->verticalHeader()->setVisible(false);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -88,15 +89,14 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
     progress_->setVisible(false);
     col->addWidget(progress_);
 
-    connect(task_, &BackgroundTask::progress, this,
-            [this](kuiper::Progress p) {
-                progress_->setPhase(QString::fromStdString(
-                    p.message.empty() ? "Configuring…" : p.message));
-                if (p.bytesTotal > 0)
-                    progress_->setDetail(QString("%1%").arg(
-                        static_cast<int>(p.fraction * 100 + 0.5)));
-                progress_->setFraction(p.fraction);
-            });
+    connect(task_, &BackgroundTask::progress, this, [this](kuiper::Progress p) {
+        progress_->setPhase(QString::fromStdString(
+            p.message.empty() ? "Configuring…" : p.message));
+        if (p.bytesTotal > 0)
+            progress_->setDetail(
+                QString("%1%").arg(static_cast<int>(p.fraction * 100 + 0.5)));
+        progress_->setFraction(p.fraction);
+    });
     connect(task_, &BackgroundTask::finished, this, [this] {
         setRunning(false);
         if (!out_->has_value()) return;
@@ -115,7 +115,8 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
                              .arg(QString::fromStdString(f.source),
                                   QString::fromStdString(f.dest));
             result_->setStatus("info");
-            result_->setTitle(QString("Would copy %1 file(s)").arg(r->files.size()));
+            result_->setTitle(
+                QString("Would copy %1 file(s)").arg(r->files.size()));
             result_->setMessage(lines.join("\n"));
         } else {
             result_->setStatus("success");
@@ -137,10 +138,12 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
     buttons->addStretch(1);
     previewBtn_ = new KuiperButton("Preview changes");
     previewBtn_->setKind("secondary");
-    connect(previewBtn_, &KuiperButton::clicked, this, [this] { runConfigure(true); });
+    connect(previewBtn_, &KuiperButton::clicked, this,
+            [this] { runConfigure(true); });
     buttons->addWidget(previewBtn_);
     applyBtn_ = new KuiperButton("Apply");
-    connect(applyBtn_, &KuiperButton::clicked, this, [this] { runConfigure(false); });
+    connect(applyBtn_, &KuiperButton::clicked, this,
+            [this] { runConfigure(false); });
     buttons->addWidget(applyBtn_);
     col->addLayout(buttons);
 
@@ -152,18 +155,20 @@ void ConfigureDialog::rebuildTable() {
     int row = 0;
     for (int i = 0; i < static_cast<int>(projects_.size()); ++i) {
         const auto& p = projects_[i];
-        if (platformFilter_ != "all" && p.platform != platformFilter_.toStdString())
+        if (platformFilter_ != "all" &&
+            p.platform != platformFilter_.toStdString())
             continue;
         table_->insertRow(row);
         auto* name = new QTableWidgetItem(QString::fromStdString(p.name));
         name->setData(Qt::UserRole, i);  // index back into projects_
         table_->setItem(row, 0, name);
-        table_->setItem(row, 1,
-                        new QTableWidgetItem(QString::fromStdString(p.architecture)));
+        table_->setItem(
+            row, 1,
+            new QTableWidgetItem(QString::fromStdString(p.architecture)));
         table_->setItem(row, 2,
                         new QTableWidgetItem(QString::fromStdString(p.board)));
-        table_->setItem(row, 3,
-                        new QTableWidgetItem(QString::fromStdString(p.platform)));
+        table_->setItem(
+            row, 3, new QTableWidgetItem(QString::fromStdString(p.platform)));
         ++row;
     }
     if (table_->rowCount() > 0) table_->selectRow(0);

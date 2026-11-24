@@ -19,7 +19,8 @@
 
 #include "util/Repolish.hpp"
 
-KuiperSegmentedControl::KuiperSegmentedControl(QWidget* parent) : QWidget(parent) {
+KuiperSegmentedControl::KuiperSegmentedControl(QWidget* parent)
+    : QWidget(parent) {
     auto* outer = new QHBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
 
@@ -39,7 +40,8 @@ KuiperSegmentedControl::KuiperSegmentedControl(QWidget* parent) : QWidget(parent
             });
 }
 
-void KuiperSegmentedControl::addSegment(const QString& text, const QString& value) {
+void KuiperSegmentedControl::addSegment(const QString& text,
+                                        const QString& value) {
     auto* btn = new QPushButton(text);
     btn->setCheckable(true);
     btn->setCursor(Qt::PointingHandCursor);
@@ -57,7 +59,8 @@ void KuiperSegmentedControl::addSegment(const QString& text, const QString& valu
 void KuiperSegmentedControl::relayoutPositions() {
     const auto buttons = group_->buttons();
     for (int i = 0; i < buttons.size(); ++i) {
-        const char* pos = i == 0 ? "first" : (i == buttons.size() - 1 ? "last" : "mid");
+        const char* pos =
+            i == 0 ? "first" : (i == buttons.size() - 1 ? "last" : "mid");
         auto* b = buttons[i];
         b->setProperty("pos", pos);
         kuiper::gui::repolish(b);

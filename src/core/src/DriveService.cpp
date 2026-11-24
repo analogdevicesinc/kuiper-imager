@@ -41,9 +41,10 @@ double elapsed(Clock::time_point t) {
     return std::chrono::duration<double>(Clock::now() - t).count();
 }
 
-constexpr std::size_t kOpenBlock = 1u << 20;   // libarchive read block (1 MiB)
-constexpr std::size_t kChunk = 4u << 20;       // decompress / verify buffer (4 MiB)
-constexpr std::int64_t kAmbiguousZip = 1 << 20;  // >1 entry above this => ambiguous
+constexpr std::size_t kOpenBlock = 1u << 20;  // libarchive read block (1 MiB)
+constexpr std::size_t kChunk = 4u << 20;  // decompress / verify buffer (4 MiB)
+constexpr std::int64_t kAmbiguousZip =
+    1 << 20;  // >1 entry above this => ambiguous
 
 // Written LAST, after the body verifies, so an interrupted flash never leaves a
 // bootable-looking card. 1 MiB covers the partition table and is block-aligned on
@@ -71,10 +72,13 @@ Result<void> configure(archive* a) {
         }
         return {};
     };
-    if (auto r = enable(archive_read_support_filter_gzip(a), "gzip"); !r) return r;
+    if (auto r = enable(archive_read_support_filter_gzip(a), "gzip"); !r)
+        return r;
     if (auto r = enable(archive_read_support_filter_xz(a), "xz"); !r) return r;
-    if (auto r = enable(archive_read_support_filter_zstd(a), "zstd"); !r) return r;
-    if (auto r = enable(archive_read_support_filter_bzip2(a), "bzip2"); !r) return r;
+    if (auto r = enable(archive_read_support_filter_zstd(a), "zstd"); !r)
+        return r;
+    if (auto r = enable(archive_read_support_filter_bzip2(a), "bzip2"); !r)
+        return r;
     archive_read_support_format_raw(a);
     archive_read_support_format_zip(a);
     return {};
@@ -129,9 +133,9 @@ Result<std::string> chooseZipEntry(const fs::path& path) {
     }
     std::sort(regs.begin(), regs.end(),
               [](const Cand& x, const Cand& y) { return x.size > y.size; });
-    const int big = static_cast<int>(std::count_if(
-        regs.begin(), regs.end(),
-        [](const Cand& c) { return c.size >= kAmbiguousZip; }));
+    const int big = static_cast<int>(
+        std::count_if(regs.begin(), regs.end(),
+                      [](const Cand& c) { return c.size >= kAmbiguousZip; }));
     if (big > 1) {
         return Err(ErrorCode::InvalidImage,
                    "Zip has multiple large files; cannot pick the image",
@@ -146,16 +150,16 @@ struct WriteCtx {
     std::uint64_t capacity;
     std::uint64_t deferHead;
     std::vector<std::byte>& head;
-    Sha256& fullHash;               // whole image, in order; the reported result
-    Sha256* bodyHash;               // body only; null when not verifying
+    Sha256& fullHash;  // whole image, in order; the reported result
+    Sha256* bodyHash;  // body only; null when not verifying
     std::uint64_t compressedTotal;
     const ProgressFn& onProgress;
     const CancelToken& cancel;
     std::uint64_t written = 0;      // total image bytes consumed (head + body)
     std::uint64_t bodyWritten = 0;  // bytes handed to dev.write() (body only)
     double lastFraction = 0.0;
-    double decompressSec = 0.0;     // diagnostic
-    double deviceWriteSec = 0.0;    // diagnostic
+    double decompressSec = 0.0;   // diagnostic
+    double deviceWriteSec = 0.0;  // diagnostic
 };
 
 // The device offset must already be positioned at `deferHead` before the body is
@@ -255,8 +259,8 @@ Result<void> decompressToDevice(const fs::path& imagePath, WriteCtx& ctx) {
     Reader ar;
     if (!ar.a) return Err(ErrorCode::Unknown, "Out of memory (libarchive)");
     if (auto r = configure(ar); !r) return std::unexpected(r.error());
-    if (archive_read_open_filename(ar, imagePath.string().c_str(), kOpenBlock) !=
-        ARCHIVE_OK) {
+    if (archive_read_open_filename(ar, imagePath.string().c_str(),
+                                   kOpenBlock) != ARCHIVE_OK) {
         const char* e = archive_error_string(ar);
         return Err(ErrorCode::InvalidImage, "Cannot open image", e ? e : "");
     }
@@ -272,8 +276,7 @@ Result<void> decompressToDevice(const fs::path& imagePath, WriteCtx& ctx) {
 
 // The backend handles all block alignment; callers pass plain byte counts.
 Result<void> hashDeviceRange(IRawDevice& dev, std::uint64_t length,
-                             Sha256& hash,
-                             const ProgressFn& onProgress,
+                             Sha256& hash, const ProgressFn& onProgress,
                              const CancelToken& cancel, const char* message) {
     std::vector<std::byte> buf(kChunk);
     std::uint64_t remaining = length;
@@ -292,10 +295,10 @@ Result<void> hashDeviceRange(IRawDevice& dev, std::uint64_t length,
         hash.update(buf.data(), *n);
         remaining -= *n;
         if (onProgress) {
-            const double frac =
-                length ? static_cast<double>(length - remaining) /
-                             static_cast<double>(length)
-                       : 1.0;
+            const double frac = length
+                                    ? static_cast<double>(length - remaining) /
+                                          static_cast<double>(length)
+                                    : 1.0;
             onProgress(Progress{Progress::Phase::Verifying, length - remaining,
                                 length, frac, message});
         }
@@ -366,10 +369,10 @@ Result<void> classifyWriteTarget(TargetKind kind, const std::string& node,
                            "Pass --force if you are sure (internal SD reader, "
                            "loop device)");
             }
-            return Err(ErrorCode::PermissionDenied,
-                       "Refusing to write to a non-removable disk: " +
-                           owner->node,
-                       "Pass --force if you are sure (internal SD reader)");
+            return Err(
+                ErrorCode::PermissionDenied,
+                "Refusing to write to a non-removable disk: " + owner->node,
+                "Pass --force if you are sure (internal SD reader)");
         }
     }
     return {};
@@ -498,9 +501,15 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
     if (auto r = dev.seek(kDeferHead); !r) {
         return std::unexpected(r.error());
     }
-    WriteCtx ctx{dev, *capacity, kDeferHead, head,
-                 fullHash,  options.verify ? &bodyHash : nullptr,
-                 compressedSize, onProgress, cancel};
+    WriteCtx ctx{dev,
+                 *capacity,
+                 kDeferHead,
+                 head,
+                 fullHash,
+                 options.verify ? &bodyHash : nullptr,
+                 compressedSize,
+                 onProgress,
+                 cancel};
     const auto tWrite = Clock::now();
     if (auto r = decompressToDevice(img, ctx); !r) {
         // The head was never written, so the card is non-bootable by
@@ -551,8 +560,8 @@ Result<FlashSummary> DriveService::flash(const std::string& driveNode,
     if (auto r = dev.seek(0); !r) {
         return std::unexpected(r.error());
     }
-    if (auto r = dev.write(std::span<const std::byte>(head.data(),
-                                                      head.size()));
+    if (auto r =
+            dev.write(std::span<const std::byte>(head.data(), head.size()));
         !r) {
         return std::unexpected(r.error());
     }
@@ -681,8 +690,8 @@ Result<FlashSummary> DriveService::writePreloader(
         report(Progress::Phase::Verifying, "Verifying preloader");
         if (auto r = dev.seek(0); !r) return std::unexpected(r.error());
         Sha256 readBack;
-        if (auto r = hashDeviceRange(dev, written, readBack, onProgress,
-                                     cancel, "Verifying preloader");
+        if (auto r = hashDeviceRange(dev, written, readBack, onProgress, cancel,
+                                     "Verifying preloader");
             !r) {
             return std::unexpected(r.error());
         }

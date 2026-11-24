@@ -91,9 +91,8 @@ void HelperProcess::runFlash(const QString& driveNode, const QString& imagePath,
 
 void HelperProcess::runWritePreloader(const QString& partitionNode,
                                       const QString& imagePath) {
-    start(Verb::Preloader,
-          QStringList{"write-preloader", "--partition", partitionNode, "--image",
-                      imagePath});
+    start(Verb::Preloader, QStringList{"write-preloader", "--partition",
+                                       partitionNode, "--image", imagePath});
 }
 
 void HelperProcess::runCustomize(const QString& imagePath,
@@ -116,9 +115,7 @@ void HelperProcess::cancel() {
     if (session_->running()) session_->writeCancel();
 }
 
-bool HelperProcess::busy() const {
-    return session_->running();
-}
+bool HelperProcess::busy() const { return session_->running(); }
 
 void HelperProcess::feed(const QByteArray& chunk) {
     buf_.append(chunk);
@@ -168,26 +165,31 @@ void HelperProcess::onFinished(int exitCode, IHelperSession::Outcome outcome) {
     if (!sawTerminal_) {
         using Outcome = IHelperSession::Outcome;
         if (outcome == Outcome::Ok && exitCode == kuiper::ipc::kExitNoChannel) {
-            setError(kuiper::Err(
-                kuiper::ErrorCode::Unknown,
-                "The helper could not connect back to Kuiper Imager",
-                "It was started but could not report progress, so it did "
-                "nothing.").error());
+            setError(
+                kuiper::Err(
+                    kuiper::ErrorCode::Unknown,
+                    "The helper could not connect back to Kuiper Imager",
+                    "It was started but could not report progress, so it did "
+                    "nothing.")
+                    .error());
             emit finished();
             return;
         }
         switch (outcome) {
             case Outcome::AuthCancelled:
                 setError(kuiper::Err(
-                    kuiper::ErrorCode::PermissionDenied,
-                    "Authentication was cancelled",
-                    "Elevated access is required for this operation.").error());
+                             kuiper::ErrorCode::PermissionDenied,
+                             "Authentication was cancelled",
+                             "Elevated access is required for this operation.")
+                             .error());
                 break;
             case Outcome::HelperNotFound:
-                setError(kuiper::Err(
-                    kuiper::ErrorCode::NotFound, "The privileged helper was not found",
-                    "kuiper-imager-helper is missing; reinstall Kuiper Imager.")
-                             .error());
+                setError(
+                    kuiper::Err(
+                        kuiper::ErrorCode::NotFound,
+                        "The privileged helper was not found",
+                        "kuiper-imager-helper is missing; reinstall Kuiper Imager.")
+                        .error());
                 break;
             case Outcome::Crashed:
                 setError(kuiper::Err(kuiper::ErrorCode::Unknown,
@@ -196,11 +198,13 @@ void HelperProcess::onFinished(int exitCode, IHelperSession::Outcome outcome) {
                              .error());
                 break;
             case Outcome::LaunchFailed:
-                setError(kuiper::Err(
-                    kuiper::ErrorCode::Unknown,
-                    "The privileged helper could not be launched",
-                    "The elevation tool (pkexec on Linux, UAC on Windows) failed "
-                    "to start it.").error());
+                setError(
+                    kuiper::Err(
+                        kuiper::ErrorCode::Unknown,
+                        "The privileged helper could not be launched",
+                        "The elevation tool (pkexec on Linux, UAC on Windows) failed "
+                        "to start it.")
+                        .error());
                 break;
             case Outcome::Ok:
                 setError(kuiper::Err(kuiper::ErrorCode::Unknown,
@@ -225,23 +229,26 @@ kuiper::PreloaderSink makeElevatedPreloaderSink(QObject* context,
         std::future<Outcome> fut = done->get_future();
 
         // GUI thread: a one-shot HelperProcess, deleted once it reports.
-        const bool posted = context && QMetaObject::invokeMethod(
-            context.data(),
-            [node, preloader, prog, done] {
-                auto* helper = new HelperProcess();
-                QObject::connect(helper, &HelperProcess::progress, helper,
-                                 [prog](const kuiper::Progress& p) {
-                                     if (prog) prog(p);
-                                 });
-                QObject::connect(helper, &HelperProcess::finished, helper,
-                                 [helper, done] {
-                                     done->set_value(*helper->result());
-                                     helper->deleteLater();
-                                 });
-                helper->runWritePreloader(QString::fromStdString(node),
-                                          QString::fromStdString(preloader));
-            },
-            Qt::QueuedConnection);
+        const bool posted =
+            context &&
+            QMetaObject::invokeMethod(
+                context.data(),
+                [node, preloader, prog, done] {
+                    auto* helper = new HelperProcess();
+                    QObject::connect(helper, &HelperProcess::progress, helper,
+                                     [prog](const kuiper::Progress& p) {
+                                         if (prog) prog(p);
+                                     });
+                    QObject::connect(helper, &HelperProcess::finished, helper,
+                                     [helper, done] {
+                                         done->set_value(*helper->result());
+                                         helper->deleteLater();
+                                     });
+                    helper->runWritePreloader(
+                        QString::fromStdString(node),
+                        QString::fromStdString(preloader));
+                },
+                Qt::QueuedConnection);
 
         // If the posted call is dropped (context destroyed first), the promise
         // dies unfulfilled and get() throws broken_promise; never let that

@@ -78,7 +78,8 @@ void collectFromFile(const fs::path& file, ProjectList& out) {
                               std::istreambuf_iterator<char>());
     if (content.empty()) return;
 
-    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(content));
+    const QJsonDocument doc =
+        QJsonDocument::fromJson(QByteArray::fromStdString(content));
     if (!doc.isObject()) return;
 
     const QJsonValue projects = doc.object().value(QLatin1String("projects"));
@@ -103,7 +104,8 @@ std::string resolveSource(const std::string& manifestPath,
 
 }  // namespace
 
-Result<KuiperRelease> ConfigurationService::readRelease(const std::string& bootPath) {
+Result<KuiperRelease> ConfigurationService::readRelease(
+    const std::string& bootPath) {
     const fs::path file = fs::path(bootPath) / "kuiper-release.json";
     std::error_code ec;
     if (!fs::is_regular_file(file, ec)) {
@@ -139,7 +141,8 @@ Result<KuiperRelease> ConfigurationService::readRelease(const std::string& bootP
     return r;
 }
 
-Result<ProjectList> ConfigurationService::listProjects(const std::string& bootPath) {
+Result<ProjectList> ConfigurationService::listProjects(
+    const std::string& bootPath) {
     std::error_code ec;
     if (!fs::is_directory(bootPath, ec)) {
         return Err(ErrorCode::NotKuiper2,
@@ -157,7 +160,8 @@ Result<ProjectList> ConfigurationService::listProjects(const std::string& bootPa
         const fs::directory_entry& entry = *it;
         std::error_code fec;
         if (!entry.is_regular_file(fec)) continue;
-        if (entry.path().extension() == ".json") manifests.push_back(entry.path());
+        if (entry.path().extension() == ".json")
+            manifests.push_back(entry.path());
     }
     std::sort(manifests.begin(), manifests.end());
 
@@ -239,17 +243,19 @@ Result<ConfigureSummary> ConfigurationService::configureProject(
             const std::string extlinuxConf =
                 (fs::path(bootPath) / "extlinux.conf").string();
 
-            std::string proc = "Intel needs a raw preloader write that isn't "
-                               "automated yet. Do it manually:\n";
+            std::string proc =
+                "Intel needs a raw preloader write that isn't "
+                "automated yet. Do it manually:\n";
             for (const CopyOp& op : summary.files)
                 proc += "  cp " + op.source + " " + op.dest + "\n";
             // Intel boots via extlinux: the config lives in extlinux/, not root.
             proc += "  mkdir -p " + extlinuxDir + " && mv " + extlinuxConf +
                     " " + extlinuxDir + "/\n";
-            proc += "  sudo dd if=" +
-                    (preloaderSource.empty() ? "<preloader>" : preloaderSource) +
-                    " of=<bootloader-partition, e.g. /dev/mmcblk0p3> bs=1M "
-                    "status=progress conv=fsync";
+            proc +=
+                "  sudo dd if=" +
+                (preloaderSource.empty() ? "<preloader>" : preloaderSource) +
+                " of=<bootloader-partition, e.g. /dev/mmcblk0p3> bs=1M "
+                "status=progress conv=fsync";
             return Err(ErrorCode::UnsupportedPlatform,
                        "Intel preloader configuration is not yet supported",
                        proc);
@@ -268,7 +274,8 @@ Result<ConfigureSummary> ConfigurationService::configureProject(
         if (!fs::is_regular_file(op.source, sec)) {
             return Err(ErrorCode::NotFound,
                        "Boot file listed in the manifest is missing on the "
-                       "card: " + op.source,
+                       "card: " +
+                           op.source,
                        "The card may be incomplete or from a different image.");
         }
         totalBytes += fs::file_size(op.source, sec);
@@ -294,20 +301,21 @@ Result<ConfigureSummary> ConfigurationService::configureProject(
             p.phase = Progress::Phase::Configuring;
             p.bytesDone = doneBytes;
             p.bytesTotal = totalBytes;
-            p.fraction = totalBytes
-                             ? static_cast<double>(doneBytes) / totalBytes
-                             : 0.0;
+            p.fraction =
+                totalBytes ? static_cast<double>(doneBytes) / totalBytes : 0.0;
             p.message = fs::path(op.dest).filename().string();
             onProgress(p);
         }
 
         std::error_code cec;
-        fs::copy_file(op.source, op.dest,
-                      fs::copy_options::overwrite_existing, cec);
+        fs::copy_file(op.source, op.dest, fs::copy_options::overwrite_existing,
+                      cec);
         if (cec) {
             ErrorCode code = ErrorCode::Unknown;
-            if (cec.value() == EACCES) code = ErrorCode::PermissionDenied;
-            else if (cec.value() == ENOSPC) code = ErrorCode::DiskFull;
+            if (cec.value() == EACCES)
+                code = ErrorCode::PermissionDenied;
+            else if (cec.value() == ENOSPC)
+                code = ErrorCode::DiskFull;
             return Err(code, "Failed to copy boot file to " + op.dest,
                        cec.message());
         }
@@ -354,6 +362,8 @@ Result<ConfigureSummary> ConfigurationService::configureProject(
     return summary;
 }
 
-const char* ConfigurationService::backendName() const noexcept { return "portable"; }
+const char* ConfigurationService::backendName() const noexcept {
+    return "portable";
+}
 
 }  // namespace kuiper

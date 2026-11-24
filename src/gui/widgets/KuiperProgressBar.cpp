@@ -45,7 +45,9 @@ KuiperProgressBar::KuiperProgressBar(QWidget* parent) : QWidget(parent) {
 }
 
 void KuiperProgressBar::setPhase(const QString& text) { phase_->setText(text); }
-void KuiperProgressBar::setDetail(const QString& text) { detail_->setText(text); }
+void KuiperProgressBar::setDetail(const QString& text) {
+    detail_->setText(text);
+}
 
 void KuiperProgressBar::setFraction(double f) {
     f = std::clamp(f, 0.0, 1.0);

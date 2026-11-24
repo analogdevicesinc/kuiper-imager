@@ -41,13 +41,20 @@ constexpr std::uint64_t kMiB = 1024ull * 1024ull;
 QString phaseHeading(kuiper::Progress::Phase p) {
     using P = kuiper::Progress::Phase;
     switch (p) {
-        case P::Preparing: return "Preparing…";
-        case P::Downloading: return "Downloading…";
-        case P::Writing: return "Writing…";
-        case P::Finalizing: return "Finalizing…";
-        case P::Verifying: return "Verifying…";
-        case P::Configuring: return "Installing features…";
-        case P::Done: return "Done";
+        case P::Preparing:
+            return "Preparing…";
+        case P::Downloading:
+            return "Downloading…";
+        case P::Writing:
+            return "Writing…";
+        case P::Finalizing:
+            return "Finalizing…";
+        case P::Verifying:
+            return "Verifying…";
+        case P::Configuring:
+            return "Installing features…";
+        case P::Done:
+            return "Done";
     }
     return "Working…";
 }
@@ -102,13 +109,13 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
         }
         QString label = QString::fromStdString(f.label);
         if (f.sizeEstimateMB > 0)
-            label += QString("  (~%1)").arg(
-                kuiper::gui::formatBytes(static_cast<std::uint64_t>(f.sizeEstimateMB) *
-                                         kMiB));
+            label += QString("  (~%1)").arg(kuiper::gui::formatBytes(
+                static_cast<std::uint64_t>(f.sizeEstimateMB) * kMiB));
         auto* cb = new KuiperCheckBox(label, listHost);
         if (!f.description.empty())
             cb->setToolTip(QString::fromStdString(f.description));
-        connect(cb, &KuiperCheckBox::toggled, this, [this] { updateEstimate(); });
+        connect(cb, &KuiperCheckBox::toggled, this,
+                [this] { updateEstimate(); });
         listCol->addWidget(cb);
         checks_.emplace_back(f.id, cb);
     }
@@ -141,7 +148,8 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
         growSize_->setEnabled(on);
         updateEstimate();
     });
-    connect(growSize_, &QLineEdit::textChanged, this, [this] { updateEstimate(); });
+    connect(growSize_, &QLineEdit::textChanged, this,
+            [this] { updateEstimate(); });
     growRow->addWidget(grow_);
     growRow->addWidget(growSize_);
     growRow->addStretch(1);
@@ -197,7 +205,8 @@ CustomizeDialog::CustomizeDialog(const QString& imagePath, QWidget* parent)
         // The bar stays indeterminate (apt has no honest fraction); the heading
         // gives the coarse phase, and every message line flows into the log.
         progress_->setPhase(phaseHeading(p.phase));
-        if (!p.message.empty()) log_->appendLine(QString::fromStdString(p.message));
+        if (!p.message.empty())
+            log_->appendLine(QString::fromStdString(p.message));
     });
     connect(helper_, &HelperProcess::finished, this, [this] { onFinished(); });
 
@@ -244,15 +253,15 @@ void CustomizeDialog::updateEstimate() {
     runBtn_->setEnabled((selected > 0 || hasScript) && !helper_->busy());
 
     // Reflect the chosen script (or the hint) in its row.
-    scriptLabel_->setText(hasScript
-                              ? QFileInfo(scriptPath_).fileName() + " (runs as root)"
-                              : "optional — runs as root inside the image");
+    scriptLabel_->setText(
+        hasScript ? QFileInfo(scriptPath_).fileName() + " (runs as root)"
+                  : "optional — runs as root inside the image");
     scriptClear_->setVisible(hasScript);
 
     if (selected == 0) {
-        estimate_->setText(hasScript
-                               ? "Custom script only — no catalog features selected."
-                               : "Select one or more features, or choose a script.");
+        estimate_->setText(
+            hasScript ? "Custom script only — no catalog features selected."
+                      : "Select one or more features, or choose a script.");
         return;
     }
     std::uint64_t grow = 0;
@@ -269,8 +278,9 @@ void CustomizeDialog::updateEstimate() {
                            kuiper::gui::formatBytes(grow) + "  ·  final ~" +
                            kuiper::gui::formatBytes(imageBytes_ + grow));
     else
-        estimate_->setText(addLabel + "  ·  no grow (install into existing free "
-                                      "space)");
+        estimate_->setText(addLabel +
+                           "  ·  no grow (install into existing free "
+                           "space)");
 }
 
 void CustomizeDialog::run() {
@@ -290,7 +300,8 @@ void CustomizeDialog::run() {
     const bool noGrow = !grow_->isChecked();
     std::optional<quint64> growBytes;
     if (!noGrow) {
-        if (auto explicitSize = parseGrow(growSize_->text())) growBytes = *explicitSize;
+        if (auto explicitSize = parseGrow(growSize_->text()))
+            growBytes = *explicitSize;
         // else leave nullopt => the executor auto-sizes
     }
     helper_->runCustomize(imagePath_, featureIds, growBytes, noGrow, QString(),
@@ -333,12 +344,12 @@ void CustomizeDialog::onFinished() {
     QString detail = names.isEmpty() ? script : names.join(", ");
     result_->setMessage(
         QString("%1\nArchitecture: %2  ·  Image now %3")
-            .arg(detail,
-                 QString::fromStdString((*r)->detectedArch),
+            .arg(detail, QString::fromStdString((*r)->detectedArch),
                  kuiper::gui::formatBytes((*r)->finalImageBytes)));
     result_->setVisible(true);
     closeBtn_->setText("Done");
-    runBtn_->setEnabled(false);  // the image has been modified; re-run is a new op
+    runBtn_->setEnabled(
+        false);  // the image has been modified; re-run is a new op
 }
 
 void CustomizeDialog::setRunning(bool running) {
@@ -361,6 +372,7 @@ void CustomizeDialog::setRunning(bool running) {
 }
 
 void CustomizeDialog::reject() {
-    if (helper_->busy()) return;  // use Cancel; never tear down mid-modification
+    if (helper_->busy())
+        return;  // use Cancel; never tear down mid-modification
     QDialog::reject();
 }

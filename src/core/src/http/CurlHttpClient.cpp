@@ -124,8 +124,10 @@ public:
         curl_easy_setopt(curl.get(), CURLOPT_UNRESTRICTED_AUTH, 0L);
         curl_easy_setopt(curl.get(), CURLOPT_CONNECTTIMEOUT, 15L);
         curl_easy_setopt(curl.get(), CURLOPT_TIMEOUT, 60L);
-        curl_easy_setopt(curl.get(), CURLOPT_NOSIGNAL, 1L);  // thread-safe timeouts
-        curl_easy_setopt(curl.get(), CURLOPT_ACCEPT_ENCODING, "");  // allow gzip
+        curl_easy_setopt(curl.get(), CURLOPT_NOSIGNAL,
+                         1L);  // thread-safe timeouts
+        curl_easy_setopt(curl.get(), CURLOPT_ACCEPT_ENCODING,
+                         "");  // allow gzip
         // We inspect the status ourselves; don't let curl turn 4xx into an error.
         curl_easy_setopt(curl.get(), CURLOPT_FAILONERROR, 0L);
 
@@ -159,9 +161,11 @@ public:
         curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, &ctx);
         curl_easy_setopt(curl.get(), CURLOPT_XFERINFOFUNCTION, xferInfoCb);
         curl_easy_setopt(curl.get(), CURLOPT_XFERINFODATA, &ctx);
-        curl_easy_setopt(curl.get(), CURLOPT_NOPROGRESS, 0L);  // enable xferinfo
+        curl_easy_setopt(curl.get(), CURLOPT_NOPROGRESS,
+                         0L);  // enable xferinfo
         curl_easy_setopt(curl.get(), CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl.get(), CURLOPT_UNRESTRICTED_AUTH, 0L);  // drop auth on redirect
+        curl_easy_setopt(curl.get(), CURLOPT_UNRESTRICTED_AUTH,
+                         0L);  // drop auth on redirect
         // No overall CURLOPT_TIMEOUT: a multi-GB image legitimately runs for
         // minutes. Guard against a dead connection instead: abort if throughput
         // stays under 1 KiB/s for 30s.
@@ -196,7 +200,8 @@ public:
 }  // namespace
 
 std::unique_ptr<IHttpClient> makeHttpClient() {
-    static CurlGlobal global;  // once-only, thread-safe libcurl init; freed at exit
+    static CurlGlobal
+        global;  // once-only, thread-safe libcurl init; freed at exit
     return std::make_unique<CurlHttpClient>();
 }
 

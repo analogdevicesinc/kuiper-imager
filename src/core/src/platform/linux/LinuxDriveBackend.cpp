@@ -130,7 +130,7 @@ bool computeRemovable(const QJsonObject& obj) {
 // The device backing "/" as "maj:min" (matching lsblk's MAJ:MIN column), or
 // empty if it cannot be determined. Feeds subtreeIsSystem().
 QString rootDeviceId() {
-    struct stat st{};
+    struct stat st {};
     if (::stat("/", &st) != 0) return {};
     return QString("%1:%2").arg(major(st.st_dev)).arg(minor(st.st_dev));
 }
@@ -146,8 +146,9 @@ std::unexpected<Error> ioError(int e, const std::string& what) {
             return Err(ErrorCode::DeviceRemoved, what, std::strerror(e));
         case EACCES:
         case EPERM:
-            return Err(ErrorCode::PermissionDenied, what,
-                       "Run with sudo (root is required for raw device access)");
+            return Err(
+                ErrorCode::PermissionDenied, what,
+                "Run with sudo (root is required for raw device access)");
         case EBUSY:
             return Err(ErrorCode::DeviceBusy, what, std::strerror(e));
         default:
@@ -165,7 +166,9 @@ std::string currentMountpoint(const std::string& node) {
         proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
         return {};
     }
-    return QString::fromUtf8(proc.readAllStandardOutput()).trimmed().toStdString();
+    return QString::fromUtf8(proc.readAllStandardOutput())
+        .trimmed()
+        .toStdString();
 }
 
 // Mount `node` through udisks2 — the unprivileged path a file manager uses,
@@ -183,7 +186,8 @@ std::string udisksMount(const std::string& node) {
         proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
         return {};
     }
-    std::string mp = currentMountpoint(node);  // authoritative, locale-independent
+    std::string mp =
+        currentMountpoint(node);  // authoritative, locale-independent
     // udisks mounted it but we can't learn where: undo that mount rather than
     // leak it, so the caller's ::mount(2) fallback starts from a clean slate.
     if (mp.empty()) udisksUnmount(node);
@@ -302,8 +306,7 @@ public:
                     "NAME,SIZE,MODEL,RM,HOTPLUG,TRAN,TYPE,RO,FSTYPE,LABEL,"
                     "MOUNTPOINT,MAJ:MIN"});
         if (!proc.waitForStarted(3000)) {
-            return Err(ErrorCode::Unknown,
-                       "Failed to start 'lsblk'",
+            return Err(ErrorCode::Unknown, "Failed to start 'lsblk'",
                        "Is util-linux installed?");
         }
         if (!proc.waitForFinished(5000)) {
@@ -322,7 +325,8 @@ public:
                        parseErr.errorString().toStdString());
         }
 
-        const QString rootDev = rootDeviceId();  // "maj:min" of the disk under /
+        const QString rootDev =
+            rootDeviceId();  // "maj:min" of the disk under /
 
         DriveList drives;
         for (const auto& v : doc.object().value("blockdevices").toArray()) {
@@ -364,9 +368,10 @@ public:
         // Nothing to mount without a filesystem — the caller picked the wrong
         // partition (e.g. the raw bootloader slot).
         if (partition.fsType.empty()) {
-            return Err(ErrorCode::NotFound,
-                       "Partition has no filesystem to mount: " + partition.node,
-                       "Only a formatted partition (vfat/ext4) can be mounted.");
+            return Err(
+                ErrorCode::NotFound,
+                "Partition has no filesystem to mount: " + partition.node,
+                "Only a formatted partition (vfat/ext4) can be mounted.");
         }
 
         // Prefer udisks2 (the unprivileged, polkit-authorized path a file manager
@@ -384,8 +389,8 @@ public:
         char tmpl[] = "/tmp/kuiper-mnt-XXXXXX";
         const char* dir = ::mkdtemp(tmpl);
         if (!dir) {
-            return ioError(errno, "Cannot create mount point for " +
-                                      partition.node);
+            return ioError(errno,
+                           "Cannot create mount point for " + partition.node);
         }
         const std::string mountDir = dir;
 
@@ -411,15 +416,13 @@ public:
         // device), there is nothing to unmount — let openForWrite give the
         // definitive error instead.
         QProcess proc;
-        proc.start("lsblk",
-                   {"-J", "-p", "-o", "NAME,TYPE,MOUNTPOINT",
-                    QString::fromStdString(node)});
+        proc.start("lsblk", {"-J", "-p", "-o", "NAME,TYPE,MOUNTPOINT",
+                             QString::fromStdString(node)});
         if (!proc.waitForStarted(3000) || !proc.waitForFinished(5000) ||
             proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
             return {};
         }
-        const auto doc =
-            QJsonDocument::fromJson(proc.readAllStandardOutput());
+        const auto doc = QJsonDocument::fromJson(proc.readAllStandardOutput());
         if (!doc.isObject()) return {};
 
         std::vector<QString> mounts;  // filesystem mountpoints to umount
@@ -427,22 +430,24 @@ public:
         bool holder = false;          // md/LVM/LUKS stacked on the device
 
         // Recursively walk the block tree collecting what must be released.
-        std::function<void(const QJsonObject&)> walk = [&](const QJsonObject& o) {
-            const QString type = o.value("type").toString();
-            const QString mp = o.value("mountpoint").toString();
-            const QString nm = o.value("name").toString();
-            if (type == "crypt" || type == "lvm" || type.startsWith("raid")) {
-                holder = true;
-            }
-            if (mp == "[SWAP]") {
-                swaps.push_back(nm);
-            } else if (!mp.isEmpty()) {
-                mounts.push_back(mp);
-            }
-            for (const auto& c : o.value("children").toArray()) {
-                walk(c.toObject());
-            }
-        };
+        std::function<void(const QJsonObject&)> walk =
+            [&](const QJsonObject& o) {
+                const QString type = o.value("type").toString();
+                const QString mp = o.value("mountpoint").toString();
+                const QString nm = o.value("name").toString();
+                if (type == "crypt" || type == "lvm" ||
+                    type.startsWith("raid")) {
+                    holder = true;
+                }
+                if (mp == "[SWAP]") {
+                    swaps.push_back(nm);
+                } else if (!mp.isEmpty()) {
+                    mounts.push_back(mp);
+                }
+                for (const auto& c : o.value("children").toArray()) {
+                    walk(c.toObject());
+                }
+            };
         for (const auto& v : doc.object().value("blockdevices").toArray()) {
             walk(v.toObject());
         }
@@ -460,7 +465,8 @@ public:
         }
         for (auto it = mounts.rbegin(); it != mounts.rend(); ++it) {
             if (::umount2(it->toUtf8().constData(), 0) != 0) {
-                if (errno == EINVAL || errno == ENOENT) continue;  // not mounted
+                if (errno == EINVAL || errno == ENOENT)
+                    continue;  // not mounted
                 // EBUSY and friends: leave to the O_EXCL retry loop.
             }
         }
@@ -471,21 +477,25 @@ public:
     // See docs: platform-backends (Linux backend, Ejecting).
     Result<void> eject(const std::string& node) override {
         const auto mountedParts = [&] {
-            std::vector<QString> parts;  // partition nodes with a live mountpoint
+            std::vector<QString>
+                parts;  // partition nodes with a live mountpoint
             QProcess proc;
             proc.start("lsblk", {"-J", "-p", "-o", "NAME,MOUNTPOINT",
                                  QString::fromStdString(node)});
             if (!proc.waitForStarted(3000) || !proc.waitForFinished(5000) ||
-                proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0)
+                proc.exitStatus() != QProcess::NormalExit ||
+                proc.exitCode() != 0)
                 return parts;
-            const auto doc = QJsonDocument::fromJson(proc.readAllStandardOutput());
-            std::function<void(const QJsonObject&)> walk = [&](const QJsonObject& o) {
-                const QString mp = o.value("mountpoint").toString();
-                if (!mp.isEmpty() && mp != "[SWAP]")
-                    parts.push_back(o.value("name").toString());
-                for (const auto& c : o.value("children").toArray())
-                    walk(c.toObject());
-            };
+            const auto doc =
+                QJsonDocument::fromJson(proc.readAllStandardOutput());
+            std::function<void(const QJsonObject&)> walk =
+                [&](const QJsonObject& o) {
+                    const QString mp = o.value("mountpoint").toString();
+                    if (!mp.isEmpty() && mp != "[SWAP]")
+                        parts.push_back(o.value("name").toString());
+                    for (const auto& c : o.value("children").toArray())
+                        walk(c.toObject());
+                };
             for (const auto& v : doc.object().value("blockdevices").toArray())
                 walk(v.toObject());
             return parts;
@@ -515,7 +525,7 @@ public:
                 O_RDWR | O_EXCL | O_CLOEXEC | (tryDirect ? O_DIRECT : 0);
             int fd = ::open(node.c_str(), flags);
             if (fd >= 0) {
-                struct stat st{};
+                struct stat st {};
                 if (::fstat(fd, &st) != 0 || !S_ISBLK(st.st_mode)) {
                     ::close(fd);
                     return Err(ErrorCode::InvalidImage,
@@ -538,8 +548,7 @@ public:
             }
             return ioError(errno, "Cannot open device for writing: " + node);
         }
-        return Err(ErrorCode::DeviceBusy,
-                   "Device stayed busy: " + node,
+        return Err(ErrorCode::DeviceBusy, "Device stayed busy: " + node,
                    "Close programs using it, or unmount it manually");
     }
 
@@ -564,7 +573,8 @@ public:
             }
             return ioError(errno, "Cannot open device for reading: " + node);
         }
-        return Err(ErrorCode::DeviceBusy, "Device stayed busy for verify: " + node);
+        return Err(ErrorCode::DeviceBusy,
+                   "Device stayed busy for verify: " + node);
     }
 
 private:

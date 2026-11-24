@@ -36,7 +36,8 @@ public:
             args << QString::fromStdString(argv[i]);
 
         QProcess proc;
-        proc.setProcessChannelMode(QProcess::MergedChannels);  // stdout+stderr as one
+        proc.setProcessChannelMode(
+            QProcess::MergedChannels);  // stdout+stderr as one
         proc.start(program, args);
         if (!proc.waitForStarted(10000)) {
             return Err(ErrorCode::UnsupportedPlatform,

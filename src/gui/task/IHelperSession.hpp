@@ -36,8 +36,8 @@ public:
     // Process-level result, distinct from a protocol `error` line. HelperProcess
     // only consults this when the helper produced no terminal result/error line.
     enum class Outcome {
-        Ok,              // exited normally; trust the protocol stream for the result
-        AuthCancelled,   // user declined elevation (pkexec 126 / UAC ERROR_CANCELLED)
+        Ok,  // exited normally; trust the protocol stream for the result
+        AuthCancelled,  // user declined elevation (pkexec 126 / UAC ERROR_CANCELLED)
         HelperNotFound,  // the helper binary could not be launched/found
         Crashed,         // abnormal termination
         LaunchFailed,    // elevation/launch machinery itself failed
@@ -48,7 +48,8 @@ public:
 
     // Launch the helper at `helperPath` with `verbArgs` (e.g. {"flash", "--image",
     // ...}). The session adds whatever elevation/transport plumbing it needs.
-    virtual void start(const QString& helperPath, const QStringList& verbArgs) = 0;
+    virtual void start(const QString& helperPath,
+                       const QStringList& verbArgs) = 0;
 
     // Cooperative cancel: deliver a "cancel\n" line toward the helper. No-op if
     // nothing is running.

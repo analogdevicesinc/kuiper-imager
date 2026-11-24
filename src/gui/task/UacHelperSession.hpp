@@ -58,10 +58,10 @@ public:
 private:
     struct Pipe;  // the listening pipe + its overlapped connect (Win32 types)
 
-    void reset();             // tear down any previous run's state
-    bool armConnect();        // start an overlapped ConnectNamedPipe
-    void completeConnect();   // reap a finished connect, if any
-    void acceptClient();      // identity check, then hand off to QLocalSocket
+    void reset();            // tear down any previous run's state
+    bool armConnect();       // start an overlapped ConnectNamedPipe
+    void completeConnect();  // reap a finished connect, if any
+    void acceptClient();     // identity check, then hand off to QLocalSocket
     void onProcessExit();
     void finishOnce(int exitCode, Outcome outcome);
     void closeProcessHandle();
@@ -69,10 +69,10 @@ private:
     std::unique_ptr<Pipe> pipe_;
     QWinEventNotifier* connectNotifier_ = nullptr;  // pipe connect completed
     QLocalSocket* sock_ = nullptr;
-    QWinEventNotifier* exitNotifier_ = nullptr;     // helper process exited
+    QWinEventNotifier* exitNotifier_ = nullptr;  // helper process exited
     void* proc_ = nullptr;         // HANDLE to the helper process (opaque here)
     unsigned long helperPid_ = 0;  // DWORD; for the client-PID identity check
     bool running_ = false;
-    bool done_ = false;            // guards a single finished()
-    bool pendingCancel_ = false;   // cancel arrived before the helper connected
+    bool done_ = false;           // guards a single finished()
+    bool pendingCancel_ = false;  // cancel arrived before the helper connected
 };

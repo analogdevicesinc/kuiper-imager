@@ -71,8 +71,9 @@ ReleasePickerDialog::ReleasePickerDialog(
         // Stash the fetch id on the first column so accept() can read it back.
         version->setData(Qt::UserRole, QString::fromStdString(r.id));
         table_->setItem(row, kColVersion, version);
-        table_->setItem(row, kColVariant,
-                        new QTableWidgetItem(QString::fromStdString(r.variant)));
+        table_->setItem(
+            row, kColVariant,
+            new QTableWidgetItem(QString::fromStdString(r.variant)));
         table_->setItem(row, kColArch,
                         new QTableWidgetItem(QString::fromStdString(r.arch)));
         table_->setItem(row, kColSize, new QTableWidgetItem());
@@ -120,7 +121,8 @@ void ReleasePickerDialog::refreshStatusCell(int row) {
     auto* del = new KuiperButton("🗑");
     del->setKind("ghost");
     del->setToolTip("Delete this download");
-    connect(del, &KuiperButton::clicked, this, [this, row] { deleteCached(row); });
+    connect(del, &KuiperButton::clicked, this,
+            [this, row] { deleteCached(row); });
     lay->addWidget(del);
     table_->setCellWidget(row, kColStatus, cell);
 }
@@ -130,12 +132,12 @@ void ReleasePickerDialog::deleteCached(int row) {
     const QString cached = cachedPathOf_ ? cachedPathOf_(r) : QString();
     if (cached.isEmpty()) return;
 
-    const QString label = QString::fromStdString(r.version + " · " + r.variant +
-                                                 " · " + r.arch);
-    if (QMessageBox::question(
-            this, "Delete download",
-            "Delete the downloaded image for " + label +
-                "?\n\nIt can be downloaded again later.") != QMessageBox::Yes)
+    const QString label =
+        QString::fromStdString(r.version + " · " + r.variant + " · " + r.arch);
+    if (QMessageBox::question(this, "Delete download",
+                              "Delete the downloaded image for " + label +
+                                  "?\n\nIt can be downloaded again later.") !=
+        QMessageBox::Yes)
         return;
 
     if (!QFile::remove(cached)) {

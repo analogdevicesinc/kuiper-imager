@@ -25,7 +25,8 @@ class KuiperSpinner : public QWidget {
     Q_OBJECT
     Q_PROPERTY(QColor arcColor READ arcColor WRITE setArcColor)
 public:
-    explicit KuiperSpinner(const QString& size = "sm", QWidget* parent = nullptr);
+    explicit KuiperSpinner(const QString& size = "sm",
+                           QWidget* parent = nullptr);
 
     QColor arcColor() const { return arcColor_; }
     void setArcColor(const QColor& c) {

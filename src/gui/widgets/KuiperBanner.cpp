@@ -21,7 +21,7 @@
 #include "util/Repolish.hpp"
 
 KuiperBanner::KuiperBanner(const QString& status, const QString& title,
-                     const QString& message, QWidget* parent)
+                           const QString& message, QWidget* parent)
     : QFrame(parent) {
     setProperty("kuiperBanner", true);
     setProperty("status", status);
@@ -46,7 +46,8 @@ KuiperBanner::KuiperBanner(const QString& status, const QString& title,
     message_->setVisible(!message.isEmpty());
     col->addWidget(message_);
 
-    row_->addLayout(col, 1);  // text takes the width; the action sits at the end
+    row_->addLayout(col,
+                    1);  // text takes the width; the action sits at the end
 }
 
 void KuiperBanner::setStatus(const QString& status) {
@@ -61,7 +62,8 @@ void KuiperBanner::setMessage(const QString& message) {
     message_->setVisible(!message.isEmpty());
 }
 
-void KuiperBanner::setAction(const QString& text, std::function<void()> onClick) {
+void KuiperBanner::setAction(const QString& text,
+                             std::function<void()> onClick) {
     if (!action_) {
         action_ = new KuiperButton(this);
         action_->setKind("secondary");
@@ -71,7 +73,9 @@ void KuiperBanner::setAction(const QString& text, std::function<void()> onClick)
     action_->setVisible(true);
     QObject::disconnect(actionConn_);
     actionConn_ = QObject::connect(action_, &KuiperButton::clicked, this,
-                                   [cb = std::move(onClick)] { if (cb) cb(); });
+                                   [cb = std::move(onClick)] {
+                                       if (cb) cb();
+                                   });
 }
 
 void KuiperBanner::clearAction() {

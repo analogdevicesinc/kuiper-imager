@@ -55,8 +55,9 @@ public:
     // renames on success, so a failed or cancelled fetch never leaves a partial
     // file at outputPath. Refuses to overwrite an existing file unless `force`.
     Result<FetchSummary> fetch(const std::string& id,
-                               const std::string& outputPath, bool force = false,
-                               ProgressFn onProgress = {}, CancelToken cancel = {});
+                               const std::string& outputPath,
+                               bool force = false, ProgressFn onProgress = {},
+                               CancelToken cancel = {});
 
     // The path fetch(id, outputDir) would write to, resolved WITHOUT downloading.
     // Does not check existence — the caller tests the returned path (this is how

@@ -32,19 +32,20 @@ struct ReleaseQuery {
 // several runs) and "adi:<version>/<variant>/<arch>" for stable. See docs:
 // releases-and-sources.
 struct Release {
-    std::string id;        // UNIQUE fetch handle (gh:… | adi:…)
-    std::string channel;   // "stable" | "unstable"
-    std::string version;   // "2026.1.1" — release version (stable)
-    std::string branch;    // "dev_zip" — head branch of the build (unstable)
-    std::string commit;    // "829251c" — short head SHA (unstable)
-    std::string variant;   // "full" | "basic" — image build type
-    std::string arch;      // "arm32" | "arm64" — target architecture
+    std::string id;       // UNIQUE fetch handle (gh:… | adi:…)
+    std::string channel;  // "stable" | "unstable"
+    std::string version;  // "2026.1.1" — release version (stable)
+    std::string branch;   // "dev_zip" — head branch of the build (unstable)
+    std::string commit;   // "829251c" — short head SHA (unstable)
+    std::string variant;  // "full" | "basic" — image build type
+    std::string arch;     // "arm32" | "arm64" — target architecture
     std::uint64_t sizeBytes = 0;
-    bool available = true;                 // false once the artifact has expired
+    bool available = true;  // false once the artifact has expired
     std::optional<std::string> expiresAt;  // ISO-8601 (unstable only)
-    bool recommended = false;              // manifest-curated default for its arch (stable)
-    std::optional<std::string> sha256;     // expected image hash, for fetch verification (stable)
-    std::string sourceUri;                 // opaque download URL (the actual bytes)
+    bool recommended = false;  // manifest-curated default for its arch (stable)
+    std::optional<std::string>
+        sha256;  // expected image hash, for fetch verification (stable)
+    std::string sourceUri;  // opaque download URL (the actual bytes)
 };
 
 }  // namespace kuiper

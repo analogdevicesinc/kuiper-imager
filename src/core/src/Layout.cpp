@@ -27,9 +27,9 @@ bool containsNoCase(const std::string& haystack, const std::string& needle) {
     auto lower = [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
     };
-    auto it = std::search(
-        haystack.begin(), haystack.end(), needle.begin(), needle.end(),
-        [&](char a, char b) { return lower(a) == lower(b); });
+    auto it = std::search(haystack.begin(), haystack.end(), needle.begin(),
+                          needle.end(),
+                          [&](char a, char b) { return lower(a) == lower(b); });
     return it != haystack.end();
 }
 
@@ -65,8 +65,7 @@ std::optional<Partition> pickBootloader(const Drive& drive) {
 
 Result<KuiperLayout> identifyLayout(const Drive& drive) {
     if (drive.partitions.empty()) {
-        return Err(ErrorCode::NotKuiper2,
-                   "No partitions on " + drive.node,
+        return Err(ErrorCode::NotKuiper2, "No partitions on " + drive.node,
                    "The card looks blank; flash a Kuiper image first.");
     }
 

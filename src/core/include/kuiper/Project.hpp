@@ -27,8 +27,8 @@ struct Project {
     std::string board;         // carrier, e.g. "vck190"
     std::string kernel;        // manifest path string, e.g. "/boot/.../Image"
     std::vector<std::string> files;  // files[].path entries
-    std::string preloader;     // intel-only bootloader image; empty otherwise
-    std::string sourceFile;    // manifest this project came from (diagnostics)
+    std::string preloader;   // intel-only bootloader image; empty otherwise
+    std::string sourceFile;  // manifest this project came from (diagnostics)
 };
 
 using ProjectList = std::vector<Project>;

@@ -140,8 +140,8 @@ void printDrives(const kuiper::DriveList& drives) {
         std::puts("No storage drives found.");
         return;
     }
-    std::printf("%-18s %-24s %12s  %-9s %s\n", "DRIVE", "DESCRIPTION", "SIZE(GB)",
-                "REMOVABLE", "SYSTEM");
+    std::printf("%-18s %-24s %12s  %-9s %s\n", "DRIVE", "DESCRIPTION",
+                "SIZE(GB)", "REMOVABLE", "SYSTEM");
     for (const auto& d : drives) {
         std::printf("%-18s %-24s %12.1f  %-9s %s\n", d.node.c_str(),
                     d.description.c_str(),
@@ -154,15 +154,24 @@ void printDrives(const kuiper::DriveList& drives) {
 int exitCodeFor(kuiper::ErrorCode code) {
     using kuiper::ErrorCode;
     switch (code) {
-        case ErrorCode::UserCancelled:    return 3;
-        case ErrorCode::PermissionDenied: return 4;
-        case ErrorCode::DeviceBusy:       return 5;
-        case ErrorCode::DeviceRemoved:    return 6;
-        case ErrorCode::InvalidImage:     return 7;
-        case ErrorCode::DiskFull:         return 8;
-        case ErrorCode::HashMismatch:     return 9;
-        case ErrorCode::NotFound:         return 10;
-        default:                          return 1;
+        case ErrorCode::UserCancelled:
+            return 3;
+        case ErrorCode::PermissionDenied:
+            return 4;
+        case ErrorCode::DeviceBusy:
+            return 5;
+        case ErrorCode::DeviceRemoved:
+            return 6;
+        case ErrorCode::InvalidImage:
+            return 7;
+        case ErrorCode::DiskFull:
+            return 8;
+        case ErrorCode::HashMismatch:
+            return 9;
+        case ErrorCode::NotFound:
+            return 10;
+        default:
+            return 1;
     }
 }
 
@@ -190,13 +199,20 @@ int cmdListDrives() {
 
 const char* phaseLabel(kuiper::Progress::Phase p) {
     switch (p) {
-        case kuiper::Progress::Phase::Preparing:  return "Preparing  ";
-        case kuiper::Progress::Phase::Downloading: return "Downloading";
-        case kuiper::Progress::Phase::Writing:    return "Writing    ";
-        case kuiper::Progress::Phase::Finalizing: return "Finalizing ";
-        case kuiper::Progress::Phase::Verifying:  return "Verifying  ";
-        case kuiper::Progress::Phase::Configuring: return "Configuring";
-        case kuiper::Progress::Phase::Done:       return "Done       ";
+        case kuiper::Progress::Phase::Preparing:
+            return "Preparing  ";
+        case kuiper::Progress::Phase::Downloading:
+            return "Downloading";
+        case kuiper::Progress::Phase::Writing:
+            return "Writing    ";
+        case kuiper::Progress::Phase::Finalizing:
+            return "Finalizing ";
+        case kuiper::Progress::Phase::Verifying:
+            return "Verifying  ";
+        case kuiper::Progress::Phase::Configuring:
+            return "Configuring";
+        case kuiper::Progress::Phase::Done:
+            return "Done       ";
     }
     return "";
 }
@@ -256,9 +272,15 @@ kuiper::Result<BootContext> openBoot(kuiper::DriveService& svc,
 
     const kuiper::Drive* found = nullptr;
     for (const auto& d : *drives) {
-        if (d.node == driveArg) { found = &d; break; }
+        if (d.node == driveArg) {
+            found = &d;
+            break;
+        }
         for (const auto& p : d.partitions) {
-            if (p.node == driveArg) { found = &d; break; }
+            if (p.node == driveArg) {
+                found = &d;
+                break;
+            }
         }
         if (found) break;
     }
@@ -293,8 +315,9 @@ std::optional<std::string> discoverGitHubToken() {
     gh.start("gh", {"auth", "token"});
     if (gh.waitForStarted(2000) && gh.waitForFinished(4000) &&
         gh.exitStatus() == QProcess::NormalExit && gh.exitCode() == 0) {
-        const std::string tok =
-            QString::fromUtf8(gh.readAllStandardOutput()).trimmed().toStdString();
+        const std::string tok = QString::fromUtf8(gh.readAllStandardOutput())
+                                    .trimmed()
+                                    .toStdString();
         if (!tok.empty()) return tok;
     }
     return std::nullopt;
@@ -306,8 +329,8 @@ void printReleases(const std::vector<kuiper::Release>& releases) {
         return;
     }
     if (releases.front().channel == "stable") {
-        std::printf("%-26s %-10s %-8s %-6s\n", "IDENTIFIER", "VERSION", "VARIANT",
-                    "ARCH");
+        std::printf("%-26s %-10s %-8s %-6s\n", "IDENTIFIER", "VERSION",
+                    "VARIANT", "ARCH");
         for (const auto& r : releases) {
             std::printf("%-26s %-10s %-8s %-6s\n", r.id.c_str(),
                         r.version.c_str(), r.variant.c_str(), r.arch.c_str());
@@ -318,9 +341,10 @@ void printReleases(const std::vector<kuiper::Release>& releases) {
                 "BRANCH", "COMMIT", "VARIANT", "ARCH", "SIZE(GB)", "EXPIRES",
                 "STATUS");
     for (const auto& r : releases) {
-        std::printf("%-16s %-16s %-8s %-7s %-6s %9.2f  %-22s %s\n", r.id.c_str(),
-                    r.branch.c_str(), r.commit.c_str(), r.variant.c_str(),
-                    r.arch.c_str(), static_cast<double>(r.sizeBytes) / 1e9,
+        std::printf("%-16s %-16s %-8s %-7s %-6s %9.2f  %-22s %s\n",
+                    r.id.c_str(), r.branch.c_str(), r.commit.c_str(),
+                    r.variant.c_str(), r.arch.c_str(),
+                    static_cast<double>(r.sizeBytes) / 1e9,
                     r.expiresAt ? r.expiresAt->c_str() : "-",
                     r.available ? "available" : "expired");
     }
@@ -331,7 +355,10 @@ int cmdListReleases(const std::vector<std::string>& args) {
     std::string branch, limitStr;
     for (std::size_t i = 1; i < args.size(); ++i) {
         const std::string& a = args[i];
-        if (a == "--unstable") { unstable = true; continue; }
+        if (a == "--unstable") {
+            unstable = true;
+            continue;
+        }
         if (takeValue(args, i, "--branch", "-b", branch)) continue;
         if (takeValue(args, i, "--limit", nullptr, limitStr)) continue;
         std::fprintf(stderr, "list-releases: unexpected argument '%s'\n",
@@ -363,8 +390,9 @@ int cmdListReleases(const std::vector<std::string>& args) {
         query.limit = static_cast<int>(n);
     }
 
-    kuiper::ImageService service(kuiper::makeHttpClient(),
-                                 unstable ? discoverGitHubToken() : std::nullopt);
+    kuiper::ImageService service(
+        kuiper::makeHttpClient(),
+        unstable ? discoverGitHubToken() : std::nullopt);
     const auto result = service.listReleases(query);
     if (!result) {
         printError(result.error());
@@ -374,7 +402,8 @@ int cmdListReleases(const std::vector<std::string>& args) {
     return 0;
 }
 
-void printProjects(const kuiper::ProjectList& projects, const std::string& where) {
+void printProjects(const kuiper::ProjectList& projects,
+                   const std::string& where) {
     if (projects.empty()) {
         std::printf("No projects found on %s\n", where.c_str());
         return;
@@ -426,7 +455,10 @@ int cmdFetch(const std::vector<std::string>& args) {
         const std::string& a = args[i];
         if (takeValue(args, i, "--image", "-i", image)) continue;
         if (takeValue(args, i, "--output", "-o", output)) continue;
-        if (a == "--force") { force = true; continue; }
+        if (a == "--force") {
+            force = true;
+            continue;
+        }
         std::fprintf(stderr, "fetch: unexpected argument '%s'\n", a.c_str());
         return 2;
     }
@@ -446,7 +478,8 @@ int cmdFetch(const std::vector<std::string>& args) {
     kuiper::ProgressFn onProgress = [&](const kuiper::Progress& p) {
         const bool done = p.phase == kuiper::Progress::Phase::Done;
         const int pct = done ? 100 : static_cast<int>(p.fraction * 100.0 + 0.5);
-        if (pct == lastPercent && !done) return;  // throttle: redraw on % change
+        if (pct == lastPercent && !done)
+            return;  // throttle: redraw on % change
         lastPercent = pct;
         std::fprintf(stderr, "\r%s %3d%%", phaseLabel(p.phase), pct);
         std::fflush(stderr);
@@ -481,10 +514,22 @@ int cmdFlash(const std::vector<std::string>& args) {
         const std::string& a = args[i];
         if (takeValue(args, i, "--image", "-i", image)) continue;
         if (takeValue(args, i, "--drive", "-d", drive)) continue;
-        if (a == "--yes" || a == "-y") { assumeYes = true; continue; }
-        if (a == "--force") { force = true; continue; }
-        if (a == "--no-verify") { verify = false; continue; }
-        if (a == "--timings") { showTimings = true; continue; }
+        if (a == "--yes" || a == "-y") {
+            assumeYes = true;
+            continue;
+        }
+        if (a == "--force") {
+            force = true;
+            continue;
+        }
+        if (a == "--no-verify") {
+            verify = false;
+            continue;
+        }
+        if (a == "--timings") {
+            showTimings = true;
+            continue;
+        }
         std::fprintf(stderr, "flash: unexpected argument '%s'\n", a.c_str());
         return 2;
     }
@@ -520,8 +565,7 @@ int cmdFlash(const std::vector<std::string>& args) {
     int lastPercent = -1;
     kuiper::ProgressFn onProgress = [&](const kuiper::Progress& p) {
         const bool done = p.phase == kuiper::Progress::Phase::Done;
-        const int pct =
-            done ? 100 : static_cast<int>(p.fraction * 100.0 + 0.5);
+        const int pct = done ? 100 : static_cast<int>(p.fraction * 100.0 + 0.5);
         if (pct == lastPercent && !done) {
             return;  // throttle: only redraw on a percent change
         }
@@ -565,14 +609,21 @@ int cmdConfigure(const std::vector<std::string>& args) {
         if (takeValue(args, i, "--drive", "-d", drive)) continue;
         if (takeValue(args, i, "--project", "-p", project)) continue;
         if (takeValue(args, i, "--board", nullptr, board)) continue;
-        if (a == "--dry-run") { dryRun = true; continue; }
-        if (a == "--force") { force = true; continue; }
-        std::fprintf(stderr, "configure: unexpected argument '%s'\n", a.c_str());
+        if (a == "--dry-run") {
+            dryRun = true;
+            continue;
+        }
+        if (a == "--force") {
+            force = true;
+            continue;
+        }
+        std::fprintf(stderr, "configure: unexpected argument '%s'\n",
+                     a.c_str());
         return 2;
     }
     if (drive.empty() || project.empty() || board.empty()) {
-        std::fprintf(stderr,
-                     "configure: --drive, --project and --board are required\n");
+        std::fprintf(
+            stderr, "configure: --drive, --project and --board are required\n");
         printUsage();
         return 2;
     }
@@ -662,8 +713,8 @@ int cmdConfigure(const std::vector<std::string>& args) {
         }
     }
     std::printf("%s %s / %s (%zu files)\n",
-                result->dryRun ? "Dry run for" : "Configured",
-                project.c_str(), board.c_str(), result->files.size());
+                result->dryRun ? "Dry run for" : "Configured", project.c_str(),
+                board.c_str(), result->files.size());
     return 0;
 }
 
@@ -687,15 +738,31 @@ int cmdCustomize(const std::vector<std::string>& args) {
             features.push_back(feat);
             continue;
         }
-        if (a == "--all") { all = true; continue; }
+        if (a == "--all") {
+            all = true;
+            continue;
+        }
         if (takeValue(args, i, "--grow", nullptr, growStr)) continue;
-        if (a == "--no-grow") { noGrow = true; continue; }
+        if (a == "--no-grow") {
+            noGrow = true;
+            continue;
+        }
         if (takeValue(args, i, "--arch", nullptr, arch)) continue;
         if (takeValue(args, i, "--script", nullptr, script)) continue;
-        if (a == "--dry-run") { dryRun = true; continue; }
-        if (a == "--list-features") { listFeatures = true; continue; }
-        if (a == "--yes" || a == "-y") { assumeYes = true; continue; }
-        std::fprintf(stderr, "customize: unexpected argument '%s'\n", a.c_str());
+        if (a == "--dry-run") {
+            dryRun = true;
+            continue;
+        }
+        if (a == "--list-features") {
+            listFeatures = true;
+            continue;
+        }
+        if (a == "--yes" || a == "-y") {
+            assumeYes = true;
+            continue;
+        }
+        std::fprintf(stderr, "customize: unexpected argument '%s'\n",
+                     a.c_str());
         return 2;
     }
 
@@ -705,8 +772,7 @@ int cmdCustomize(const std::vector<std::string>& args) {
     }
     if (all) {
         features.clear();
-        for (const auto& f : kuiper::featureCatalog())
-            features.push_back(f.id);
+        for (const auto& f : kuiper::featureCatalog()) features.push_back(f.id);
     }
     if (image.empty()) {
         std::fprintf(stderr, "customize: --image is required\n");
@@ -721,12 +787,14 @@ int cmdCustomize(const std::vector<std::string>& args) {
     }
     for (const auto& id : features) {
         const auto& cat = kuiper::featureCatalog();
-        const bool known = std::any_of(cat.begin(), cat.end(),
+        const bool known = std::any_of(
+            cat.begin(), cat.end(),
             [&](const kuiper::FeatureDef& f) { return f.id == id; });
         if (!known) {
-            std::fprintf(stderr,
-                         "customize: unknown feature '%s' (see --list-features)\n",
-                         id.c_str());
+            std::fprintf(
+                stderr,
+                "customize: unknown feature '%s' (see --list-features)\n",
+                id.c_str());
             return 2;
         }
     }
@@ -750,12 +818,13 @@ int cmdCustomize(const std::vector<std::string>& args) {
     }
 
     if (!dryRun && !assumeYes) {
-        std::fprintf(stderr,
-                     "This MODIFIES '%s' IN PLACE (installs %zu feature(s)%s, may "
-                     "enlarge it).\n"
-                     "Type 'y' to continue: ",
-                     image.c_str(), features.size(),
-                     script.empty() ? "" : " and runs your script as root");
+        std::fprintf(
+            stderr,
+            "This MODIFIES '%s' IN PLACE (installs %zu feature(s)%s, may "
+            "enlarge it).\n"
+            "Type 'y' to continue: ",
+            image.c_str(), features.size(),
+            script.empty() ? "" : " and runs your script as root");
         std::fflush(stderr);
         char line[16] = {0};
         if (!std::fgets(line, sizeof(line), stdin) ||
@@ -769,19 +838,22 @@ int cmdCustomize(const std::vector<std::string>& args) {
 
     kuiper::ProgressFn onProgress = [&](const kuiper::Progress& p) {
         if (!p.message.empty())
-            std::fprintf(stderr, "%s %s\n", phaseLabel(p.phase), p.message.c_str());
+            std::fprintf(stderr, "%s %s\n", phaseLabel(p.phase),
+                         p.message.c_str());
     };
     kuiper::CancelToken cancel;
     cancel.cancelled = [] { return g_cancel.load(); };
 
     auto customizer = kuiper::makeImageCustomizer();
-    const auto result = customizer->customize(plan, std::move(onProgress), cancel);
+    const auto result =
+        customizer->customize(plan, std::move(onProgress), cancel);
     if (!result) {
         printError(result.error());
         return exitCodeFor(result.error().code);
     }
 
-    std::printf(dryRun ? "Dry run for %s:\n" : "Customized %s:\n", image.c_str());
+    std::printf(dryRun ? "Dry run for %s:\n" : "Customized %s:\n",
+                image.c_str());
     std::printf("  Features (%zu): ", result->installed.size());
     for (std::size_t i = 0; i < result->installed.size(); ++i)
         std::printf("%s%s", i ? ", " : "", result->installed[i].c_str());
@@ -795,9 +867,9 @@ int cmdCustomize(const std::vector<std::string>& args) {
     if (dryRun) {
         std::printf("\nPlan (per feature):\n");
         for (const auto& f : kuiper::featureCatalog()) {
-            const bool sel = std::any_of(
-                result->installed.begin(), result->installed.end(),
-                [&](const std::string& id) { return id == f.id; });
+            const bool sel =
+                std::any_of(result->installed.begin(), result->installed.end(),
+                            [&](const std::string& id) { return id == f.id; });
             if (!sel) continue;
             std::printf("  [%s]\n", f.id.c_str());
             if (!f.packages.empty()) {
@@ -812,13 +884,15 @@ int cmdCustomize(const std::vector<std::string>& args) {
                 std::printf("    sh -c: %s\n", s.c_str());
         }
         if (!script.empty())
-            std::printf("  [custom script]\n    bash /tmp/%s  (run as root in the "
-                        "chroot)\n",
-                        result->ranScript.c_str());
+            std::printf(
+                "  [custom script]\n    bash /tmp/%s  (run as root in the "
+                "chroot)\n",
+                result->ranScript.c_str());
     }
 
     if (!dryRun)
-        std::printf("Next: kli flash --image %s --drive <dev>\n", image.c_str());
+        std::printf("Next: kli flash --image %s --drive <dev>\n",
+                    image.c_str());
     return 0;
 }
 

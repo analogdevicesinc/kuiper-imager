@@ -18,7 +18,8 @@
 #include "util/Repolish.hpp"
 
 KuiperContainerHeader::KuiperContainerHeader(const QString& heading,
-                                       const QString& subtitle, QWidget* parent)
+                                             const QString& subtitle,
+                                             QWidget* parent)
     : QWidget(parent) {
     auto* col = new QVBoxLayout(this);
     col->setContentsMargins(0, 0, 0, 0);

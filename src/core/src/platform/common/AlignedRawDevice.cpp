@@ -20,7 +20,7 @@ namespace kuiper::detail {
 namespace {
 
 constexpr std::uint64_t kMiB = 1u << 20;
-constexpr std::size_t kAlignBuf = 4u << 20;    // aligned staging / bounce (4 MiB)
+constexpr std::size_t kAlignBuf = 4u << 20;  // aligned staging / bounce (4 MiB)
 constexpr std::uint64_t kWipeHead = 4 * kMiB;  // clobber MBR/GPT + first parts
 constexpr std::uint64_t kWipeTail = 1 * kMiB;  // clobber backup GPT
 
@@ -132,8 +132,8 @@ Result<void> AlignedRawDevice::wipeSignatures() {
                          std::uint64_t end) -> Result<void> {
         std::uint64_t off = begin;
         while (off < end) {
-            const std::size_t chunk =
-                static_cast<std::size_t>(std::min<std::uint64_t>(end - off, kMiB));
+            const std::size_t chunk = static_cast<std::size_t>(
+                std::min<std::uint64_t>(end - off, kMiB));
             if (auto r = io_->pwrite(zeros.get(), chunk, off); !r) return r;
             off += chunk;
         }

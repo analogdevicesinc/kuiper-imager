@@ -14,7 +14,8 @@
 
 #include "util/Repolish.hpp"
 
-KuiperTag::KuiperTag(const QString& text, const QString& status, QWidget* parent)
+KuiperTag::KuiperTag(const QString& text, const QString& status,
+                     QWidget* parent)
     : QLabel(text, parent) {
     setProperty("kuiperTag", true);
     setProperty("status", status);

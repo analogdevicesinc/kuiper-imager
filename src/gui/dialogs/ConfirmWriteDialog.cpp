@@ -31,8 +31,9 @@ ConfirmWriteDialog::ConfirmWriteDialog(const QString& target,
 
     col->addWidget(new KuiperBanner(
         "danger", "All data on " + target + " will be permanently erased.",
-        "Writing " + image + " replaces the entire contents of the drive. This "
-        "cannot be undone."));
+        "Writing " + image +
+            " replaces the entire contents of the drive. This "
+            "cannot be undone."));
 
     auto* buttons = new QHBoxLayout();
     buttons->addStretch(1);

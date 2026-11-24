@@ -32,8 +32,7 @@ namespace {
 // paths, drive descriptions) survive the single command-line string both
 // ShellExecuteEx and CreateProcess take. Mirrors the canonical MSDN algorithm.
 std::wstring quoteArg(const std::wstring& arg) {
-    if (!arg.empty() &&
-        arg.find_first_of(L" \t\n\v\"") == std::wstring::npos) {
+    if (!arg.empty() && arg.find_first_of(L" \t\n\v\"") == std::wstring::npos) {
         return arg;  // no quoting needed
     }
     std::wstring out = L"\"";
@@ -48,7 +47,8 @@ std::wstring quoteArg(const std::wstring& arg) {
             break;
         }
         if (*it == L'"') {
-            out.append(backslashes * 2 + 1, L'\\');  // escape backslashes + the quote
+            out.append(backslashes * 2 + 1,
+                       L'\\');  // escape backslashes + the quote
             out.push_back(L'"');
         } else {
             out.append(backslashes, L'\\');
@@ -64,7 +64,8 @@ std::wstring toW(const QString& s) { return s.toStdWString(); }
 // The current process's user SID in string form ("S-1-5-21-…"), or "" on failure.
 std::wstring currentUserSid() {
     HANDLE token = nullptr;
-    if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &token)) return {};
+    if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &token))
+        return {};
     std::wstring sid;
     DWORD len = 0;
     ::GetTokenInformation(token, TokenUser, nullptr, 0, &len);
@@ -89,8 +90,7 @@ HANDLE createHelperPipe(const std::wstring& name) {
     const std::wstring user = currentUserSid();
     if (user.empty()) return INVALID_HANDLE_VALUE;
     // D:P = protected DACL (nothing inherited); GRGW = generic read + write.
-    const std::wstring sddl =
-        L"D:P(A;;GRGW;;;" + user + L")(A;;GRGW;;;BA)";
+    const std::wstring sddl = L"D:P(A;;GRGW;;;" + user + L")(A;;GRGW;;;BA)";
     PSECURITY_DESCRIPTOR sd = nullptr;
     if (!::ConvertStringSecurityDescriptorToSecurityDescriptorW(
             sddl.c_str(), SDDL_REVISION_1, &sd, nullptr)) {
@@ -100,12 +100,14 @@ HANDLE createHelperPipe(const std::wstring& name) {
     sa.nLength = sizeof(sa);
     sa.lpSecurityDescriptor = sd;
     sa.bInheritHandle = FALSE;
-    HANDLE h = ::CreateNamedPipeW(
-        name.c_str(),
-        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
-        PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
-        /*nMaxInstances=*/1, /*out=*/64 * 1024, /*in=*/64 * 1024,
-        /*timeout=*/0, &sa);
+    HANDLE h = ::CreateNamedPipeW(name.c_str(),
+                                  PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED |
+                                      FILE_FLAG_FIRST_PIPE_INSTANCE,
+                                  PIPE_TYPE_BYTE | PIPE_READMODE_BYTE |
+                                      PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+                                  /*nMaxInstances=*/1, /*out=*/64 * 1024,
+                                  /*in=*/64 * 1024,
+                                  /*timeout=*/0, &sa);
     ::LocalFree(sd);
     return h;
 }
@@ -118,7 +120,7 @@ struct UacHelperSession::Pipe {
     HANDLE handle = INVALID_HANDLE_VALUE;  // INVALID once handed to the socket
     HANDLE event = nullptr;                // manual-reset; signaled on connect
     OVERLAPPED ov{};
-    bool pending = false;                  // a ConnectNamedPipe is outstanding
+    bool pending = false;  // a ConnectNamedPipe is outstanding
 
     Pipe() : event(::CreateEventW(nullptr, TRUE, FALSE, nullptr)) {}
     Pipe(const Pipe&) = delete;
@@ -128,7 +130,8 @@ struct UacHelperSession::Pipe {
             if (pending) {
                 ::CancelIoEx(handle, &ov);
                 DWORD n = 0;
-                ::GetOverlappedResult(handle, &ov, &n, TRUE);  // ov must outlive it
+                ::GetOverlappedResult(handle, &ov, &n,
+                                      TRUE);  // ov must outlive it
             }
             ::CloseHandle(handle);
         }
@@ -184,12 +187,11 @@ void UacHelperSession::start(const QString& helperPath,
 
     // 1) Create the pipe before launching, so it exists the instant the helper
     //    starts. Listening (ConnectNamedPipe) is deferred until the PID is known.
-    const QString pipeName =
-        QStringLiteral("\\\\.\\pipe\\kuiper-imager-") +
-        QUuid::createUuid().toString(QUuid::WithoutBraces);
+    const QString pipeName = QStringLiteral("\\\\.\\pipe\\kuiper-imager-") +
+                             QUuid::createUuid().toString(QUuid::WithoutBraces);
     pipe_ = std::make_unique<Pipe>();
-    pipe_->handle = pipe_->event ? createHelperPipe(toW(pipeName))
-                                 : INVALID_HANDLE_VALUE;
+    pipe_->handle =
+        pipe_->event ? createHelperPipe(toW(pipeName)) : INVALID_HANDLE_VALUE;
     if (pipe_->handle == INVALID_HANDLE_VALUE) {
         pipe_.reset();
         finishOnce(-1, Outcome::LaunchFailed);
@@ -234,14 +236,15 @@ void UacHelperSession::start(const QString& helperPath,
         // dependency and the matching CoUninitialize bookkeeping.
         SHELLEXECUTEINFOW sei{};
         sei.cbSize = sizeof(sei);
-        sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
+        sei.fMask =
+            SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
         sei.lpVerb = L"runas";
         sei.lpFile = helperW.c_str();
         sei.lpParameters = params.c_str();
         sei.nShow = SW_HIDE;
         if (!::ShellExecuteExW(&sei) || !sei.hProcess) {
             const DWORD e = ::GetLastError();
-            Outcome o = e == ERROR_CANCELLED      ? Outcome::AuthCancelled
+            Outcome o = e == ERROR_CANCELLED        ? Outcome::AuthCancelled
                         : e == ERROR_FILE_NOT_FOUND ? Outcome::HelperNotFound
                                                     : Outcome::LaunchFailed;
             pipe_.reset();
@@ -305,7 +308,8 @@ void UacHelperSession::completeConnect() {
         if (e == ERROR_IO_INCOMPLETE) return;  // still waiting for a client
         pipe_->pending = false;
         connectNotifier_->setEnabled(false);
-        if (e != ERROR_PIPE_CONNECTED && e != ERROR_NO_DATA) return;  // see start()
+        if (e != ERROR_PIPE_CONNECTED && e != ERROR_NO_DATA)
+            return;  // see start()
     } else {
         pipe_->pending = false;
         connectNotifier_->setEnabled(false);
@@ -317,9 +321,10 @@ void UacHelperSession::acceptClient() {
     // Identity check, failing closed: the client must provably be the helper we
     // launched. The DACL already limits who can connect; this pins it to one PID.
     ULONG clientPid = 0;
-    const bool ours = helperPid_ != 0 &&
-                      ::GetNamedPipeClientProcessId(pipe_->handle, &clientPid) &&
-                      clientPid == helperPid_;
+    const bool ours =
+        helperPid_ != 0 &&
+        ::GetNamedPipeClientProcessId(pipe_->handle, &clientPid) &&
+        clientPid == helperPid_;
     if (!ours) {
         // Drop it and listen again; the real helper retries a busy pipe.
         ::DisconnectNamedPipe(pipe_->handle);
@@ -375,7 +380,8 @@ void UacHelperSession::onProcessExit() {
     // …) as the exit code means the helper died abnormally — the Windows analog
     // of QProcess::CrashExit.
     const bool crashed = (code & 0xC0000000u) == 0xC0000000u;
-    finishOnce(static_cast<int>(code), crashed ? Outcome::Crashed : Outcome::Ok);
+    finishOnce(static_cast<int>(code),
+               crashed ? Outcome::Crashed : Outcome::Ok);
 }
 
 void UacHelperSession::finishOnce(int exitCode, Outcome outcome) {

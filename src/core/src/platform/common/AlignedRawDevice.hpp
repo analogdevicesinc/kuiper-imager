@@ -60,9 +60,9 @@ private:
     AlignedBuf wbuf_;        // write staging (aligned)
     std::size_t wfill_ = 0;  // bytes currently staged in wbuf_
 
-    AlignedBuf rbuf_;        // read bounce / read-ahead (aligned)
-    std::size_t rpos_ = 0;   // start of unread data in rbuf_
-    std::size_t rlen_ = 0;   // bytes of unread data in rbuf_
+    AlignedBuf rbuf_;       // read bounce / read-ahead (aligned)
+    std::size_t rpos_ = 0;  // start of unread data in rbuf_
+    std::size_t rlen_ = 0;  // bytes of unread data in rbuf_
 };
 
 }  // namespace kuiper::detail

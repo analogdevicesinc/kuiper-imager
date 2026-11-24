@@ -57,12 +57,12 @@ Phase phaseFromName(const std::string& s) {
 // names (the encoder uses it); decoding just searches it, so this list only
 // enumerates the codes and can't drift from the spelling.
 constexpr std::array kCodes{
-    ErrorCode::NetworkFailure,      ErrorCode::DiskFull,
-    ErrorCode::PermissionDenied,    ErrorCode::InvalidImage,
-    ErrorCode::HashMismatch,        ErrorCode::DeviceRemoved,
-    ErrorCode::DeviceBusy,          ErrorCode::UnsupportedPlatform,
-    ErrorCode::NotKuiper2,          ErrorCode::NotFound,
-    ErrorCode::UserCancelled,       ErrorCode::Unknown,
+    ErrorCode::NetworkFailure,   ErrorCode::DiskFull,
+    ErrorCode::PermissionDenied, ErrorCode::InvalidImage,
+    ErrorCode::HashMismatch,     ErrorCode::DeviceRemoved,
+    ErrorCode::DeviceBusy,       ErrorCode::UnsupportedPlatform,
+    ErrorCode::NotKuiper2,       ErrorCode::NotFound,
+    ErrorCode::UserCancelled,    ErrorCode::Unknown,
 };
 
 ErrorCode codeFromName(const std::string& s) {
@@ -72,9 +72,7 @@ ErrorCode codeFromName(const std::string& s) {
 }
 
 std::string compact(const QJsonObject& obj) {
-    return QJsonDocument(obj)
-        .toJson(QJsonDocument::Compact)
-        .toStdString();
+    return QJsonDocument(obj).toJson(QJsonDocument::Compact).toStdString();
 }
 
 QString qs(std::string_view s) {

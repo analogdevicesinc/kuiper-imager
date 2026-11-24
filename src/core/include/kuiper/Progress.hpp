@@ -22,13 +22,13 @@ namespace kuiper {
 // core; the CLI/GUI turn it into a progress bar. Portable — no platform types.
 struct Progress {
     enum class Phase {
-        Preparing,   // unmount, open, wipe signatures
-        Downloading, // stream a remote artifact to a local file (fetch)
-        Writing,     // decompress + write image body to device
+        Preparing,    // unmount, open, wipe signatures
+        Downloading,  // stream a remote artifact to a local file (fetch)
+        Writing,      // decompress + write image body to device
         Finalizing,  // flush staged tail, commit partition table, sync to media
         Verifying,   // read back + hash compare
-        Configuring, // copy a project's boot files into the boot partition
-        Done,        // finished successfully
+        Configuring,  // copy a project's boot files into the boot partition
+        Done,         // finished successfully
     };
 
     Phase phase = Phase::Preparing;

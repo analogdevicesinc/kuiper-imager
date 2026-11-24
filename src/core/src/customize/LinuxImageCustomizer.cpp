@@ -89,10 +89,12 @@ public:
             if (!resolved) return std::unexpected(resolved.error());
             features = std::move(*resolved);
         } else if (!plan.scriptPath) {
-            return Err(ErrorCode::NotFound, "Nothing to do",
-                       "Select at least one feature or provide a script to run.");
+            return Err(
+                ErrorCode::NotFound, "Nothing to do",
+                "Select at least one feature or provide a script to run.");
         }
-        const std::uint64_t grow = customize::growBytesFor(features, plan.growBytes);
+        const std::uint64_t grow =
+            customize::growBytesFor(features, plan.growBytes);
 
         // Validate the script before any image work (step 2, docs).
         if (plan.scriptPath)
@@ -153,15 +155,17 @@ private:
 
     Result<void> precheck(const CustomizePlan& plan) {
         if (::geteuid() != 0)
-            return Err(ErrorCode::PermissionDenied, "customize must run as root",
-                       "Loop-mounting and chroot need root.", "Re-run with sudo.");
+            return Err(
+                ErrorCode::PermissionDenied, "customize must run as root",
+                "Loop-mounting and chroot need root.", "Re-run with sudo.");
         std::error_code ec;
         if (!fs::is_regular_file(plan.imagePath, ec))
-            return Err(ErrorCode::NotFound, "Image not found: " + plan.imagePath,
+            return Err(ErrorCode::NotFound,
+                       "Image not found: " + plan.imagePath,
                        "customize modifies a local .img file in place.");
-        for (const char* tool : {"losetup", "parted", "sfdisk", "e2fsck",
-                                 "resize2fs", "mount", "umount", "chroot",
-                                 "blkid", "partprobe"}) {
+        for (const char* tool :
+             {"losetup", "parted", "sfdisk", "e2fsck", "resize2fs", "mount",
+              "umount", "chroot", "blkid", "partprobe"}) {
             if (!haveTool(tool))
                 return Err(ErrorCode::UnsupportedPlatform,
                            std::string("Required tool not found: ") + tool,
@@ -175,7 +179,8 @@ private:
         auto r = runChecked({"losetup", "--show", "-f", "-P", image});
         if (!r) return std::unexpected(r.error());
         const std::string loop = trim(r->output);
-        if (loop.empty()) return Err(ErrorCode::Unknown, "losetup returned no device");
+        if (loop.empty())
+            return Err(ErrorCode::Unknown, "losetup returned no device");
         unwind.add([this, loop] { runQuiet({"losetup", "-d", loop}); });
         settlePartitions(loop);
         return loop;
@@ -202,9 +207,11 @@ private:
             Partition part;
             part.node = node;
             part.number = n;
-            if (auto t = runner_->run({"blkid", "-o", "value", "-s", "TYPE", node}, {}))
+            if (auto t = runner_->run(
+                    {"blkid", "-o", "value", "-s", "TYPE", node}, {}))
                 part.fsType = trim(t->output);
-            if (auto l = runner_->run({"blkid", "-o", "value", "-s", "LABEL", node}, {}))
+            if (auto l = runner_->run(
+                    {"blkid", "-o", "value", "-s", "LABEL", node}, {}))
                 part.label = trim(l->output);
             drive.partitions.push_back(std::move(part));
         }
@@ -240,9 +247,14 @@ private:
             if (const std::size_t p = node.find_last_not_of("0123456789");
                 p != std::string::npos && p + 1 < node.size())
                 num = std::stoi(node.substr(p + 1));
-            const long long start = static_cast<long long>(o.value("start").toDouble());
-            const long long size = static_cast<long long>(o.value("size").toDouble());
-            if (start + size > bestEnd) { bestEnd = start + size; bestNum = num; }
+            const long long start =
+                static_cast<long long>(o.value("start").toDouble());
+            const long long size =
+                static_cast<long long>(o.value("size").toDouble());
+            if (start + size > bestEnd) {
+                bestEnd = start + size;
+                bestNum = num;
+            }
         }
         return bestNum;
     }
@@ -254,7 +266,10 @@ private:
             (fs::temp_directory_path(ec) / "kuiper-arch-probe").string();
         fs::create_directories(dir, ec);
         auto m = runChecked({"mount", "-o", "ro", rootNode, dir});
-        if (!m) { fs::remove(dir, ec); return std::unexpected(m.error()); }
+        if (!m) {
+            fs::remove(dir, ec);
+            return std::unexpected(m.error());
+        }
         std::string arch;
         {
             std::ifstream rel(dir + "/etc/kuiper-release");
@@ -281,7 +296,8 @@ private:
     }
 
     struct QemuStage {
-        bool copyInterpreter = false;  // false => kernel holds it (binfmt F flag)
+        bool copyInterpreter =
+            false;  // false => kernel holds it (binfmt F flag)
         std::string interpreter;
     };
 
@@ -290,24 +306,30 @@ private:
     Result<QemuStage> planQemu(const std::string& arch) {
         if (hostIsArm()) return QemuStage{};
         std::string node;
-        if (arch == "arm64") node = "/proc/sys/fs/binfmt_misc/qemu-aarch64";
-        else if (arch == "armhf") node = "/proc/sys/fs/binfmt_misc/qemu-arm";
-        else return Err(ErrorCode::UnsupportedPlatform,
-                        "Unsupported image architecture: " + arch);
+        if (arch == "arm64")
+            node = "/proc/sys/fs/binfmt_misc/qemu-aarch64";
+        else if (arch == "armhf")
+            node = "/proc/sys/fs/binfmt_misc/qemu-arm";
+        else
+            return Err(ErrorCode::UnsupportedPlatform,
+                       "Unsupported image architecture: " + arch);
 
         std::ifstream in(node);
         if (!in)
             return Err(ErrorCode::UnsupportedPlatform,
                        "No binfmt_misc entry for " + arch + " on this host",
-                       "The kernel can't run " + arch + " binaries without qemu "
-                       "user-mode emulation.",
+                       "The kernel can't run " + arch +
+                           " binaries without qemu "
+                           "user-mode emulation.",
                        "sudo apt install qemu-user-binfmt binfmt-support");
         bool enabled = false, hasFix = false;
         std::string interpreter, line;
         while (std::getline(in, line)) {
-            if (line == "enabled") enabled = true;
+            if (line == "enabled")
+                enabled = true;
             else if (line.rfind("interpreter ", 0) == 0)
-                interpreter = trim(line.substr(std::string("interpreter ").size()));
+                interpreter =
+                    trim(line.substr(std::string("interpreter ").size()));
             else if (line.rfind("flags:", 0) == 0)
                 hasFix = line.find('F') != std::string::npos;
         }
@@ -318,12 +340,13 @@ private:
                            std::string(arch == "arm64" ? "aarch64" : "arm"));
         if (hasFix) return QemuStage{false, interpreter};
         if (interpreter.empty() || !fs::exists(interpreter))
-            return Err(ErrorCode::UnsupportedPlatform,
-                       "qemu interpreter for " + arch + " is unavailable",
-                       "binfmt lacks the 'F' (fix_binary) flag, so the interpreter "
-                       "must be copyable into the chroot.",
-                       "Install qemu-user-static, or re-register binfmt with "
-                       "--fix-binary yes.");
+            return Err(
+                ErrorCode::UnsupportedPlatform,
+                "qemu interpreter for " + arch + " is unavailable",
+                "binfmt lacks the 'F' (fix_binary) flag, so the interpreter "
+                "must be copyable into the chroot.",
+                "Install qemu-user-static, or re-register binfmt with "
+                "--fix-binary yes.");
         return QemuStage{true, interpreter};
     }
 
@@ -333,11 +356,15 @@ private:
         const std::string dst = mountDir + stage.interpreter;
         std::error_code ec;
         fs::create_directories(fs::path(dst).parent_path(), ec);
-        fs::copy_file(stage.interpreter, dst, fs::copy_options::overwrite_existing, ec);
+        fs::copy_file(stage.interpreter, dst,
+                      fs::copy_options::overwrite_existing, ec);
         if (ec)
             return Err(ErrorCode::Unknown,
                        "Could not stage the qemu interpreter: " + ec.message());
-        unwind.add([dst] { std::error_code e; fs::remove(dst, e); });
+        unwind.add([dst] {
+            std::error_code e;
+            fs::remove(dst, e);
+        });
         return {};
     }
 
@@ -360,8 +387,10 @@ private:
         {
             std::ifstream host("/etc/resolv.conf");
             std::ofstream out(resolv, std::ios::trunc);
-            if (host && out) out << host.rdbuf();
-            else if (out) out << "nameserver 8.8.8.8\n";
+            if (host && out)
+                out << host.rdbuf();
+            else if (out)
+                out << "nameserver 8.8.8.8\n";
         }
         unwind.add([resolv, orig, saved] {
             std::error_code e;
@@ -371,7 +400,8 @@ private:
     }
 
     // Write a feature's embedded asset files into the rootfs, honoring each arch.
-    Result<void> writeFeatureFiles(const FeatureDef& f, const std::string& mountDir,
+    Result<void> writeFeatureFiles(const FeatureDef& f,
+                                   const std::string& mountDir,
                                    const std::string& arch) {
         for (const auto& file : f.files) {
             if (!file.archs.empty() &&
@@ -392,14 +422,15 @@ private:
                            "Could not write " + file.path + " into the image");
             out.write(bytes.constData(), bytes.size());
             out.close();
-            fs::permissions(dst,
-                            file.executable
-                                ? fs::perms::owner_all | fs::perms::group_read |
-                                      fs::perms::group_exec | fs::perms::others_read |
-                                      fs::perms::others_exec
-                                : fs::perms::owner_read | fs::perms::owner_write |
-                                      fs::perms::group_read | fs::perms::others_read,
-                            fs::perm_options::replace, ec);
+            fs::permissions(
+                dst,
+                file.executable
+                    ? fs::perms::owner_all | fs::perms::group_read |
+                          fs::perms::group_exec | fs::perms::others_read |
+                          fs::perms::others_exec
+                    : fs::perms::owner_read | fs::perms::owner_write |
+                          fs::perms::group_read | fs::perms::others_read,
+                fs::perm_options::replace, ec);
         }
         return {};
     }
@@ -417,29 +448,31 @@ private:
         };
 
         report(Progress::Phase::Configuring, 0.0, "apt-get update");
-        if (auto r = runChecked(customize::chrootShellArgv(mountDir, "apt-get update"),
-                                stream);
+        if (auto r = runChecked(
+                customize::chrootShellArgv(mountDir, "apt-get update"), stream);
             !r)
             return std::unexpected(toAptError(r.error()));
 
         const double total = static_cast<double>(features.size());
         for (std::size_t i = 0; i < features.size(); ++i) {
             if (cancel.isCancelled())
-                return Err(ErrorCode::UserCancelled, "Cancelled",
-                           "Stopped at a feature boundary; the image may have a "
-                           "partial feature set.");
+                return Err(
+                    ErrorCode::UserCancelled, "Cancelled",
+                    "Stopped at a feature boundary; the image may have a "
+                    "partial feature set.");
             const FeatureDef& f = features[i];
             base = static_cast<double>(i) / total;
             report(Progress::Phase::Configuring, base, "Installing " + f.label);
 
-            if (auto argv = customize::aptInstallArgv(mountDir, f); !argv.empty())
+            if (auto argv = customize::aptInstallArgv(mountDir, f);
+                !argv.empty())
                 if (auto r = runChecked(argv, stream); !r)
                     return std::unexpected(toAptError(r.error()));
             if (auto r = writeFeatureFiles(f, mountDir, arch); !r)
                 return std::unexpected(r.error());
             for (const auto& snippet : f.chrootPost)
-                if (auto r = runChecked(customize::chrootShellArgv(mountDir, snippet),
-                                        stream);
+                if (auto r = runChecked(
+                        customize::chrootShellArgv(mountDir, snippet), stream);
                     !r)
                     return std::unexpected(r.error());
             installed.push_back(f.id);
@@ -452,46 +485,53 @@ private:
     Result<void> validateScript(const std::string& hostPath) {
         std::error_code ec;
         if (!fs::is_regular_file(hostPath, ec))
-            return Err(ErrorCode::NotFound, "Script not found: " + hostPath,
-                       "The custom script must be a readable file on the host.");
+            return Err(
+                ErrorCode::NotFound, "Script not found: " + hostPath,
+                "The custom script must be a readable file on the host.");
         auto r = runner_->run({"bash", "-n", hostPath}, {});
         if (!r) return std::unexpected(r.error());  // couldn't even launch bash
         if (r->exitCode != 0)
-            return Err(ErrorCode::Unknown, "The custom script has a syntax error",
-                       r->output,
-                       "Fix the script (it must parse under 'bash -n') and retry.");
+            return Err(
+                ErrorCode::Unknown, "The custom script has a syntax error",
+                r->output,
+                "Fix the script (it must parse under 'bash -n') and retry.");
         return {};
     }
 
     // Run a host script as root in the prepared chroot: copy into /tmp, run,
     // remove. See docs (step 10).
-    Result<void> runScript(const std::string& mountDir, const std::string& hostPath,
-                           Unwind& unwind) {
+    Result<void> runScript(const std::string& mountDir,
+                           const std::string& hostPath, Unwind& unwind) {
         const std::string base = fs::path(hostPath).filename().string();
         if (base.empty())
             return Err(ErrorCode::NotFound, "Invalid script path: " + hostPath);
         const std::string rel = "/tmp/" + base;
         const std::string dst = mountDir + rel;
-        report(Progress::Phase::Configuring, 0.85, "Running custom script " + base);
+        report(Progress::Phase::Configuring, 0.85,
+               "Running custom script " + base);
 
         std::error_code ec;
         fs::copy_file(hostPath, dst, fs::copy_options::overwrite_existing, ec);
         if (ec)
-            return Err(ErrorCode::Unknown,
-                       "Could not copy the script into the image: " + ec.message());
+            return Err(
+                ErrorCode::Unknown,
+                "Could not copy the script into the image: " + ec.message());
         fs::permissions(dst,
                         fs::perms::owner_all | fs::perms::group_read |
                             fs::perms::group_exec | fs::perms::others_read |
                             fs::perms::others_exec,
                         ec);
-        unwind.add([dst] { std::error_code e; fs::remove(dst, e); });
+        unwind.add([dst] {
+            std::error_code e;
+            fs::remove(dst, e);
+        });
 
         auto stream = [this](const std::string& line) {
             report(Progress::Phase::Configuring, 0.85, line);
         };
         // `bash <path>` so a script without a shebang or exec bit still runs.
-        if (auto r = runChecked(customize::chrootShellArgv(mountDir, "bash " + rel),
-                                stream);
+        if (auto r = runChecked(
+                customize::chrootShellArgv(mountDir, "bash " + rel), stream);
             !r)
             return std::unexpected(toAptError(r.error()));
         return {};
@@ -520,7 +560,8 @@ private:
                     "dpkg-query -W -f '${Package} ${Version}\\n' | sort"),
                 {});
             r && r->exitCode == 0) {
-            std::ofstream out(mountDir + "/etc/kuiper-packages", std::ios::trunc);
+            std::ofstream out(mountDir + "/etc/kuiper-packages",
+                              std::ios::trunc);
             if (out) out << r->output;
         }
     }
@@ -550,7 +591,8 @@ private:
         const std::string content((std::istreambuf_iterator<char>(in)),
                                   std::istreambuf_iterator<char>());
         in.close();
-        QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(content));
+        QJsonDocument doc =
+            QJsonDocument::fromJson(QByteArray::fromStdString(content));
         if (!doc.isObject()) return;
         QJsonObject obj = doc.object();
         obj["variant"] = "custom";
@@ -562,10 +604,9 @@ private:
         }
     }
 
-    Result<CustomizeSummary> runPipeline(const CustomizePlan& plan,
-                                         const std::vector<FeatureDef>& features,
-                                         std::uint64_t grow,
-                                         const CancelToken& cancel, Unwind& unwind) {
+    Result<CustomizeSummary> runPipeline(
+        const CustomizePlan& plan, const std::vector<FeatureDef>& features,
+        std::uint64_t grow, const CancelToken& cancel, Unwind& unwind) {
         report(Progress::Phase::Preparing, 0.0, "Attaching image");
         auto loop = attachLoop(plan.imagePath, unwind);
         if (!loop) return std::unexpected(loop.error());
@@ -579,7 +620,8 @@ private:
 
         // Arch + qemu validation BEFORE the destructive grow.
         std::string arch;
-        if (plan.archOverride) arch = *plan.archOverride;
+        if (plan.archOverride)
+            arch = *plan.archOverride;
         else {
             auto probed = probeArch(rootNode);
             if (!probed) return std::unexpected(probed.error());
@@ -594,7 +636,8 @@ private:
                            "Cannot grow: the rootfs is not the last partition",
                            "Re-run with --no-grow, or pre-enlarge the image.");
             report(Progress::Phase::Preparing, 0.1, "Growing rootfs");
-            if (auto r = growRootfs(plan.imagePath, *loop, rootNumber, rootNode, grow);
+            if (auto r = growRootfs(plan.imagePath, *loop, rootNumber, rootNode,
+                                    grow);
                 !r)
                 return std::unexpected(r.error());
         }
@@ -641,7 +684,8 @@ private:
         }
 
         if (plan.restampVariant) {
-            report(Progress::Phase::Finalizing, 0.9, "Restamping image identity");
+            report(Progress::Phase::Finalizing, 0.9,
+                   "Restamping image identity");
             restamp(mountDir);
         }
 
@@ -660,7 +704,9 @@ private:
                             std::uint64_t grow) {
         std::error_code ec;
         const auto cur = fs::file_size(image, ec);
-        if (ec) return Err(ErrorCode::Unknown, "Cannot size image: " + ec.message());
+        if (ec)
+            return Err(ErrorCode::Unknown,
+                       "Cannot size image: " + ec.message());
         fs::resize_file(image, cur + grow, ec);
         if (ec)
             return Err(ErrorCode::DiskFull,
