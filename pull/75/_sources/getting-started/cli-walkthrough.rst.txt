@@ -155,6 +155,12 @@ The **IDENTIFIER** column (for example ``gh:9607528144`` for a CI build, or
 to ``fetch``. See :ref:`releases-and-sources` for where each channel's images
 come from.
 
+.. note::
+
+   The ``ARCH`` column shows ``arm64`` for 64-bit and ``arm32`` for 32-bit
+   images. Upstream Kuiper calls the 32-bit architecture ``armhf``; it is the
+   same target.
+
 ----
 
 .. _fetch:

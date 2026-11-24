@@ -14,27 +14,26 @@ guided flow. Before the details, it helps to know what it is writing.
 What is a Kuiper image?
 -----------------------
 
-`ADI Kuiper Linux <https://github.com/analogdevicesinc/kuiper>`__ is the
-Debian-based Linux distribution Analog Devices maintains for its hardware. It is
-distributed as ready-to-boot **SD-card images** that already carry the kernel
-and device drivers for ADI parts together with the ADI software stack — the IIO
-framework and ``libiio``, ``libm2k``, the IIO Oscilloscope, Scopy, and the
-supporting Python bindings and tools. Flash an image to a card, boot your board
-from it, and the hardware is ready to use without building a Linux system by
-hand.
+`ADI Kuiper Linux <https://github.com/analogdevicesinc/kuiper>`__ is a
+Debian-based Linux distribution from Analog Devices (currently built on Debian
+Trixie), designed specifically for its hardware and evaluation boards. It is
+distributed as **SD-card images** that bundle the ADI Linux kernel with a Debian
+system, so you boot straight into a Linux that already knows the hardware
+instead of building one by hand.
 
-A Kuiper image comes in two **variants** and two **architectures**:
+A Kuiper image comes in two **editions** and two **architectures**:
 
-- **basic** — a minimal headless system: the kernel, drivers, and core
-  libraries, with no desktop.
-- **full** — the basic system plus the XFCE desktop (reachable over VNC on a
-  headless board) and the complete ADI application set.
-- **arm64** (64-bit) and **arm32** (32-bit) builds, matching the processor on
+- **Basic** — a minimal system: the ADI Linux kernel on a Debian base, with no
+  desktop and no ADI libraries or tools. Suited to headless use.
+- **Full** — the Basic system plus an **XFCE desktop** (with a VNC server for
+  remote access) and the ADI software stack: ``libiio`` and the ``pyadi-iio``
+  Python bindings, ``libm2k``, the IIO Oscilloscope, Scopy, GNU Radio, and more.
+- **64-bit (arm64)** and **32-bit (armhf)** builds, matching the processor on
   your board.
 
-The two variants differ only by which features were enabled when the image was
-built; :ref:`customize <customize>` can add the full-image features to a basic
-image after the fact.
+The two editions differ only by which features were enabled when the image was
+built, so :ref:`customize <customize>` can add the Full-image features to a
+Basic image after the fact.
 
 ----
 
@@ -42,12 +41,16 @@ What is it used for?
 --------------------
 
 You use a Kuiper image to **bring up an Analog Devices evaluation board** and
-run or develop software against it. A typical target is an ADI eval board seated
-on an FPGA carrier (for example a VCK190, ZCU102, or a Zynq/Cyclone carrier), or
-an ADI HAT on a Raspberry Pi. Writing a Kuiper image to the carrier's SD card
-gives you a Linux that already knows the hardware — so you can scope signals in
-the IIO Oscilloscope, drive the part from ``libiio``, or prototype in Python the
-moment the board powers on.
+run or develop software against it. Kuiper supports Raspberry Pi, AMD/Xilinx
+(Zynq, ZynqMP, Versal — e.g. ZedBoard, ZCU102, VCK190), and Intel/Altera
+(Arria 10, Cyclone 5 — e.g. DE10-Nano) platforms. Writing a Kuiper image to the
+card gives you a Linux that already knows the hardware — so you can scope signals
+in the IIO Oscilloscope, drive the part from ``libiio``, or prototype in Python.
+
+A Raspberry Pi image boots out of the box. An **ADI evaluation board must be
+configured first** — the image needs the correct boot files for your exact
+board-and-carrier combination before it will boot — which is precisely the step
+Kuiper Imager automates below.
 
 ----
 
