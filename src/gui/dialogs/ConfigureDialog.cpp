@@ -13,8 +13,11 @@
 #include "ConfigureDialog.hpp"
 
 #include <QAbstractItemView>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QLabel>
 #include <QStringList>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -70,6 +73,9 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     table_->setSelectionMode(QAbstractItemView::SingleSelection);
+    table_->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(table_, &QWidget::customContextMenuRequested, this,
+            [this] { table_->clearSelection(); });
     connect(table_, &QTableWidget::itemSelectionChanged, this,
             &ConfigureDialog::onSelectionChanged);
     col->addWidget(table_, 1);
@@ -80,6 +86,46 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
         "partition in addition to copying the boot files.");
     intelWarning_->setVisible(false);
     col->addWidget(intelWarning_);
+
+    // --- extra local files (optional) ---
+    auto* bootFileRow = new QHBoxLayout();
+    bootFileRow->setContentsMargins(0, 0, 0, 0);
+    bootFileRow->setSpacing(10);
+    bootFileBtn_ = new KuiperButton("Local files…");
+    bootFileBtn_->setKind("secondary");
+    bootFileBtn_->setToolTip(
+        "Pick one or more host files to copy into the boot partition "
+        "(e.g. device-tree overlays, config files).");
+    connect(bootFileBtn_, &KuiperButton::clicked, this, [this] {
+        const QStringList files = QFileDialog::getOpenFileNames(
+            this, "Choose files to copy into the boot partition");
+        if (!files.isEmpty()) {
+            bootFiles_ = files;
+            QStringList names;
+            for (const QString& p : bootFiles_)
+                names << QFileInfo(p).fileName();
+            bootFileLabel_->setText(names.join(", "));
+            bootFileClear_->setVisible(true);
+            onSelectionChanged();
+        }
+    });
+    bootFileLabel_ =
+        new QLabel("optional — copied into the boot partition", this);
+    bootFileLabel_->setProperty("kuiperCaption", true);
+    bootFileClear_ = new KuiperButton("✕");
+    bootFileClear_->setKind("ghost");
+    bootFileClear_->setToolTip("Remove all local files");
+    bootFileClear_->setVisible(false);
+    connect(bootFileClear_, &KuiperButton::clicked, this, [this] {
+        bootFiles_.clear();
+        bootFileLabel_->setText("optional — copied into the boot partition");
+        bootFileClear_->setVisible(false);
+        onSelectionChanged();
+    });
+    bootFileRow->addWidget(bootFileBtn_);
+    bootFileRow->addWidget(bootFileLabel_, 1);
+    bootFileRow->addWidget(bootFileClear_);
+    col->addLayout(bootFileRow);
 
     result_ = new KuiperBanner("info", QString());
     result_->setVisible(false);
@@ -114,17 +160,31 @@ ConfigureDialog::ConfigureDialog(const QString& bootPath,
                 lines << QString("• %1 → %2")
                              .arg(QString::fromStdString(f.source),
                                   QString::fromStdString(f.dest));
+            for (const auto& f : r->extraFiles)
+                lines << QString("• %1 → %2")
+                             .arg(QString::fromStdString(f.source),
+                                  QString::fromStdString(f.dest));
+            const int total =
+                static_cast<int>(r->files.size() + r->extraFiles.size());
             result_->setStatus("info");
-            result_->setTitle(
-                QString("Would copy %1 file(s)").arg(r->files.size()));
+            result_->setTitle(QString("Would copy %1 file(s)").arg(total));
             result_->setMessage(lines.join("\n"));
         } else {
             result_->setStatus("success");
             result_->setTitle("Configuration applied.");
-            result_->setMessage(
-                QString("Copied %1 file(s) to the boot partition.%2")
-                    .arg(r->files.size())
-                    .arg(r->preloader ? "\nPreloader written." : ""));
+            QString msg;
+            if (!r->files.empty())
+                msg +=
+                    QString(
+                        "Copied %1 file(s) from projects to the boot partition.")
+                        .arg(r->files.size());
+            if (!r->extraFiles.empty())
+                msg +=
+                    QString("%1%2 local file(s) copied to the boot partition.")
+                        .arg(msg.isEmpty() ? "" : "\n")
+                        .arg(r->extraFiles.size());
+            if (r->preloader) msg += "\nPreloader written.";
+            result_->setMessage(msg);
             closeBtn_->setText("Done");
         }
         result_->setVisible(true);
@@ -171,7 +231,7 @@ void ConfigureDialog::rebuildTable() {
             row, 3, new QTableWidgetItem(QString::fromStdString(p.platform)));
         ++row;
     }
-    if (table_->rowCount() > 0) table_->selectRow(0);
+    table_->clearSelection();
     onSelectionChanged();
 }
 
@@ -189,9 +249,9 @@ void ConfigureDialog::onSelectionChanged() {
     const auto* p = selected();
     const bool intel = p && !p->preloader.empty();
     intelWarning_->setVisible(intel);
-    const bool hasSel = p != nullptr;
-    previewBtn_->setEnabled(hasSel);
-    applyBtn_->setEnabled(hasSel);
+    const bool canAct = p != nullptr || !bootFiles_.isEmpty();
+    previewBtn_->setEnabled(canAct);
+    applyBtn_->setEnabled(canAct);
 }
 
 void ConfigureDialog::reject() {
@@ -201,22 +261,32 @@ void ConfigureDialog::reject() {
 
 void ConfigureDialog::runConfigure(bool dryRun) {
     const auto* p = selected();
-    if (!p || task_->busy()) return;
+    if ((!p && bootFiles_.isEmpty()) || task_->busy()) return;
     lastWasDryRun_ = dryRun;
     out_->reset();
     result_->setVisible(false);
     setRunning(true);
 
     const std::string bootPath = bootPath_.toStdString();
-    const kuiper::Project project = *p;
+    const std::optional<kuiper::Project> project =
+        p ? std::optional(*p) : std::nullopt;
     auto sink = sink_;
     auto out = out_;
-    task_->run([this, bootPath, project, sink, out, dryRun](
+    std::vector<std::string> extraFiles;
+    for (const QString& f : bootFiles_) extraFiles.push_back(f.toStdString());
+    task_->run([this, bootPath, project, sink, out, dryRun,
+                extraFiles = std::move(extraFiles)](
                    kuiper::ProgressFn onProgress, kuiper::CancelToken) {
-        kuiper::ConfigureOptions opts;
-        opts.dryRun = dryRun;
-        *out = config_.configureProject(bootPath, project, opts,
-                                        std::move(onProgress), sink);
+        if (project) {
+            kuiper::ConfigureOptions opts;
+            opts.dryRun = dryRun;
+            opts.extraFiles = extraFiles;
+            *out = config_.configureProject(bootPath, *project, opts,
+                                            std::move(onProgress), sink);
+        } else {
+            *out = config_.copyLocalFiles(bootPath, extraFiles, dryRun,
+                                          std::move(onProgress));
+        }
     });
 }
 
@@ -229,7 +299,10 @@ void ConfigureDialog::setRunning(bool running) {
     }
     filter_->setEnabled(!running);
     table_->setEnabled(!running);
-    previewBtn_->setEnabled(!running && selected());
-    applyBtn_->setEnabled(!running && selected());
+    bootFileBtn_->setEnabled(!running);
+    bootFileClear_->setEnabled(!running);
+    const bool canAct = selected() || !bootFiles_.isEmpty();
+    previewBtn_->setEnabled(!running && canAct);
+    applyBtn_->setEnabled(!running && canAct);
     closeBtn_->setEnabled(!running);
 }

@@ -73,8 +73,8 @@ void printUsage() {
         "  kli fetch --image <id> --output <path> [--force]\n"
         "  kli flash --image <file> --drive <dev> [--yes] [--force]\n"
         "            [--no-verify] [--timings]\n"
-        "  kli configure --drive <dev> --project <name> --board <carrier>\n"
-        "                [--dry-run] [--force]\n"
+        "  kli configure --drive <dev> [--project <name> --board <carrier>]\n"
+        "                [--file <path> ...] [--dry-run] [--force]\n"
         "  kli customize --image <file> [--feature <id> ...] [--all]\n"
         "                [--script <file>] [--grow <size> | --no-grow]\n"
         "                [--arch armhf|arm64] [--dry-run] [--list-features] [--yes]\n"
@@ -112,6 +112,7 @@ void printUsage() {
         "  -d, --drive <dev>    The card's whole drive; BOOT is mounted for you\n"
         "  -p, --project <name> Eval board / project name (see list-projects)\n"
         "      --board <carrier> Carrier board the project targets\n"
+        "      --file <path>    Local file to copy into boot (repeatable)\n"
         "      --dry-run        Show the copy plan without touching the card\n"
         "      --force          Bypass the removable/mounted-target heuristic for\n"
         "                       the bootloader partition (intel). Never the system disk.\n\n"
@@ -600,7 +601,8 @@ int cmdFlash(const std::vector<std::string>& args) {
 }
 
 int cmdConfigure(const std::vector<std::string>& args) {
-    std::string drive, project, board;
+    std::string drive, project, board, file;
+    std::vector<std::string> extraFiles;
     bool dryRun = false;
     bool force = false;
 
@@ -609,6 +611,10 @@ int cmdConfigure(const std::vector<std::string>& args) {
         if (takeValue(args, i, "--drive", "-d", drive)) continue;
         if (takeValue(args, i, "--project", "-p", project)) continue;
         if (takeValue(args, i, "--board", nullptr, board)) continue;
+        if (takeValue(args, i, "--file", nullptr, file)) {
+            extraFiles.push_back(file);
+            continue;
+        }
         if (a == "--dry-run") {
             dryRun = true;
             continue;
@@ -621,9 +627,12 @@ int cmdConfigure(const std::vector<std::string>& args) {
                      a.c_str());
         return 2;
     }
-    if (drive.empty() || project.empty() || board.empty()) {
-        std::fprintf(
-            stderr, "configure: --drive, --project and --board are required\n");
+    const bool hasProject = !project.empty() && !board.empty();
+    if (drive.empty() || (!hasProject && extraFiles.empty()) ||
+        (project.empty() != board.empty())) {
+        std::fprintf(stderr,
+                     "configure: --drive is required; give "
+                     "--project + --board, --file, or both\n");
         printUsage();
         return 2;
     }
@@ -637,12 +646,6 @@ int cmdConfigure(const std::vector<std::string>& args) {
     const std::string bootPath = boot->boot.path();
 
     kuiper::ConfigurationService service;
-    const auto found = service.findProject(bootPath, project, board);
-    if (!found) {
-        printError(found.error());
-        return exitCodeFor(found.error().code);
-    }
-
     int lastPercent = -1;
     bool progressed = false;
     kuiper::ProgressFn onProgress = [&](const kuiper::Progress& p) {
@@ -689,11 +692,23 @@ int cmdConfigure(const std::vector<std::string>& args) {
     };
 #endif
 
-    kuiper::ConfigureOptions opts;
-    opts.dryRun = dryRun;
-    const auto result = service.configureProject(bootPath, *found, opts,
-                                                 std::move(onProgress), sink);
-    if (progressed) std::fprintf(stderr, "\n");  // finish the progress line
+    kuiper::Result<kuiper::ConfigureSummary> result;
+    if (hasProject) {
+        const auto found = service.findProject(bootPath, project, board);
+        if (!found) {
+            printError(found.error());
+            return exitCodeFor(found.error().code);
+        }
+        kuiper::ConfigureOptions opts;
+        opts.dryRun = dryRun;
+        opts.extraFiles = extraFiles;
+        result = service.configureProject(bootPath, *found, opts,
+                                          std::move(onProgress), sink);
+    } else {
+        result = service.copyLocalFiles(bootPath, extraFiles, dryRun,
+                                        std::move(onProgress));
+    }
+    if (progressed) std::fprintf(stderr, "\n");
 
     if (!result) {
         printError(result.error());
@@ -701,20 +716,26 @@ int cmdConfigure(const std::vector<std::string>& args) {
     }
 
     const char* verb = result->dryRun ? "Would copy" : "Copied";
-    for (const auto& op : result->files) {
+    for (const auto& op : result->files)
         std::printf("%s %s -> %s\n", verb, op.source.c_str(), op.dest.c_str());
-    }
+    for (const auto& op : result->extraFiles)
+        std::printf("%s %s -> %s\n", verb, op.source.c_str(), op.dest.c_str());
     if (result->preloader) {
-        if (result->dryRun) {
+        if (result->dryRun)
             std::printf("Would write preloader %s\n",
                         result->preloader->c_str());
-        } else {
+        else
             std::printf("Preloader written to %s\n", writtenPart.c_str());
-        }
     }
-    std::printf("%s %s / %s (%zu files)\n",
-                result->dryRun ? "Dry run for" : "Configured", project.c_str(),
-                board.c_str(), result->files.size());
+
+    const std::size_t total = result->files.size() + result->extraFiles.size();
+    if (hasProject)
+        std::printf("%s %s / %s (%zu files)\n",
+                    result->dryRun ? "Dry run for" : "Configured",
+                    project.c_str(), board.c_str(), total);
+    else
+        std::printf("%s %zu local file(s)\n",
+                    result->dryRun ? "Would copy" : "Copied", total);
     return 0;
 }
 
